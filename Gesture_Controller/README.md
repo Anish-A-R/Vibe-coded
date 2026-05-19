@@ -1,4 +1,4 @@
-Gesture Controller — Windows  (MediaPipe 0.10+ compatible)
+Gesture Controller(Best for scrolling reels in instagram) — Windows  (MediaPipe 0.10+ compatible)
 ===========================================================
 Requirements:
     pip install mediapipe opencv-python pyautogui numpy
