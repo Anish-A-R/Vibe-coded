@@ -36,6 +36,55 @@
   --font-body:'Rajdhani',sans-serif;
 }
 
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ═══════ LEADERBOARD SPECIFIC CSS ═══════ */
+.lb-table {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 44px 44px 44px 56px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  align-items: center;
+  transition: background .15s;
+}
+
+.lb-row:last-child{border-bottom:none}
+.lb-row:not(.header):hover{background:var(--bg3)}
+.lb-row.header {
+  background: var(--bg3);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-family: var(--font-mono);
+}
+
+.lb-rank { font-family: var(--font-head); font-size: 13px; font-weight: 900; color: var(--text3); }
+.lb-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-body); }
+.lb-num { text-align: center; font-family: var(--font-mono); font-size: 12px; }
+.lb-wins { color: var(--green); font-weight: 700; }
+.lb-draws { color: var(--text2); }
+.lb-losses { color: var(--red); }
+.lb-score { color: var(--gold); font-weight: 900; font-family: var(--font-head); font-size: 11px; text-align: right; }
+.lb-loading { text-align: center; padding: 2.5rem; color: var(--text3); font-family: var(--font-mono); font-size: 11px; }
+
+/* Ranks */
+.rank-gold{color:var(--gold);text-shadow:0 0 10px rgba(255,214,0,.5)}
+.rank-silver{color:#c0c0c0;text-shadow:0 0 8px rgba(192,192,192,.4)}
+.rank-bronze{color:#cd7f32;text-shadow:0 0 8px rgba(205,127,50,.4)}
+
 html,body{min-height:100vh;overflow-x:hidden}
 body{
   font-family:var(--font-body);
@@ -302,7 +351,7 @@ body::after{
   color:var(--text3);
 }
 
-/* ── CARD FLIP (the hero piece) ── */
+/* ── CARD FLIP ── */
 .card-scene{width:120px;height:120px;perspective:800px;position:relative}
 .card{
   width:100%;height:100%;
@@ -352,7 +401,7 @@ body::after{
 
 /* idle front glow */
 .card-face.front::before{
-  content:'?';
+  content:' ? ';
   font-family:var(--font-head);font-size:32px;font-weight:900;
   background:linear-gradient(135deg,rgba(0,245,255,.3),rgba(255,0,170,.3));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
@@ -479,7 +528,6 @@ body::after{
 }
 .cbtn:hover:not(:disabled) .cl{color:var(--cyan)}
 
-/* hover individual color overrides */
 .cbtn:nth-child(1):hover:not(:disabled){box-shadow:0 12px 30px rgba(0,0,0,.5),0 0 25px rgba(0,255,136,.25)}
 .cbtn:nth-child(1):hover:not(:disabled)::before{background:radial-gradient(circle,rgba(0,255,136,.07) 0%,transparent 70%)}
 .cbtn:nth-child(2):hover:not(:disabled){box-shadow:0 12px 30px rgba(0,0,0,.5),0 0 25px rgba(0,245,255,.25)}
@@ -639,32 +687,7 @@ input[type=text]:focus{
 .cfg-badge.live{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,136,.3)}
 
 .lb-table{border:1px solid var(--border);border-radius:16px;overflow:hidden}
-.lb-row{
-  display:grid;
-  grid-template-columns:40px 1fr 44px 44px 44px 56px;
-  gap:0;padding:12px 14px;
-  border-bottom:1px solid var(--border);font-size:13px;align-items:center;
-  transition:background .15s;
-}
-.lb-row:last-child{border-bottom:none}
-.lb-row:not(.header):hover{background:var(--bg3)}
-.lb-row.header{
-  background:var(--bg3);font-size:9px;font-weight:700;
-  color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-mono);
-}
-.lb-rank{
-  font-family:var(--font-head);font-size:13px;
-  font-weight:900;color:var(--text3);
-}
-.rank-gold{color:var(--gold);text-shadow:0 0 10px rgba(255,214,0,.5)}
-.rank-silver{color:#c0c0c0;text-shadow:0 0 8px rgba(192,192,192,.4)}
-.rank-bronze{color:#cd7f32;text-shadow:0 0 8px rgba(205,127,50,.4)}
-.lb-name{font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-body)}
-.lb-num{text-align:center;font-family:var(--font-mono);font-size:12px}
-.lb-wins{color:var(--green);font-weight:700}.lb-draws{color:var(--text2)}.lb-losses{color:var(--red)}
-.lb-score{color:var(--gold);font-weight:900;font-family:var(--font-head);font-size:11px}
-.lb-loading{text-align:center;padding:2.5rem;color:var(--text3);font-family:var(--font-mono);font-size:11px}
-.lb-me{background:linear-gradient(90deg,var(--blue-dim,rgba(0,245,255,0.04)),transparent)!important}
+.lb-me{background:linear-gradient(90deg,rgba(0,245,255,0.04),transparent)!important}
 
 /* ═══════ STATS ═══════ */
 .streak-row{
@@ -680,6 +703,7 @@ input[type=text]:focus{
 .s-pip.d{background:var(--text3)}
 .streak-label{font-size:10px;color:var(--text3);font-family:var(--font-mono);letter-spacing:.06em}
 
+#hist { max-height: 200px; overflow-y: auto; }
 .h-row{
   display:flex;align-items:center;gap:8px;
   padding:9px 12px;border-radius:10px;margin-bottom:6px;
@@ -692,7 +716,6 @@ input[type=text]:focus{
 .hw .h-res{color:var(--green)}.hl .h-res{color:var(--red)}.hd .h-res{color:var(--text3)}
 .h-detail{font-size:11px;color:var(--text2);flex:1;font-family:var(--font-mono)}
 
-/* ═══════ SEC TITLE ═══════ */
 .sec-title{
   font-size:9px;font-weight:700;color:var(--text3);
   text-transform:uppercase;letter-spacing:.15em;margin:.75rem 0 .5rem;
@@ -700,13 +723,6 @@ input[type=text]:focus{
 }
 .sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
 
-/* ═══════ HINT ═══════ */
-.hint{
-  text-align:center;font-size:10px;color:var(--text3);
-  min-height:18px;font-family:var(--font-mono);letter-spacing:.04em;
-}
-
-/* ═══════ GLITCH OVERLAY (win/lose flash) ═══════ */
 #flash-overlay{
   position:fixed;inset:0;pointer-events:none;z-index:999;
   opacity:0;transition:opacity .1s;
@@ -717,7 +733,8 @@ input[type=text]:focus{
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getDatabase, ref, push, onValue, off, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+  // NOTICE: We removed 'push' and imported 'set'
+  import { getDatabase, ref, set, onValue, off, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
   import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
   const FB = {
@@ -733,22 +750,39 @@ input[type=text]:focus{
 
   try {
     if (FB.apiKey !== "YOUR_API_KEY") {
+      console.log("🛠️ Firebase: Initializing connection mapping parameters...");
       const app = initializeApp(FB);
       const db = getDatabase(app);
       const auth = getAuth(app);
       
+      // Global variable to hold the user's secure token ID
+      let currentUid = null;
+      
       signInAnonymously(auth)
-        .then(() => { console.log("Authenticated anonymously."); })
-        .catch((error) => { console.error("Anonymous auth failed:", error); });
+        .then((userCredential) => { 
+          currentUid = userCredential.user.uid;
+          console.log(`🔐 Firebase Auth: Handshake complete. Assigned UID: ${currentUid}`); 
+        })
+        .catch((error) => { console.error("❌ Firebase Auth: Handshake failed:", error); });
 
-      const r = ref(db, 'leaderboard');
+      const leaderboardRef = ref(db, 'leaderboard');
       window._fbReady = true;
       
       const badge = document.getElementById('fb-badge');
       if (badge) { badge.className = 'cfg-badge live'; badge.textContent = 'LIVE'; }
       
       window._submitScoreBackend = async (name, scores, calculatedScore) => {
-        return push(r, {
+        if (!currentUid) {
+          throw new Error("Authentication token not established yet.");
+        }
+        
+        console.log(`📤 Firebase Outbound: Writing to explicit user node [${currentUid}]`);
+        
+        // Target the specific user's node instead of a random push ID
+        const userSpecificRef = ref(db, 'leaderboard/' + currentUid);
+        
+        // Use set() to overwrite their existing entry, ensuring only 1 record per token
+        return set(userSpecificRef, {
           name: name.substring(0, 16),
           wins: Number(scores.w),
           draws: Number(scores.d),
@@ -758,12 +792,12 @@ input[type=text]:focus{
         });
       };
       
-      const leaderboardQuery = query(r, orderByChild('score'), limitToLast(20));
+      const leaderboardQuery = query(leaderboardRef, orderByChild('score'), limitToLast(20));
 
-      // LIFECYCLE CONNECT MATRIX
       window._fbConnect = (renderCallback) => {
-        console.log("⚡ Establishing live WebSocket link...");
+        console.log("⚡ Network Channel: Establishing live remote WebSocket link...");
         onValue(leaderboardQuery, snap => {
+          console.log("📥 Firebase Inbound: Sync snapshot pulled. Processing sorting tree metrics...");
           const rows = [];
           snap.forEach(c => rows.push({ id: c.key, ...c.val() }));
           rows.sort((a, b) => b.score - a.score);
@@ -771,21 +805,34 @@ input[type=text]:focus{
         });
       };
 
-      // LIFECYCLE SEVER SOCKET MATRIX
       window._fbDisconnect = () => {
-        console.log("🔌 Severing socket connection. Slot freed.");
+        console.log("🔌 Network Channel: Severing socket event stream. Connection slot freed.");
         off(leaderboardQuery);
       };
+
+      const connect = () => {
+        if (typeof window.renderLeaderboard === 'function') {
+          console.log("🎯 Bridge Script: Connected renderer layout system to active network stream.");
+          const activeTab = document.querySelector('.tab.on');
+          if (activeTab && activeTab.id === 'tab-lb') {
+            window._fbConnect(window.renderLeaderboard);
+          }
+        } else {
+          setTimeout(connect, 100); 
+        }
+      };
+      connect();
 
     } else {
       setupDemoFallback();
     }
   } catch (e) {
-    console.error("Firebase Initialization Failed:", e);
+    console.error("❌ Firebase Core Fault: Initialization crashed:", e);
   }
 
   function setupDemoFallback() {
     window.useDemoLB = () => {
+      console.warn("⚠️ Local Env: Server references absent. Falling back to local static demo array mapping.");
       if (typeof window.renderLeaderboard === 'function') {
         window.renderLeaderboard([
           { name: "Satoshi_AI", wins: 42, draws: 10, losses: 5, score: 136 },
@@ -795,6 +842,7 @@ input[type=text]:focus{
       }
     };
   }
+</script>
 </script>
 </head>
 <body>
@@ -886,7 +934,7 @@ input[type=text]:focus{
 
     <div class="btns">
       <button class="sec" style="flex:1" onclick="resetAI()">↺ Reset</button>
-      <button class="gold" style="flex:2" onclick="submitScore()">Submit Score 🏆</button>
+      <button class="gold" style="flex:2" onclick="window.submitScore()">Submit Score 🏆</button>
     </div>
   </div>
 
@@ -986,14 +1034,14 @@ input[type=text]:focus{
         <div class="lb-title">Leaderboard <span id="fb-badge" class="cfg-badge demo">DEMO</span></div>
         <div class="lb-subtitle">Score = wins×3 + draws×1 — live global rankings</div>
       </div>
-      <button class="sec" style="padding:8px 12px;border-radius:8px;flex:0" onclick="if(window._fbConnect) { window._fbDisconnect(); window._fbConnect(renderLeaderboard); }">↻</button>
+      <button class="sec" style="padding:8px 12px;border-radius:8px;flex:0" onclick="if(window._fbConnect) { window._fbDisconnect(); window._fbConnect(window.renderLeaderboard); }">↻</button>
     </div>
 
     <div class="panel">
       <div class="sec-title">Submit score</div>
       <div style="display:flex;gap:8px;margin-bottom:6px">
         <input type="text" id="lb-name" placeholder="Your name" maxlength="16">
-        <button class="gold" style="flex:0;border-radius:10px;padding:10px 14px;white-space:nowrap" onclick="submitScore()">Submit 🏆</button>
+        <button class="gold" style="flex:0;border-radius:10px;padding:10px 14px;white-space:nowrap" onclick="window.submitScore()">Submit 🏆</button>
       </div>
       <div id="lb-submit-status" style="font-size:10px;color:var(--text3);font-family:var(--font-mono);min-height:16px"></div>
     </div>
@@ -1022,41 +1070,6 @@ input[type=text]:focus{
 </div>
 
 <script>
-/* ═══════════════════════════════════════════
-   PARTICLES SYSTEM ENGINE
-═══════════════════════════════════════════ */
-(function(){
-  const canvas=document.getElementById('particles');
-  const ctx=canvas.getContext('2d');
-  let W,H,particles=[];
-  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
-  resize();window.addEventListener('resize',resize);
-  class Particle{
-    constructor(){this.reset();}
-    reset(){
-      this.x=Math.random()*W;this.y=Math.random()*H;
-      this.vx=(Math.random()-.5)*.3;this.vy=(Math.random()-.5)*.3;
-      this.r=Math.random()*1.5+.3;this.alpha=Math.random()*.3+.05;
-      this.color=Math.random()>.5?'0,245,255':'255,0,170';
-    }
-    update(){
-      this.x+=this.vx;this.y+=this.vy;
-      if(this.x<0||this.x>W||this.y<0||this.y>H)this.reset();
-    }
-    draw(){
-      ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-      ctx.fillStyle=`rgba(${this.color},${this.alpha})`;ctx.fill();
-    }
-  }
-  for(let i=0;i<60;i++)particles.push(new Particle());
-  function loop(){
-    ctx.clearRect(0,0,W,H);
-    particles.forEach(p=>{p.update();p.draw();});
-    requestAnimationFrame(loop);
-  }
-  loop();
-})();
-
 /* ═══════════════════════════════════════════
    CORE GAME LOGIC & MARKOV PREDICTIONS
 ═══════════════════════════════════════════ */
@@ -1091,17 +1104,28 @@ function aiDecide(){
   let pR=1/3,pP=1/3,pS=1/3;
   if(tot>=2){pR=freq.rock/tot;pP=freq.paper/tot;pS=freq.scissors/tot;}
 
+  console.log(`\n🔮 --- AI THINK TANK (Round ${roundN + 1}) ---`);
+  console.log(`📊 Global Frequencies -> Rock: ${freq.rock}, Paper: ${freq.paper}, Scissors: ${freq.scissors}`);
+
   // Markov order-1
   if(lastPick&&markov[lastPick]){
     const mc=markov[lastPick],mt=mc.rock+mc.paper+mc.scissors;
-    if(mt>=2){const w=Math.min(.65,mt*.07);pR=pR*(1-w)+(mc.rock/mt)*w;pP=pP*(1-w)+(mc.paper/mt)*w;pS=pS*(1-w)+(mc.scissors/mt)*w;}
+    if(mt>=2){
+      const w=Math.min(.65,mt*.07);
+      pR=pR*(1-w)+(mc.rock/mt)*w;pP=pP*(1-w)+(mc.paper/mt)*w;pS=pS*(1-w)+(mc.scissors/mt)*w;
+      console.log(`📈 Markov Order-1 active (After ${lastPick}):`, mc);
+    }
   }
 
   // Markov order-2
   const k2=last2Pick?last2Pick:null;
   if(k2&&markov2[k2]){
     const mc=markov2[k2],mt=mc.rock+mc.paper+mc.scissors;
-    if(mt>=2){const w=Math.min(.5,mt*.09);pR=pR*(1-w)+(mc.rock/mt)*w;pP=pP*(1-w)+(mc.paper/mt)*w;pS=pS*(1-w)+(mc.scissors/mt)*w;}
+    if(mt>=2){
+      const w=Math.min(.5,mt*.09);
+      pR=pR*(1-w)+(mc.rock/mt)*w;pP=pP*(1-w)+(mc.paper/mt)*w;pS=pS*(1-w)+(mc.scissors/mt)*w;
+      console.log(`📉 Markov Order-2 active (Sequence ${k2}):`, mc);
+    }
   }
 
   // Renorm
@@ -1122,6 +1146,10 @@ function aiDecide(){
   sum=pR+pP+pS;pR/=sum;pP/=sum;pS/=sum;
 
   const choice=Math.random()<urgency?dbl:(Math.random()<pR?'rock':Math.random()<pR+pP?'paper':'scissors');
+  
+  console.log(`🎯 Probability Projections -> Rock: ${Math.round(pR*100)}%, Paper: ${Math.round(pP*100)}%, Scissors: ${Math.round(pS*100)}%`);
+  console.log(`🧠 AI Projection Matrix -> Predicted Human Move: [${pred.toUpperCase()}]. Executing Double-Counter Meta: [${choice.toUpperCase()}]`);
+  
   return{choice,probs:{rock:Math.round(pR*100),paper:Math.round(pP*100),scissors:Math.round(pS*100)},pred,dbl,lvl:Math.min(5,Math.floor(tot/4)+1),urgency};
 }
 
@@ -1130,10 +1158,11 @@ function genCommitment(){
   const hash=Math.random().toString(16).substring(2,14).toUpperCase();
   const el=document.getElementById('crypto-token');
   if(el)el.textContent=`🔒 COMMITMENT LOCK: 0x${hash}...`;
+  console.log(`🔒 Cryptographic Guard: Secure hash committed (0x${hash}). Decision locked.`);
   updLevel(commitment.lvl);
 }
 
-function updLevel(lvl){
+function updLevel(lvl) {
   document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i<lvl));
   const labels=['Calibrating','Learning','Adapting','Dangerous','Unstoppable'];
   const el=document.getElementById('level-txt');
@@ -1194,30 +1223,31 @@ function updM2(prev2,curr){if(!prev2)return;if(!markov2[prev2])markov2[prev2]={r
 /* ─── MAIN GAME SEQUENCE ─── */
 async function play(pick){
   if(busy)return;busy=true;roundN++;
+  console.log(`\n⚔️ --- ROUND ${roundN} INITIALIZED ---`);
+  console.log(`👤 Human Input Selected: [${pick.toUpperCase()}]`);
   setDisabled(true);
-  document.getElementById('bot-face').textContent='🤖';
-  document.getElementById('bot-status').textContent='PROCESSING…';
-  document.getElementById('hint').textContent='🔬 Analyzing pattern matrix…';
-
+  
   let finalChoice=commitment.choice;
-  if(rageLeft>0){finalChoice=COUNTERS[pick];rageLeft--;}
+  if(rageLeft>0){
+    finalChoice=COUNTERS[pick];
+    rageLeft--;
+    console.log(`⚠️ Boss Subroutine Override: Cheat mitigation triggered. AI switched counter choice directly to: [${finalChoice.toUpperCase()}]`);
+  }
 
   resetCard('cp');resetCard('ca');
-  document.getElementById('result').className='result idle';
-  document.getElementById('result').textContent='Decrypting…';
-
   await runCountdown('cdown',3);
-  document.getElementById('hint').textContent='';
 
   const res=judge(pick,finalChoice);
+  console.log(`🏁 Battle Evaluation: Human [${pick.toUpperCase()}] vs AI [${finalChoice.toUpperCase()}] -> Outcome: [${res.toUpperCase()}]`);
+
   await Promise.all([
     flipCard('cp',EM[pick],false),
     flipCard('ca',EM[finalChoice],res==='lose'),
   ]);
 
-  if(res==='win'){scores.w++;flash('win');document.getElementById('bot-face').textContent='🤯';document.getElementById('bot-status').textContent='PATTERN INTEGRITY FAULT';rageLeft=3;}
-  else if(res==='lose'){scores.l++;flash('lose');document.getElementById('bot-face').textContent='😤';document.getElementById('bot-status').textContent='STRATEGY EXECUTED';}
-  else{scores.d++;document.getElementById('bot-face').textContent='🤖';document.getElementById('bot-status').textContent='COGNITIVE PARITY';}
+  if(res==='win'){scores.w++;flash('win');document.getElementById('bot-face').textContent='🤯';rageLeft=3;}
+  else if(res==='lose'){scores.l++;flash('lose');document.getElementById('bot-face').textContent='😤';}
+  else{scores.d++;document.getElementById('bot-face').textContent='🤖';}
 
   bumpScore('sw',scores.w);bumpScore('sd',scores.d);bumpScore('sl',scores.l);
 
@@ -1244,6 +1274,7 @@ function updMath(probs,pred,dbl){
 }
 
 function resetAI(){
+  console.log("🧹 System Engine: Resetting internal pattern analytics models and scores...");
   scores={w:0,d:0,l:0};rageLeft=0;
   ['sw','sd','sl'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=0;});
   history=[];markov={};markov2={};freq={rock:0,paper:0,scissors:0};lastPick=null;last2Pick=null;roundN=0;
@@ -1263,6 +1294,7 @@ function buildFriends(){
 
 function pickFriend(i){
   selFriend=FRIENDS[i];fscores={w:0,d:0,l:0};
+  console.log(`👥 Friend Sandbox: Target opponent altered to [${selFriend.name}]. Baseline strategy: ${selFriend.trait}`);
   document.getElementById('fn-lbl').textContent=selFriend.name;
   document.getElementById('fn-score').textContent=selFriend.name+' wins';
   ['fsw','fsd','fsl'].forEach(id=>document.getElementById(id).textContent=0);
@@ -1277,8 +1309,6 @@ async function fplay(pick){
   document.querySelectorAll('#screen-friend .cbtn').forEach(b=>b.disabled=true);
   const aiC=selFriend.isBoss?COUNTERS[pick]:(()=>{const b=selFriend.bias,r=Math.random();return r<b.rock?'rock':r<b.rock+b.paper?'paper':'scissors';})();
   resetCard('fcp');resetCard('fca');
-  document.getElementById('fresult').className='result idle';
-  document.getElementById('fresult').textContent='Analyzing…';
   await runCountdown('fcdown',3);
   await Promise.all([flipCard('fcp',EM[pick]),flipCard('fca',EM[aiC])]);
   const res=judge(pick,aiC);
@@ -1295,6 +1325,7 @@ function backFriends(){document.getElementById('friend-game').style.display='non
 function startP2(){
   p2names[0]=document.getElementById('p1name').value.trim()||'Player 1';
   p2names[1]=document.getElementById('p2name').value.trim()||'Player 2';
+  console.log(`🎮 Hotseat Match Initialized: [${p2names[0]}] VS [${p2names[1]}]`);
   document.getElementById('p2-setup').style.display='none';
   document.getElementById('p2-game').style.display='block';
   ['p2l1','p2t1','p2wl'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=id==='p2wl'?p2names[0]+' wins':id==='p2t1'?p2names[0]+' — select secretly 🙈':p2names[0];});
@@ -1309,11 +1340,13 @@ function p2pick(player,choice){
   if(player===2&&p2state.p2)return;
   if(player===1){
     p2state.p1=choice;
+    console.log(`🎮 Couch Play: [${p2names[0]}] locked hidden move choice.`);
     document.getElementById('p2st1').textContent='✅ '+p2names[0]+' locked in';
     document.querySelectorAll('#p2s1 .p2-cbtn').forEach(b=>{b.classList.add('locked');b.disabled=true;});
     document.getElementById('p2s1').classList.add('locked');
   }else{
     p2state.p2=choice;
+    console.log(`🎮 Couch Play: [${p2names[1]}] locked hidden move choice.`);
     document.getElementById('p2st2').textContent='✅ '+p2names[1]+' locked in';
     document.querySelectorAll('#p2s2 .p2-cbtn').forEach(b=>{b.classList.add('locked');b.disabled=true;});
     document.getElementById('p2s2').classList.add('locked');
@@ -1338,7 +1371,7 @@ async function p2reveal(){
   if(res==='win'){p2scores.w++;flash('win');}else if(res==='lose'){p2scores.l++;flash('lose');}else p2scores.d++;
   bumpScore('p2sw',p2scores.w);bumpScore('p2sd',p2scores.d);bumpScore('p2sl',p2scores.l);
   const rb=document.getElementById('p2result');rb.className='result '+res;
-  rb.textContent=res==='win'?`🎉 ${p2names[0]} wins! ${EM[p2state.p1]} beats ${EM[p2state.p2]}`:res==='lose'?`🎉 ${p2names[1]} wins! ${EM[p2state.p2]} beats ${EM[p2state.p1]}`:`🤝 Draw — ${EM[p2state.p1]}`;
+  rb.textContent=res==='win'?`🎉 ${p2names[0]} wins! ${EM[p2state.p1]} beats ${EM[p2state.p2]}`:res==='lose'?`🎉 ${p2names[1]} wins! ${EM[p2state.p2]} beats ${p2names[0]}`:`🤝 Draw — ${EM[p2state.p1]}`;
   setTimeout(()=>{
     p2state={p1:null,p2:null};
     ['p2s1','p2s2'].forEach(id=>document.getElementById(id)?.classList.remove('locked'));
@@ -1350,30 +1383,52 @@ async function p2reveal(){
 }
 
 /* ─── LIVE GLOBAL RANKS ─── */
-function renderLeaderboard(rows){
-  const medals=['🥇','🥈','🥉'];
-  let html=`<div class="lb-row header">
-              <div>#</div>
-              <div style="padding-left: 8px;">Name</div>
-              <div style="text-align: center;">W</div>
-              <div style="text-align: center;">D</div>
-              <div style="text-align: center;">L</div>
-              <div style="text-align: right;">Pts</div>
-            </div>`;
-  if(!rows||!rows.length){html+='<div class="lb-loading">No scores yet — be the first! 🏆</div>';}
-  else{rows.forEach((r,i)=>{
-    const cls=i===0?'rank-gold':i===1?'rank-silver':i===2?'rank-bronze':'';
-    const rank=i<3?medals[i]:`<span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">${i+1}</span>`;
-    html+=`<div class="lb-row ${r._isMe?'lb-me':''}">
-            <div class="lb-rank ${cls}">${rank}</div>
-            <div class="lb-name" style="padding-left: 8px;">${r.name||'?'}</div>
-            <div class="lb-num lb-wins">${r.wins||0}</div>
-            <div class="lb-num lb-draws">${r.draws||0}</div>
-            <div class="lb-num lb-losses">${r.losses||0}</div>
-            <div class="lb-score">${r.score||0}</div>
-          </div>`;
-  });}
-  document.getElementById('lb-table').innerHTML=html;
+function renderLeaderboard(rows) {
+  const tableEl = document.getElementById('lb-table');
+  if (!tableEl) return;
+
+  tableEl.innerHTML = '';
+
+  const headerRow = document.createElement('div');
+  headerRow.className = 'lb-row header';
+  headerRow.innerHTML = `
+    <div>#</div>
+    <div style="padding-left: 8px;">Name</div>
+    <div style="text-align: center;">W</div>
+    <div style="text-align: center;">D</div>
+    <div style="text-align: center;">L</div>
+    <div style="text-align: right;">Pts</div>
+  `;
+  tableEl.appendChild(headerRow);
+
+  if (!rows || !rows.length) {
+    const emptyNotice = document.createElement('div');
+    emptyNotice.className = 'lb-loading';
+    emptyNotice.textContent = 'No scores yet — be the first! 🏆';
+    tableEl.appendChild(emptyNotice);
+    return;
+  }
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  rows.forEach((r, i) => {
+    const rowEl = document.createElement('div');
+    rowEl.className = `lb-row ${r._isMe ? 'lb-me' : ''}`;
+
+    const cls = i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : '';
+    const rank = i < 3 ? medals[i] : `<span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">${i+1}</span>`;
+
+    rowEl.innerHTML = `
+      <div class="lb-rank ${cls}">${rank}</div>
+      <div class="lb-name" style="padding-left: 8px;">${r.name || '?'}</div>
+      <div class="lb-num lb-wins">${r.wins || 0}</div>
+      <div class="lb-num lb-draws">${r.draws || 0}</div>
+      <div class="lb-num lb-losses">${r.losses || 0}</div>
+      <div class="lb-score">${r.score || 0}</div>
+    `;
+
+    tableEl.appendChild(rowEl);
+  });
 }
 
 async function submitScore() {
@@ -1428,8 +1483,7 @@ function clearAll(){
 
 /* ─── TAB NAVIGATION CONTROLLER ─── */
 window.gotoTab = function(t){
-  const activeTab = document.querySelector('.tab.on');
-  if (activeTab && activeTab.id !== 'tab-lb' && window._fbDisconnect) {
+  if (t !== 'lb' && window._fbDisconnect) {
     window._fbDisconnect();
   }
 
@@ -1452,7 +1506,6 @@ window.gotoTab = function(t){
 /* ─── INITIALIZATION CONTROLLERS ─── */
 window.play = play;
 window.resetAI = resetAI;
-window.submitScore = submitScore;
 window.clearAll = clearAll;
 window.pickFriend = pickFriend;
 window.fplay = fplay;
@@ -1462,6 +1515,9 @@ window.setupP2 = setupP2;
 window.resetP2 = resetP2;
 window.p2pick = p2pick;
 window.p2reveal = p2reveal;
+window.renderLeaderboard = renderLeaderboard;
+window.submitScore = submitScore; 
+window.gotoTab = gotoTab;
 
 buildFriends();
 genCommitment();
