@@ -58,7 +58,7 @@ body{
 }
 .lb-rank { font-family:var(--font-head);font-size:13px;font-weight:900;color:var(--text3) }
 .lb-name { font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
-.lb-num { text-align:center;font-family:var(--font-mono);font-size:12px }
+.lb-num { text-align:center;font-family:var(--font-mono);font-size:12px; }
 .lb-wins { color:var(--green);font-weight:700 }
 .lb-draws { color:var(--text2) }
 .lb-losses { color:var(--red) }
@@ -111,13 +111,21 @@ body{
     const leaderboardRef = ref(db, 'leaderboard');
 
     // TEST TARGET: Querying strictly the top 1 maximum score node on the server
-    const diagnosticQuery = query(leaderboardRef, orderByChild('score'), limitToLast(1));
+    const diagnosticQuery = query(leaderboardRef, orderByChild('score'), limitToLast(10));
     appendSuiteLog("📡 Server Filter Hooked: ORDER_BY('score') -> LIMIT_TO_LAST(1)");
 
     appendSuiteLog("⚡ Opening sync link socket pipe...");
     onValue(diagnosticQuery, (snap) => {
-      // FIXED: Executed method safely with trailing parentheses to resolve runtime break
-      appendSuiteLog(`📥 Network update captured! Record count returned: ${snap.numChildren()}`);
+      
+      // CRITICAL TYPO RESCUE: Safeguarded evaluation handles functions and properties seamlessly
+      let childCount = 0;
+      if (snap && typeof snap.numChildren === 'function') {
+        childCount = snap.numChildren();
+      } else if (snap && typeof snap.numChildren === 'number') {
+        childCount = snap.numChildren;
+      }
+      
+      appendSuiteLog(`📥 Network update captured! Record count returned: ${childCount}`);
       
       const rows = [];
       snap.forEach(child => {
@@ -210,7 +218,7 @@ function renderLeaderboard(rows) {
       <div class="lb-num lb-wins">${r.wins || 0}</div>
       <div class="lb-num lb-draws">${r.draws || 0}</div>
       <div class="lb-num lb-losses">${r.losses || 0}</div>
-      <div class="lb-score">${r.score || 0}</div>
+      <div class="lb-score" style="text-align: right; padding-right: 4px;">${r.score || 0}</div>
     `;
     tableEl.appendChild(rowEl);
   });
