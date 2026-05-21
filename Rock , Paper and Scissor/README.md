@@ -104,10 +104,6 @@ Works in all modern browsers. Fully responsive — playable on desktop and mobil
 
 ---
 
-## 📄 License
 
-MIT — free to use, modify, and distribute.
 
----
-
-> Made with ❤️ and a little too much game theory.
+> Made with ❤️ and a little too much game theory(Basically AI).
