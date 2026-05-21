@@ -67,6 +67,8 @@ body{
 
 /* Rank Glow Medals */
 .rank-gold{color:var(--gold);text-shadow:0 0 10px rgba(255,214,0,.5)}
+.rank-silver{color:#c0c0c0;text-shadow:0 0 8px rgba(192,192,192,.4)}
+.rank-bronze{color:#cd7f32;text-shadow:0 0 8px rgba(205,127,50,.4)}
 
 /* Diagnostic Control Logs Wrapper */
 .panel {
@@ -111,7 +113,7 @@ body{
     const leaderboardRef = ref(db, 'leaderboard');
 
     // TEST TARGET: Querying strictly the top 1 maximum score node on the server
-    const diagnosticQuery = query(leaderboardRef, orderByChild('score'), limitToLast(10));
+    const diagnosticQuery = query(leaderboardRef, orderByChild('score'));
     appendSuiteLog("📡 Server Filter Hooked: ORDER_BY('score') -> LIMIT_TO_LAST(1)");
 
     appendSuiteLog("⚡ Opening sync link socket pipe...");
@@ -208,12 +210,23 @@ function renderLeaderboard(rows) {
     const rowEl = document.createElement('div');
     rowEl.className = 'lb-row';
 
-    // Force index rank visual elements to golden medal 🥇 as it only holds the maximum node 
-    const rankGlow = 'rank-gold';
-    const rankMedal = '🥇';
+    // Separate logic to display medals up to position 3, raw numbers below that
+    let rankDisplay = i + 1;
+    let rankClass = '';
+
+    if (i === 0) {
+      rankDisplay = '🥇';
+      rankClass = 'rank-gold';
+    } else if (i === 1) {
+      rankDisplay = '🥈';
+      rankClass = 'rank-silver';
+    } else if (i === 2) {
+      rankDisplay = '🥉';
+      rankClass = 'rank-bronze';
+    }
 
     rowEl.innerHTML = `
-      <div class="lb-rank ${rankGlow}">${rankMedal}</div>
+      <div class="lb-rank ${rankClass}">${rankDisplay}</div>
       <div class="lb-name" style="padding-left: 8px;">${r.name || 'Anonymous'}</div>
       <div class="lb-num lb-wins">${r.wins || 0}</div>
       <div class="lb-num lb-draws">${r.draws || 0}</div>
