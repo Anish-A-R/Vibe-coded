@@ -36,55 +36,6 @@
   --font-body:'Rajdhani',sans-serif;
 }
 
-body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-
-/* ═══════ LEADERBOARD SPECIFIC CSS ═══════ */
-.lb-table {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  background: var(--bg2);
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.lb-row {
-  display: grid;
-  grid-template-columns: 40px 1fr 44px 44px 44px 56px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  align-items: center;
-  transition: background .15s;
-}
-
-.lb-row:last-child{border-bottom:none}
-.lb-row:not(.header):hover{background:var(--bg3)}
-.lb-row.header {
-  background: var(--bg3);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  font-family: var(--font-mono);
-}
-
-.lb-rank { font-family: var(--font-head); font-size: 13px; font-weight: 900; color: var(--text3); }
-.lb-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-body); }
-.lb-num { text-align: center; font-family: var(--font-mono); font-size: 12px; }
-.lb-wins { color: var(--green); font-weight: 700; }
-.lb-draws { color: var(--text2); }
-.lb-losses { color: var(--red); }
-.lb-score { color: var(--gold); font-weight: 900; font-family: var(--font-head); font-size: 11px; text-align: right; }
-.lb-loading { text-align: center; padding: 2.5rem; color: var(--text3); font-family: var(--font-mono); font-size: 11px; }
-
-/* Ranks */
-.rank-gold{color:var(--gold);text-shadow:0 0 10px rgba(255,214,0,.5)}
-.rank-silver{color:#c0c0c0;text-shadow:0 0 8px rgba(192,192,192,.4)}
-.rank-bronze{color:#cd7f32;text-shadow:0 0 8px rgba(205,127,50,.4)}
-
 html,body{min-height:100vh;overflow-x:hidden}
 body{
   font-family:var(--font-body);
@@ -263,7 +214,6 @@ body::after{
   font-family:var(--font-mono);
 }
 
-/* number bounce on update */
 @keyframes numBounce{0%{transform:scale(1.4);opacity:.6}100%{transform:scale(1);opacity:1}}
 .sc .n.bump{animation:numBounce .3s cubic-bezier(.34,1.56,.64,1)}
 
@@ -369,13 +319,11 @@ body::after{
   -webkit-backface-visibility:hidden;
   overflow:hidden;
 }
-/* front */
 .card-face.front{
   background:linear-gradient(145deg,var(--bg3),var(--bg2));
   border:1px solid var(--border2);
   box-shadow:0 8px 32px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04);
 }
-/* back (revealed) */
 .card-face.back{
   transform:rotateY(180deg);
   background:linear-gradient(145deg,var(--bg4),var(--bg3));
@@ -389,7 +337,6 @@ body::after{
 }
 @keyframes emojiPop{from{transform:scale(0) rotate(-15deg);opacity:0}to{transform:scale(1) rotate(0deg);opacity:1}}
 
-/* shine sweep on flip */
 .card-face::after{
   content:'';position:absolute;
   top:0;left:-100%;width:60%;height:100%;
@@ -399,7 +346,6 @@ body::after{
 .card.flipped .card-face.back::after{animation:cardShine .6s ease .2s both}
 @keyframes cardShine{from{left:-60%}to{left:140%}}
 
-/* idle front glow */
 .card-face.front::before{
   content:' ? ';
   font-family:var(--font-head);font-size:32px;font-weight:900;
@@ -407,7 +353,6 @@ body::after{
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
 }
 
-/* win/lose pulse */
 @keyframes cardWinPulse{
   0%{transform:rotateY(180deg) scale(1)}
   30%{transform:rotateY(180deg) scale(1.08)}
@@ -481,15 +426,6 @@ body::after{
   background:rgba(0,245,255,.04);
   border:1px solid var(--border2);
   color:var(--cyan);
-}
-
-/* glitch on lose */
-@keyframes glitch{
-  0%,100%{clip-path:inset(0 0 96% 0);transform:translate(2px,0)}
-  20%{clip-path:inset(30% 0 50% 0);transform:translate(-2px,0)}
-  40%{clip-path:inset(60% 0 20% 0);transform:translate(1px,0)}
-  60%{clip-path:inset(80% 0 5% 0);transform:translate(-1px,0)}
-  80%{clip-path:inset(10% 0 80% 0);transform:translate(2px,0)}
 }
 
 /* ═══════ CHOICE BUTTONS ═══════ */
@@ -686,8 +622,93 @@ input[type=text]:focus{
 .cfg-badge.demo{background:var(--bg4);color:var(--text3);border:1px solid var(--border)}
 .cfg-badge.live{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,136,.3)}
 
-.lb-table{border:1px solid var(--border);border-radius:16px;overflow:hidden}
-.lb-me{background:linear-gradient(90deg,rgba(0,245,255,0.04),transparent)!important}
+/* ─── LEADERBOARD TABLE (merged from diagnostic suite) ─── */
+.lb-table {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.lb-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 44px 44px 44px 56px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  align-items: center;
+  transition: background .15s;
+}
+.lb-row:last-child{border-bottom:none}
+.lb-row:not(.header):hover{background:var(--bg3)}
+.lb-row.header {
+  background: var(--bg3);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-family: var(--font-mono);
+}
+.lb-rank { font-family: var(--font-head); font-size: 13px; font-weight: 900; color: var(--text3); }
+.lb-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-body); }
+.lb-num { text-align: center; font-family: var(--font-mono); font-size: 12px; }
+.lb-wins { color: var(--green); font-weight: 700; }
+.lb-draws { color: var(--text2); }
+.lb-losses { color: var(--red); }
+.lb-score { color: var(--gold); font-weight: 900; font-family: var(--font-head); font-size: 12px; text-align: right; }
+.lb-loading { text-align: center; padding: 3rem; color: var(--text3); font-family: var(--font-mono); font-size: 11px; }
+.lb-me { background: linear-gradient(90deg, rgba(0,245,255,0.04), transparent) !important; }
+
+/* Rank medal glows */
+.rank-gold   { color: var(--gold);    text-shadow: 0 0 10px rgba(255,214,0,.5); }
+.rank-silver { color: #c0c0c0;        text-shadow: 0 0 8px rgba(192,192,192,.4); }
+.rank-bronze { color: #cd7f32;        text-shadow: 0 0 8px rgba(205,127,50,.4); }
+
+/* ─── DIAGNOSTIC LOG PANEL (from diagnostic suite) ─── */
+.diag-panel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 1rem;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.diag-title {
+  color: var(--cyan);
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.diag-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+#diag-log {
+  max-height: 140px;
+  overflow-y: auto;
+  color: var(--text2);
+  line-height: 1.6;
+}
+#diag-log::-webkit-scrollbar { width: 4px; }
+#diag-log::-webkit-scrollbar-track { background: transparent; }
+#diag-log::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.diag-entry { margin-bottom: 3px; border-bottom: 1px dashed rgba(255,255,255,0.03); padding-bottom: 3px; }
+.diag-ts { color: var(--text3); margin-right: 6px; }
 
 /* ═══════ STATS ═══════ */
 .streak-row{
@@ -733,7 +754,6 @@ input[type=text]:focus{
 
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  // NOTICE: We removed 'push' and imported 'set'
   import { getDatabase, ref, set, onValue, off, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
   import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
@@ -748,40 +768,66 @@ input[type=text]:focus{
     measurementId: "G-XJQQ5CGESD"
   };
 
+  // ── Diagnostic log helper (shared with main script via window) ──
+  window._diagLog = function(msg) {
+    const out = document.getElementById('diag-log');
+    if (!out) return;
+    const entry = document.createElement('div');
+    entry.className = 'diag-entry';
+    entry.innerHTML = `<span class="diag-ts">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+    out.appendChild(entry);
+    out.scrollTop = out.scrollHeight;
+  };
+
   try {
     if (FB.apiKey !== "YOUR_API_KEY") {
-      console.log("🛠️ Firebase: Initializing connection mapping parameters...");
+      window._diagLog("⚙️ Initializing Firebase connection...");
       const app = initializeApp(FB);
       const db = getDatabase(app);
       const auth = getAuth(app);
-      
-      // Global variable to hold the user's secure token ID
-      let currentUid = null;
-      
-      signInAnonymously(auth)
-        .then((userCredential) => { 
-          currentUid = userCredential.user.uid;
-          console.log(`🔐 Firebase Auth: Handshake complete. Assigned UID: ${currentUid}`); 
-        })
-        .catch((error) => { console.error("❌ Firebase Auth: Handshake failed:", error); });
 
+      let currentUid = null;
       const leaderboardRef = ref(db, 'leaderboard');
-      window._fbReady = true;
-      
-      const badge = document.getElementById('fb-badge');
-      if (badge) { badge.className = 'cfg-badge live'; badge.textContent = 'LIVE'; }
-      
-      window._submitScoreBackend = async (name, scores, calculatedScore) => {
-        if (!currentUid) {
-          throw new Error("Authentication token not established yet.");
+      const leaderboardQuery = query(leaderboardRef, orderByChild('score'), limitToLast(10));
+      let _activeHandler = null;
+
+      // ── Connect helper (defined before auth so tab switches work) ──
+      window._fbConnect = (renderCallback) => {
+        if (_activeHandler) {
+          off(leaderboardQuery, 'value', _activeHandler);
+          _activeHandler = null;
         }
-        
-        console.log(`📤 Firebase Outbound: Writing to explicit user node [${currentUid}]`);
-        
-        // Target the specific user's node instead of a random push ID
+        window._diagLog("⚡ Opening live WebSocket link...");
+        _activeHandler = (snap) => {
+          const rows = [];
+          snap.forEach(c => rows.push({ id: c.key, ...c.val() }));
+          rows.sort((a, b) => a.score - b.score);
+          window._diagLog(`📥 Snapshot received. Records: ${rows.length}`);
+          if (rows.length > 0) {
+            const leader = rows[rows.length - 1];
+            window._diagLog(`👑 Leader: "${leader.name}" — ${leader.score} pts`);
+          } else {
+            window._diagLog("⚠️ No entries yet — be the first!");
+          }
+          renderCallback(rows);
+        };
+        onValue(leaderboardQuery, _activeHandler, (error) => {
+          window._diagLog(`❌ Firebase read error: ${error.message}`);
+        });
+      };
+
+      window._fbDisconnect = () => {
+        if (_activeHandler) {
+          off(leaderboardQuery, 'value', _activeHandler);
+          _activeHandler = null;
+        }
+        window._diagLog("🔌 Socket disconnected.");
+      };
+
+      window._submitScoreBackend = async (name, scores, calculatedScore) => {
+        if (!currentUid) throw new Error("Auth token not ready yet.");
+        window._diagLog(`📤 Submitting score for [${name}]: ${calculatedScore} pts`);
         const userSpecificRef = ref(db, 'leaderboard/' + currentUid);
-        
-        // Use set() to overwrite their existing entry, ensuring only 1 record per token
         return set(userSpecificRef, {
           name: name.substring(0, 16),
           wins: Number(scores.w),
@@ -791,58 +837,52 @@ input[type=text]:focus{
           ts: Date.now()
         });
       };
-      
-      const leaderboardQuery = query(leaderboardRef, orderByChild('score'), limitToLast(20));
 
-      window._fbConnect = (renderCallback) => {
-        console.log("⚡ Network Channel: Establishing live remote WebSocket link...");
-        onValue(leaderboardQuery, snap => {
-          console.log("📥 Firebase Inbound: Sync snapshot pulled. Processing sorting tree metrics...");
-          const rows = [];
-          snap.forEach(c => rows.push({ id: c.key, ...c.val() }));
-          rows.sort((a, b) => b.score - a.score);
-          renderCallback(rows);
+      // ── Auth then immediately connect if leaderboard tab is active ──
+      signInAnonymously(auth)
+        .then((userCredential) => {
+          currentUid = userCredential.user.uid;
+          window._diagLog(`🔐 Auth OK. UID: ${currentUid.substring(0,8)}…`);
+          const badge = document.getElementById('fb-badge');
+          if (badge) { badge.className = 'cfg-badge live'; badge.textContent = 'LIVE'; }
+          window._fbReady = true;
+          window._diagLog("📡 Query ready: ORDER_BY('score') → LIMIT_TO_LAST(10)");
+          // Now that auth is done, connect if leaderboard tab is visible
+          const connectWhenReady = () => {
+            if (typeof window.renderLeaderboard === 'function') {
+              const activeTab = document.querySelector('.tab.on');
+              if (activeTab && activeTab.id === 'tab-lb') {
+                window._fbConnect(window.renderLeaderboard);
+              }
+            } else {
+              setTimeout(connectWhenReady, 100);
+            }
+          };
+          connectWhenReady();
+        })
+        .catch((error) => {
+          window._diagLog(`❌ Auth failed: ${error.message}`);
+          console.error("Firebase Auth failed:", error);
         });
-      };
-
-      window._fbDisconnect = () => {
-        console.log("🔌 Network Channel: Severing socket event stream. Connection slot freed.");
-        off(leaderboardQuery);
-      };
-
-      const connect = () => {
-        if (typeof window.renderLeaderboard === 'function') {
-          console.log("🎯 Bridge Script: Connected renderer layout system to active network stream.");
-          const activeTab = document.querySelector('.tab.on');
-          if (activeTab && activeTab.id === 'tab-lb') {
-            window._fbConnect(window.renderLeaderboard);
-          }
-        } else {
-          setTimeout(connect, 100); 
-        }
-      };
-      connect();
 
     } else {
       setupDemoFallback();
     }
   } catch (e) {
-    console.error("❌ Firebase Core Fault: Initialization crashed:", e);
+    if (window._diagLog) window._diagLog(`💥 Init error: ${e.message}`);
+    console.error("Firebase Core Fault:", e);
   }
 
   function setupDemoFallback() {
     window.useDemoLB = () => {
-      console.warn("⚠️ Local Env: Server references absent. Falling back to local static demo array mapping.");
+      if (window._diagLog) window._diagLog("⚠️ No Firebase config — using demo data.");
       if (typeof window.renderLeaderboard === 'function') {
         window.renderLeaderboard([
-          { name: "Satoshi_AI", wins: 42, draws: 10, losses: 5, score: 136 },
-          { name: "DeepBlue_RPS", wins: 31, draws: 15, losses: 9, score: 108 },
-          { name: "CryptoGamer", wins: 20, draws: 8, losses: 14, score: 68 }
+          { name: "Satoshi_AI", wins: 42, draws: 10, losses: 5, score: 136 }
         ]);
       }
     };
   }
-</script>
 </script>
 </head>
 <body>
@@ -864,6 +904,7 @@ input[type=text]:focus{
     <div class="tab" onclick="gotoTab('stats')" id="tab-stats">📊 Stats</div>
   </div>
 
+  <!-- ══ AI TAB ══ -->
   <div class="screen on" id="screen-ai">
     <div class="scoreboard">
       <div class="sc w"><div class="n" id="sw">0</div><div class="l">You Win</div></div>
@@ -938,6 +979,7 @@ input[type=text]:focus{
     </div>
   </div>
 
+  <!-- ══ FRIENDS TAB ══ -->
   <div class="screen" id="screen-friend">
     <div class="sec-title">Choose opponent</div>
     <div class="friends-grid" id="fg"></div>
@@ -969,6 +1011,7 @@ input[type=text]:focus{
     </div>
   </div>
 
+  <!-- ══ 2-PLAYER TAB ══ -->
   <div class="screen" id="screen-p2">
     <div class="p2-setup" id="p2-setup">
       <div class="sec-title">Player registration</div>
@@ -997,7 +1040,7 @@ input[type=text]:focus{
       </div>
       <div class="cdown" id="p2cdown"></div>
       <div class="result idle" id="p2result">Both select secretly then reveal</div>
-      
+
       <div class="p2-section" id="p2s1" style="margin-bottom:12px;">
         <div class="p2-title" id="p2t1">Player 1 — select secretly 🙈</div>
         <div class="p2-choices">
@@ -1007,7 +1050,7 @@ input[type=text]:focus{
         </div>
         <div class="p2-status" id="p2st1">Awaiting selection…</div>
       </div>
-      
+
       <div class="p2-section" id="p2s2">
         <div class="p2-title" id="p2t2">Player 2 — select secretly 🙈</div>
         <div class="p2-choices">
@@ -1017,7 +1060,7 @@ input[type=text]:focus{
         </div>
         <div class="p2-status" id="p2st2">Awaiting selection…</div>
       </div>
-      
+
       <div id="p2-reveal-btn" style="display:none; margin-bottom: 16px;" class="btns">
         <button class="gold" style="width:100%" onclick="p2reveal()">⚡ Reveal Selections</button>
       </div>
@@ -1028,13 +1071,14 @@ input[type=text]:focus{
     </div>
   </div>
 
+  <!-- ══ LEADERBOARD TAB ══ -->
   <div class="screen" id="screen-lb">
     <div class="lb-header">
       <div>
         <div class="lb-title">Leaderboard <span id="fb-badge" class="cfg-badge demo">DEMO</span></div>
         <div class="lb-subtitle">Score = wins×3 + draws×1 — live global rankings</div>
       </div>
-      <button class="sec" style="padding:8px 12px;border-radius:8px;flex:0" onclick="if(window._fbConnect) { window._fbDisconnect(); window._fbConnect(window.renderLeaderboard); }">↻</button>
+      <button class="sec" style="padding:8px 12px;border-radius:8px;flex:0" onclick="if(window._fbConnect){window._fbDisconnect();window._fbConnect(window.renderLeaderboard);}">↻</button>
     </div>
 
     <div class="panel">
@@ -1049,8 +1093,15 @@ input[type=text]:focus{
     <div class="lb-table" id="lb-table">
       <div class="lb-loading">Loading global rankings…</div>
     </div>
+
+    <!-- Diagnostic Monitor Panel (from diagnostic suite) -->
+    <div class="diag-panel">
+      <div class="diag-title">Diagnostic Monitor Stream</div>
+      <div id="diag-log"></div>
+    </div>
   </div>
 
+  <!-- ══ STATS TAB ══ -->
   <div class="screen" id="screen-stats">
     <div class="sec-title">Last 8 results</div>
     <div class="streak-row" id="streak"></div>
@@ -1070,6 +1121,41 @@ input[type=text]:focus{
 </div>
 
 <script>
+/* ═══════════════════════════════════════════
+   PARTICLES SYSTEM ENGINE
+═══════════════════════════════════════════ */
+(function(){
+  const canvas=document.getElementById('particles');
+  const ctx=canvas.getContext('2d');
+  let W,H,particles=[];
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  class Particle{
+    constructor(){this.reset();}
+    reset(){
+      this.x=Math.random()*W;this.y=Math.random()*H;
+      this.vx=(Math.random()-.5)*.3;this.vy=(Math.random()-.5)*.3;
+      this.r=Math.random()*1.5+.3;this.alpha=Math.random()*.3+.05;
+      this.color=Math.random()>.5?'0,245,255':'255,0,170';
+    }
+    update(){
+      this.x+=this.vx;this.y+=this.vy;
+      if(this.x<0||this.x>W||this.y<0||this.y>H)this.reset();
+    }
+    draw(){
+      ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${this.color},${this.alpha})`;ctx.fill();
+    }
+  }
+  for(let i=0;i<60;i++)particles.push(new Particle());
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p=>{p.update();p.draw();});
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
 /* ═══════════════════════════════════════════
    CORE GAME LOGIC & MARKOV PREDICTIONS
 ═══════════════════════════════════════════ */
@@ -1093,7 +1179,7 @@ let markov={},markov2={};
 let history=[],lastPick=null,last2Pick=null,roundN=0;
 let busy=false,fbusy=false,selFriend=null;
 let p2state={p1:null,p2:null},p2names=['Player 1','Player 2'];
-let rageLeft=0,commitment={choice:'rock',probs:{rock:33,paper:33,scissors:33},pred:'rock',lvl:1};
+let commitment={choice:'rock',probs:{rock:33,paper:33,scissors:33},pred:'rock',lvl:1};
 
 function calcScore(){return scores.w*3+scores.d;}
 function judge(p,a){return p===a?'draw':BEATS[p]===a?'win':'lose';}
@@ -1105,51 +1191,43 @@ function aiDecide(){
   if(tot>=2){pR=freq.rock/tot;pP=freq.paper/tot;pS=freq.scissors/tot;}
 
   console.log(`\n🔮 --- AI THINK TANK (Round ${roundN + 1}) ---`);
-  console.log(`📊 Global Frequencies -> Rock: ${freq.rock}, Paper: ${freq.paper}, Scissors: ${freq.scissors}`);
+  console.log(`📊 Frequencies -> Rock: ${freq.rock}, Paper: ${freq.paper}, Scissors: ${freq.scissors}`);
 
-  // Markov order-1
   if(lastPick&&markov[lastPick]){
     const mc=markov[lastPick],mt=mc.rock+mc.paper+mc.scissors;
     if(mt>=2){
       const w=Math.min(.65,mt*.07);
       pR=pR*(1-w)+(mc.rock/mt)*w;pP=pP*(1-w)+(mc.paper/mt)*w;pS=pS*(1-w)+(mc.scissors/mt)*w;
-      console.log(`📈 Markov Order-1 active (After ${lastPick}):`, mc);
     }
   }
 
-  // Markov order-2
   const k2=last2Pick?last2Pick:null;
   if(k2&&markov2[k2]){
     const mc=markov2[k2],mt=mc.rock+mc.paper+mc.scissors;
     if(mt>=2){
       const w=Math.min(.5,mt*.09);
       pR=pR*(1-w)+(mc.rock/mt)*w;pP=pP*(1-w)+(mc.paper/mt)*w;pS=pS*(1-w)+(mc.scissors/mt)*w;
-      console.log(`📉 Markov Order-2 active (Sequence ${k2}):`, mc);
     }
   }
 
-  // Renorm
   let sum=pR+pP+pS||1;pR/=sum;pP/=sum;pS/=sum;
 
-  // Double-counter meta
   const maxP=Math.max(pR,pP,pS);
   const pred=maxP===pR?'rock':maxP===pP?'paper':'scissors';
   const dbl=COUNTERS[COUNTERS[pred]];
 
-  // Adaptive aggression
   const recentWins=history.slice(0,5).filter(h=>h.res==='win').length;
   const urgency=recentWins>=3?.9:recentWins>=2?.78:.68;
 
-  // Decaying noise
   const noise=Math.max(.03,.16-tot*.007);
   pR=pR*(1-noise)+noise/3;pP=pP*(1-noise)+noise/3;pS=pS*(1-noise)+noise/3;
   sum=pR+pP+pS;pR/=sum;pP/=sum;pS/=sum;
 
   const choice=Math.random()<urgency?dbl:(Math.random()<pR?'rock':Math.random()<pR+pP?'paper':'scissors');
-  
-  console.log(`🎯 Probability Projections -> Rock: ${Math.round(pR*100)}%, Paper: ${Math.round(pP*100)}%, Scissors: ${Math.round(pS*100)}%`);
-  console.log(`🧠 AI Projection Matrix -> Predicted Human Move: [${pred.toUpperCase()}]. Executing Double-Counter Meta: [${choice.toUpperCase()}]`);
-  
+
+  console.log(`🎯 Probs -> Rock: ${Math.round(pR*100)}%, Paper: ${Math.round(pP*100)}%, Scissors: ${Math.round(pS*100)}%`);
+  console.log(`🧠 Predicted: [${pred.toUpperCase()}] → Counter: [${choice.toUpperCase()}]`);
+
   return{choice,probs:{rock:Math.round(pR*100),paper:Math.round(pP*100),scissors:Math.round(pS*100)},pred,dbl,lvl:Math.min(5,Math.floor(tot/4)+1),urgency};
 }
 
@@ -1158,11 +1236,10 @@ function genCommitment(){
   const hash=Math.random().toString(16).substring(2,14).toUpperCase();
   const el=document.getElementById('crypto-token');
   if(el)el.textContent=`🔒 COMMITMENT LOCK: 0x${hash}...`;
-  console.log(`🔒 Cryptographic Guard: Secure hash committed (0x${hash}). Decision locked.`);
   updLevel(commitment.lvl);
 }
 
-function updLevel(lvl) {
+function updLevel(lvl){
   document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('on',i<lvl));
   const labels=['Calibrating','Learning','Adapting','Dangerous','Unstoppable'];
   const el=document.getElementById('level-txt');
@@ -1216,36 +1293,31 @@ function bumpScore(id,val){
   el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');
 }
 
-/* ─── PATTERN MATRIX WRITES ─── */
+/* ─── MARKOV MATRIX UPDATES ─── */
 function updM1(prev,curr){if(!prev)return;if(!markov[prev])markov[prev]={rock:0,paper:0,scissors:0};markov[prev][curr]++;}
 function updM2(prev2,curr){if(!prev2)return;if(!markov2[prev2])markov2[prev2]={rock:0,paper:0,scissors:0};markov2[prev2][curr]++;}
 
 /* ─── MAIN GAME SEQUENCE ─── */
 async function play(pick){
   if(busy)return;busy=true;roundN++;
-  console.log(`\n⚔️ --- ROUND ${roundN} INITIALIZED ---`);
-  console.log(`👤 Human Input Selected: [${pick.toUpperCase()}]`);
   setDisabled(true);
-  
-  let finalChoice=commitment.choice;
-  if(rageLeft>0){
-    finalChoice=COUNTERS[pick];
-    rageLeft--;
-    console.log(`⚠️ Boss Subroutine Override: Cheat mitigation triggered. AI switched counter choice directly to: [${finalChoice.toUpperCase()}]`);
-  }
+
+  const finalChoice=commitment.choice;
 
   resetCard('cp');resetCard('ca');
+  document.getElementById('result').className='result idle';
+  document.getElementById('result').textContent='Decrypting…';
+
   await runCountdown('cdown',3);
 
   const res=judge(pick,finalChoice);
-  console.log(`🏁 Battle Evaluation: Human [${pick.toUpperCase()}] vs AI [${finalChoice.toUpperCase()}] -> Outcome: [${res.toUpperCase()}]`);
 
   await Promise.all([
     flipCard('cp',EM[pick],false),
     flipCard('ca',EM[finalChoice],res==='lose'),
   ]);
 
-  if(res==='win'){scores.w++;flash('win');document.getElementById('bot-face').textContent='🤯';rageLeft=3;}
+  if(res==='win'){scores.w++;flash('win');document.getElementById('bot-face').textContent='🤯';}
   else if(res==='lose'){scores.l++;flash('lose');document.getElementById('bot-face').textContent='😤';}
   else{scores.d++;document.getElementById('bot-face').textContent='🤖';}
 
@@ -1274,27 +1346,25 @@ function updMath(probs,pred,dbl){
 }
 
 function resetAI(){
-  console.log("🧹 System Engine: Resetting internal pattern analytics models and scores...");
-  scores={w:0,d:0,l:0};rageLeft=0;
+  scores={w:0,d:0,l:0};
   ['sw','sd','sl'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=0;});
   history=[];markov={};markov2={};freq={rock:0,paper:0,scissors:0};lastPick=null;last2Pick=null;roundN=0;
   document.getElementById('result').className='result idle';
   document.getElementById('result').textContent='Select your move — AI has committed';
   document.getElementById('bot-face').textContent='🤖';
   document.getElementById('bot-status').textContent='SYSTEM IDLE';
-  document.getElementById('mbars').innerHTML = '';
-  document.getElementById('mdetail').textContent = 'Awaiting data...';
+  document.getElementById('mbars').innerHTML='';
+  document.getElementById('mdetail').textContent='Awaiting data...';
   updLevel(1);genCommitment();
 }
 
-/* ─── SIMULATED PERSONALITIES ─── */
+/* ─── FRIEND PERSONALITIES ─── */
 function buildFriends(){
   document.getElementById('fg').innerHTML=FRIENDS.map((f,i)=>`<div class="friend-card ${f.isBoss?'boss-card':''}" onclick="pickFriend(${i})" id="fc${i}"><span class="fa">${f.av}</span><div class="fn">${f.name}</div><div class="ft">${f.trait}</div></div>`).join('');
 }
 
 function pickFriend(i){
   selFriend=FRIENDS[i];fscores={w:0,d:0,l:0};
-  console.log(`👥 Friend Sandbox: Target opponent altered to [${selFriend.name}]. Baseline strategy: ${selFriend.trait}`);
   document.getElementById('fn-lbl').textContent=selFriend.name;
   document.getElementById('fn-score').textContent=selFriend.name+' wins';
   ['fsw','fsd','fsl'].forEach(id=>document.getElementById(id).textContent=0);
@@ -1321,11 +1391,10 @@ async function fplay(pick){
 
 function backFriends(){document.getElementById('friend-game').style.display='none';selFriend=null;document.querySelectorAll('.friend-card').forEach(c=>c.classList.remove('on'));}
 
-/* ─── LOCAL TWO PLAYER STATE ─── */
+/* ─── LOCAL TWO PLAYER ─── */
 function startP2(){
   p2names[0]=document.getElementById('p1name').value.trim()||'Player 1';
   p2names[1]=document.getElementById('p2name').value.trim()||'Player 2';
-  console.log(`🎮 Hotseat Match Initialized: [${p2names[0]}] VS [${p2names[1]}]`);
   document.getElementById('p2-setup').style.display='none';
   document.getElementById('p2-game').style.display='block';
   ['p2l1','p2t1','p2wl'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=id==='p2wl'?p2names[0]+' wins':id==='p2t1'?p2names[0]+' — select secretly 🙈':p2names[0];});
@@ -1340,13 +1409,11 @@ function p2pick(player,choice){
   if(player===2&&p2state.p2)return;
   if(player===1){
     p2state.p1=choice;
-    console.log(`🎮 Couch Play: [${p2names[0]}] locked hidden move choice.`);
     document.getElementById('p2st1').textContent='✅ '+p2names[0]+' locked in';
     document.querySelectorAll('#p2s1 .p2-cbtn').forEach(b=>{b.classList.add('locked');b.disabled=true;});
     document.getElementById('p2s1').classList.add('locked');
   }else{
     p2state.p2=choice;
-    console.log(`🎮 Couch Play: [${p2names[1]}] locked hidden move choice.`);
     document.getElementById('p2st2').textContent='✅ '+p2names[1]+' locked in';
     document.querySelectorAll('#p2s2 .p2-cbtn').forEach(b=>{b.classList.add('locked');b.disabled=true;});
     document.getElementById('p2s2').classList.add('locked');
@@ -1382,22 +1449,23 @@ async function p2reveal(){
   },2800);
 }
 
-/* ─── LIVE GLOBAL RANKS ─── */
+/* ─── LEADERBOARD RENDERER (merged from diagnostic suite) ─── */
 function renderLeaderboard(rows) {
   const tableEl = document.getElementById('lb-table');
   if (!tableEl) return;
 
   tableEl.innerHTML = '';
 
+  // Header row
   const headerRow = document.createElement('div');
   headerRow.className = 'lb-row header';
   headerRow.innerHTML = `
     <div>#</div>
-    <div style="padding-left: 8px;">Name</div>
-    <div style="text-align: center;">W</div>
-    <div style="text-align: center;">D</div>
-    <div style="text-align: center;">L</div>
-    <div style="text-align: right;">Pts</div>
+    <div style="padding-left:8px;">Name</div>
+    <div style="text-align:center;">W</div>
+    <div style="text-align:center;">D</div>
+    <div style="text-align:center;">L</div>
+    <div style="text-align:right;">Pts</div>
   `;
   tableEl.appendChild(headerRow);
 
@@ -1409,22 +1477,28 @@ function renderLeaderboard(rows) {
     return;
   }
 
+  // rows is sorted ascending (lowest first, rank #1 at bottom)
+  // true rank: last item in array = rank 1
+  const total = rows.length;
   const medals = ['🥇', '🥈', '🥉'];
 
   rows.forEach((r, i) => {
+    const trueRank = total - i; // rank 1 = last displayed row (bottom)
     const rowEl = document.createElement('div');
-    rowEl.className = `lb-row ${r._isMe ? 'lb-me' : ''}`;
+    rowEl.className = `lb-row${r._isMe ? ' lb-me' : ''}`;
 
-    const cls = i === 0 ? 'rank-gold' : i === 1 ? 'rank-silver' : i === 2 ? 'rank-bronze' : '';
-    const rank = i < 3 ? medals[i] : `<span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">${i+1}</span>`;
+    const cls = trueRank === 1 ? 'rank-gold' : trueRank === 2 ? 'rank-silver' : trueRank === 3 ? 'rank-bronze' : '';
+    const rank = trueRank <= 3
+      ? medals[trueRank - 1]
+      : `<span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">${trueRank}</span>`;
 
     rowEl.innerHTML = `
       <div class="lb-rank ${cls}">${rank}</div>
-      <div class="lb-name" style="padding-left: 8px;">${r.name || '?'}</div>
+      <div class="lb-name" style="padding-left:8px;">${r.name || 'Anonymous'}</div>
       <div class="lb-num lb-wins">${r.wins || 0}</div>
       <div class="lb-num lb-draws">${r.draws || 0}</div>
       <div class="lb-num lb-losses">${r.losses || 0}</div>
-      <div class="lb-score">${r.score || 0}</div>
+      <div class="lb-score" style="text-align:right;padding-right:4px;">${r.score || 0}</div>
     `;
 
     tableEl.appendChild(rowEl);
@@ -1434,15 +1508,15 @@ function renderLeaderboard(rows) {
 async function submitScore() {
   const name = (document.getElementById('lb-name')?.value || '').trim() || 'Anonymous';
   const status = document.getElementById('lb-submit-status');
-  
+
   if (scores.w + scores.d + scores.l < 1) {
     if (status) status.textContent = '⚠ Play at least 1 round first';
     return;
   }
-  
+
   const calculatedScore = (scores.w * 3) + scores.d;
   if (status) status.textContent = 'Submitting…';
-  
+
   try {
     if (window._submitScoreBackend) {
       await window._submitScoreBackend(name, scores, calculatedScore);
@@ -1457,7 +1531,7 @@ async function submitScore() {
   }
 }
 
-/* ─── SYSTEM ENGINE STATISTICS ─── */
+/* ─── STATS ─── */
 function buildStats(){
   const tot=freq.rock+freq.paper+freq.scissors;
   document.getElementById('stat-bars').innerHTML=
@@ -1473,7 +1547,7 @@ function buildStats(){
 }
 
 function clearAll(){
-  scores={w:0,d:0,l:0};rageLeft=0;
+  scores={w:0,d:0,l:0};
   history=[];markov={};markov2={};freq={rock:0,paper:0,scissors:0};lastPick=null;last2Pick=null;roundN=0;
   ['sw','sd','sl'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=0;});
   buildStats();genCommitment();
@@ -1481,29 +1555,36 @@ function clearAll(){
   document.getElementById('result').textContent='Select your move — AI has committed';
 }
 
-/* ─── TAB NAVIGATION CONTROLLER ─── */
+/* ─── TAB NAVIGATION ─── */
 window.gotoTab = function(t){
   if (t !== 'lb' && window._fbDisconnect) {
     window._fbDisconnect();
   }
 
-  ['ai', 'friend', 'p2', 'lb', 'stats'].forEach(s=>{
+  ['ai','friend','p2','lb','stats'].forEach(s=>{
     document.getElementById('screen-'+s)?.classList.toggle('on',s===t);
     document.getElementById('tab-'+s)?.classList.toggle('on',s===t);
   });
 
-  if(t==='stats') {
+  if(t==='stats'){
     buildStats();
-  } else if (t === 'lb') {
-    if (window._fbConnect && typeof window.renderLeaderboard === 'function') {
+  } else if(t==='lb'){
+    if(window._fbReady && window._fbConnect && typeof window.renderLeaderboard === 'function'){
       window._fbConnect(window.renderLeaderboard);
-    } else if (window.useDemoLB) {
+    } else if(window._fbConnect && typeof window.renderLeaderboard === 'function'){
+      // Auth still pending — poll until ready
+      const waitForAuth = () => {
+        if(window._fbReady){ window._fbConnect(window.renderLeaderboard); }
+        else { setTimeout(waitForAuth, 200); }
+      };
+      waitForAuth();
+    } else if(window.useDemoLB){
       window.useDemoLB();
     }
   }
-}
+};
 
-/* ─── INITIALIZATION CONTROLLERS ─── */
+/* ─── INIT ─── */
 window.play = play;
 window.resetAI = resetAI;
 window.clearAll = clearAll;
@@ -1516,8 +1597,7 @@ window.resetP2 = resetP2;
 window.p2pick = p2pick;
 window.p2reveal = p2reveal;
 window.renderLeaderboard = renderLeaderboard;
-window.submitScore = submitScore; 
-window.gotoTab = gotoTab;
+window.submitScore = submitScore;
 
 buildFriends();
 genCommitment();
