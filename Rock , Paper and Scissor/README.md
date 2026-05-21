@@ -52,7 +52,7 @@ The 3D card flip uses CSS `transform-style: preserve-3d` with `backface-visibili
 No dependencies. No build step. Just open the file.
 
 ```bash
-git clone https://github.com/your-username/rock-paper-scissors-3d.git
+git clone https://github.com/anish-a-r/rock-paper-scissors-3d.git
 cd rock-paper-scissors-3d
 open index.html
 ```
