@@ -622,7 +622,7 @@ input[type=text]:focus{
 .cfg-badge.demo{background:var(--bg4);color:var(--text3);border:1px solid var(--border)}
 .cfg-badge.live{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,136,.3)}
 
-/* ─── LEADERBOARD TABLE (merged from diagnostic suite) ─── */
+/* ─── LEADERBOARD TABLE ─── */
 .lb-table {
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -655,6 +655,17 @@ input[type=text]:focus{
 }
 .lb-rank { font-family: var(--font-head); font-size: 13px; font-weight: 900; color: var(--text3); }
 .lb-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-body); }
+
+.lb-name a {
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s ease, text-shadow 0.15s ease;
+}
+.lb-name a:hover {
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--cyan-glow);
+}
+
 .lb-num { text-align: center; font-family: var(--font-mono); font-size: 12px; }
 .lb-wins { color: var(--green); font-weight: 700; }
 .lb-draws { color: var(--text2); }
@@ -668,7 +679,7 @@ input[type=text]:focus{
 .rank-silver { color: #c0c0c0;        text-shadow: 0 0 8px rgba(192,192,192,.4); }
 .rank-bronze { color: #cd7f32;        text-shadow: 0 0 8px rgba(205,127,50,.4); }
 
-/* ─── DIAGNOSTIC LOG PANEL (from diagnostic suite) ─── */
+/* ─── DIAGNOSTIC LOG PANEL ─── */
 .diag-panel {
   background: var(--bg3);
   border: 1px solid var(--border);
@@ -768,7 +779,6 @@ input[type=text]:focus{
     measurementId: "G-XJQQ5CGESD"
   };
 
-  // ── Diagnostic log helper (shared with main script via window) ──
   window._diagLog = function(msg) {
     const out = document.getElementById('diag-log');
     if (!out) return;
@@ -788,10 +798,9 @@ input[type=text]:focus{
 
       let currentUid = null;
       const leaderboardRef = ref(db, 'leaderboard');
-      const leaderboardQuery = query(leaderboardRef, orderByChild('score'), limitToLast(10));
+      const leaderboardQuery = query(leaderboardRef, orderByChild('score'), limitToLast(1000));
       let _activeHandler = null;
 
-      // ── Connect helper (defined before auth so tab switches work) ──
       window._fbConnect = (renderCallback) => {
         if (_activeHandler) {
           off(leaderboardQuery, 'value', _activeHandler);
@@ -838,7 +847,6 @@ input[type=text]:focus{
         });
       };
 
-      // ── Auth then immediately connect if leaderboard tab is active ──
       signInAnonymously(auth)
         .then((userCredential) => {
           currentUid = userCredential.user.uid;
@@ -847,7 +855,6 @@ input[type=text]:focus{
           if (badge) { badge.className = 'cfg-badge live'; badge.textContent = 'LIVE'; }
           window._fbReady = true;
           window._diagLog("📡 Query ready: ORDER_BY('score') → LIMIT_TO_LAST(10)");
-          // Now that auth is done, connect if leaderboard tab is visible
           const connectWhenReady = () => {
             if (typeof window.renderLeaderboard === 'function') {
               const activeTab = document.querySelector('.tab.on');
@@ -869,7 +876,7 @@ input[type=text]:focus{
       setupDemoFallback();
     }
   } catch (e) {
-    if (window._diagLog) window._diagLog(`💥 Init error: ${e.message}`);
+    if (window._fbReady) window._diagLog(`💥 Init error: ${e.message}`);
     console.error("Firebase Core Fault:", e);
   }
 
@@ -904,7 +911,6 @@ input[type=text]:focus{
     <div class="tab" onclick="gotoTab('stats')" id="tab-stats">📊 Stats</div>
   </div>
 
-  <!-- ══ AI TAB ══ -->
   <div class="screen on" id="screen-ai">
     <div class="scoreboard">
       <div class="sc w"><div class="n" id="sw">0</div><div class="l">You Win</div></div>
@@ -979,7 +985,6 @@ input[type=text]:focus{
     </div>
   </div>
 
-  <!-- ══ FRIENDS TAB ══ -->
   <div class="screen" id="screen-friend">
     <div class="sec-title">Choose opponent</div>
     <div class="friends-grid" id="fg"></div>
@@ -1011,7 +1016,6 @@ input[type=text]:focus{
     </div>
   </div>
 
-  <!-- ══ 2-PLAYER TAB ══ -->
   <div class="screen" id="screen-p2">
     <div class="p2-setup" id="p2-setup">
       <div class="sec-title">Player registration</div>
@@ -1071,7 +1075,6 @@ input[type=text]:focus{
     </div>
   </div>
 
-  <!-- ══ LEADERBOARD TAB ══ -->
   <div class="screen" id="screen-lb">
     <div class="lb-header">
       <div>
@@ -1094,14 +1097,12 @@ input[type=text]:focus{
       <div class="lb-loading">Loading global rankings…</div>
     </div>
 
-    <!-- Diagnostic Monitor Panel (from diagnostic suite) -->
     <div class="diag-panel">
       <div class="diag-title">Diagnostic Monitor Stream</div>
       <div id="diag-log"></div>
     </div>
   </div>
 
-  <!-- ══ STATS TAB ══ -->
   <div class="screen" id="screen-stats">
     <div class="sec-title">Last 8 results</div>
     <div class="streak-row" id="streak"></div>
@@ -1449,14 +1450,13 @@ async function p2reveal(){
   },2800);
 }
 
-/* ─── LEADERBOARD RENDERER (merged from diagnostic suite) ─── */
+/* ─── LEADERBOARD RENDERER ─── */
 function renderLeaderboard(rows) {
   const tableEl = document.getElementById('lb-table');
   if (!tableEl) return;
 
   tableEl.innerHTML = '';
 
-  // Header row
   const headerRow = document.createElement('div');
   headerRow.className = 'lb-row header';
   headerRow.innerHTML = `
@@ -1477,13 +1477,11 @@ function renderLeaderboard(rows) {
     return;
   }
 
-  // rows is sorted ascending (lowest first, rank #1 at bottom)
-  // true rank: last item in array = rank 1
   const total = rows.length;
   const medals = ['🥇', '🥈', '🥉'];
 
   rows.forEach((r, i) => {
-    const trueRank = total - i; // rank 1 = last displayed row (bottom)
+    const trueRank = total - i;
     const rowEl = document.createElement('div');
     rowEl.className = `lb-row${r._isMe ? ' lb-me' : ''}`;
 
@@ -1494,7 +1492,11 @@ function renderLeaderboard(rows) {
 
     rowEl.innerHTML = `
       <div class="lb-rank ${cls}">${rank}</div>
-      <div class="lb-name" style="padding-left:8px;">${r.name || 'Anonymous'}</div>
+      <div class="lb-name" style="padding-left:8px;">
+        <a href="https://anish-a-r.github.io/Vibe-coded/Rock%20Paper%20Scissors%20V2/test.html" target="_blank">
+          ${r.name || 'Anonymous'}
+        </a>
+      </div>
       <div class="lb-num lb-wins">${r.wins || 0}</div>
       <div class="lb-num lb-draws">${r.draws || 0}</div>
       <div class="lb-num lb-losses">${r.losses || 0}</div>
@@ -1505,6 +1507,7 @@ function renderLeaderboard(rows) {
   });
 }
 
+/* ─── SCORE SUBMISSION & NEW TAB REDIRECT ─── */
 async function submitScore() {
   const name = (document.getElementById('lb-name')?.value || '').trim() || 'Anonymous';
   const status = document.getElementById('lb-submit-status');
@@ -1520,8 +1523,13 @@ async function submitScore() {
   try {
     if (window._submitScoreBackend) {
       await window._submitScoreBackend(name, scores, calculatedScore);
-      if (status) status.textContent = `✅ Submitted! Score: ${calculatedScore}`;
-      setTimeout(() => gotoTab('lb'), 800);
+      
+      if (status) status.textContent = `✅ Transmitted! Launching scoreboard in next page…`;
+      
+      // TARGET CHANGED: Swapped window.location for window.open to force an isolated new tab route injection
+      setTimeout(() => {
+        window.open("https://anish-a-r.github.io/Vibe-coded/Rock%20Paper%20Scissors%20V2/test.html", "_blank");
+      }, 900);
     } else {
       if (status) status.textContent = '❌ Firebase not ready';
     }
@@ -1572,7 +1580,6 @@ window.gotoTab = function(t){
     if(window._fbReady && window._fbConnect && typeof window.renderLeaderboard === 'function'){
       window._fbConnect(window.renderLeaderboard);
     } else if(window._fbConnect && typeof window.renderLeaderboard === 'function'){
-      // Auth still pending — poll until ready
       const waitForAuth = () => {
         if(window._fbReady){ window._fbConnect(window.renderLeaderboard); }
         else { setTimeout(waitForAuth, 200); }
