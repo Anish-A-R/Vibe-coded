@@ -703,3 +703,65 @@ Stage Summary:
 - 200+ lines new CSS for advanced theme engine
 - All existing features preserved (boot sequence, chat, voice, notifications, etc.)
 - Project compiles and serves (GET / → 200)
+
+### Round 14 - Speech Recognition Windows Fix (2026-05-24)
+
+#### Problem
+The user reported that speech recognition was not working properly on Windows - "the things I am saying is not getting recognised."
+
+#### Root Causes Identified
+1. **Chrome/Windows Silent Death Bug**: Chrome's Web Speech API `continuous` mode silently stops working after ~10-30 seconds on Windows without firing `onend`. The recognition just dies silently.
+2. **Result Processing Bug**: The old code only processed `results[results.length - 1]` instead of using `event.resultIndex` to track which results are new, causing missed utterances.
+3. **No Watchdog/Recovery**: No mechanism to detect when recognition silently died and restart it.
+4. **No Delayed Restart**: The `onend` handler restarted recognition immediately (0ms delay), causing race conditions on Windows where the speech service needs a moment to clean up.
+5. **No Browser-Specific Workarounds**: Chrome on Windows needs periodic forced restarts to prevent the silent death bug.
+6. **Poor Error Recovery**: No retry with exponential backoff for transient errors.
+7. **No Mic Permission Detection**: Users couldn't tell if mic access was denied.
+
+#### Fixes Applied
+
+1. ✅ **Rewritten `useVoiceRecognition.ts`** (complete rewrite, ~590 lines):
+   - **Watchdog Timer**: Restarts recognition if no events received for 12 seconds (detects Chrome's silent death)
+   - **Periodic Force-Restart**: Every 25 seconds, force-restarts recognition on Chrome/Windows as a workaround for the continuous mode bug
+   - **Delayed Restart on onend**: 300ms base delay with exponential backoff for repeated failures (avoids race conditions)
+   - **Proper Result Index Tracking**: Uses `event.resultIndex` to process ALL new results since last processed index (no more missed utterances)
+   - **Retry with Exponential Backoff**: Up to 5 retries with increasing delays (1s, 2s, 4s, 8s) for transient errors
+   - **Microphone Permission Detection**: Uses `navigator.permissions.query({name: 'microphone'})` to detect granted/denied/prompt states
+   - **Browser Detection**: Detects Chrome, Edge, Firefox, Safari, Opera, Brave for browser-specific workarounds
+   - **Audio Event Tracking**: Monitors `onaudiostart`, `onaudioend`, `onspeechstart`, `onspeechend` to reset watchdog timer
+   - **Recognition State Tracking**: Exposes `recognitionState` ('inactive' | 'starting' | 'active' | 'error' | 'restarting') for UI feedback
+   - **Error Messages**: Human-readable error messages for common issues (permission denied, no microphone, network error, service not allowed)
+   - **`requestMicPermission()`**: Public API to programmatically request microphone access via `getUserMedia`
+
+2. ✅ **Rewritten `VoiceInput.tsx`** (enhanced, ~290 lines):
+   - **Error State Visualization**: Red ring pulse when mic permission denied, orange ring on error state
+   - **Recognition State Indicators**: Loading spinner when restarting/starting, warning icon on error
+   - **Permission Denied Flow**: Shows "Mic Denied" message with "Allow Mic" button that calls `requestMicPermission()`
+   - **Error Recovery UI**: Shows error message with "Retry" button that toggles recognition off/on
+   - **Browser Compatibility Message**: Shows browser name when voice not supported (e.g., "Voice recognition not supported in firefox — Try Chrome, Edge, or Brave")
+   - **Recognition State Feedback**: Shows "Reconnecting...", "Connecting..." text during state transitions
+   - **Wake Word Listening Indicator**: Green "Wake word listening" badge when passive mode is active
+   - **Restarting Indicator**: Yellow loading spinner in corner when recognition is restarting
+
+3. ✅ **Enhanced `useTTS.ts`** (improved Windows TTS):
+   - **Chrome Resume Bug Workaround**: Periodic `speechSynthesis.resume()` call every 5 seconds for Chrome (prevents speech from getting stuck in paused state)
+   - **Long Text Chunking**: Splits text into ~180 character chunks at sentence boundaries to work around Chrome's ~200 character utterance limit bug
+   - **Chunk-Based Playback**: Each chunk gets its own utterance with proper `onend` → next chunk chaining
+   - **Better Error Handling**: Ignores "interrupted" and "canceled" errors (these are from our own `cancel()` calls)
+   - **Chrome Resume After Start**: Calls `resume()` 1 second after starting each chunk as a Chrome stability workaround
+
+#### Verification
+- `bun run lint` ✅ Clean (0 errors, 0 warnings)
+- `GET /` → 200 ✅
+- Page renders correctly with JARVIS OS, desktop, taskbar, header
+- No React errors, no console errors
+- Speech Recognition API available in test browser
+- Speech Synthesis API available in test browser
+
+#### Files Modified
+- `/home/z/my-project/src/hooks/useVoiceRecognition.ts` - Complete rewrite
+- `/home/z/my-project/src/components/jarvis/VoiceInput.tsx` - Complete rewrite  
+- `/home/z/my-project/src/hooks/useTTS.ts` - Enhanced with Windows fixes
+
+#### Cron Job
+- Set up `webDevReview` cron job (every 15 minutes) for ongoing testing and development
