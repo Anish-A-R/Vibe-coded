@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useSystemStats } from '@/hooks/useSystemStats'
+import { useHydrated } from '@/hooks/useHydrated'
 import { playBootSound, playStartupCompleteSound } from '@/lib/sounds'
 import { getGreeting } from '@/lib/personalities'
 import ParticleField from '@/components/jarvis/ParticleField'
@@ -47,6 +48,7 @@ import QuickNotesWidget from '@/components/jarvis/QuickNotesWidget'
 import AmbientSoundWidget from '@/components/jarvis/AmbientSoundWidget'
 import SystemHealthWidget from '@/components/jarvis/SystemHealthWidget'
 import DataTicker from '@/components/jarvis/DataTicker'
+import { ErrorBoundary } from '@/components/jarvis/ErrorBoundary'
 
 export default function Home() {
   const {
@@ -74,8 +76,12 @@ export default function Home() {
     crtOverlayEnabled,
   } = useJarvisStore()
 
-  const [showBoot, setShowBoot] = useState(!booted)
   const [showChat, setShowChat] = useState(false)
+  const hydrated = useHydrated()
+
+  // Compute showBoot directly from hydration state and booted flag
+  // No need for separate state - avoids setState-in-effect lint warning
+  const showBoot = hydrated && !booted
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showEventLog, setShowEventLog] = useState(false)
@@ -104,7 +110,7 @@ export default function Home() {
   // Boot sequence handlers
   const handleBootComplete = useCallback(() => {
     setBooted(true)
-    setShowBoot(false)
+    // showBoot is computed as hydrated && !booted, so setting booted=true hides boot
     if (soundEnabled) playStartupCompleteSound()
 
     // Show toast notification on boot complete
@@ -293,6 +299,16 @@ export default function Home() {
       }
     }
   }, [weather, addNotification])
+
+  // ===== WAIT FOR CLIENT HYDRATION =====
+  // Avoid hydration mismatch by not rendering until client-side
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen bg-jarvis-darker flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-neon-cyan/30 border-t-neon-cyan animate-spin" />
+      </div>
+    )
+  }
 
   // ===== BOOT SEQUENCE =====
   if (showBoot) {

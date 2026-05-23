@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import { Bot, User, Copy, Volume2, Trash2, Check, ThumbsUp, ThumbsDown, Clipboard } from 'lucide-react'
 import type { Message } from '@/hooks/useJarvisStore'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
@@ -107,6 +107,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isSystem = message.role === 'system'
 
   const [copied, setCopied] = useState(false)
+  const [renderError, setRenderError] = useState(false)
 
   const timeStr = new Date(message.timestamp).toLocaleTimeString('en-US', {
     hour: '2-digit',
@@ -139,6 +140,26 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         className="flex justify-center py-2"
       >
         <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/40 text-xs font-mono">
+          {message.content}
+        </div>
+      </motion.div>
+    )
+  }
+
+  // Fallback for render errors (markdown/code highlighting failures)
+  if (renderError) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`flex gap-3 px-4 py-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      >
+        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 ${
+          isUser ? 'bg-neon-orange/10 border border-neon-orange/30' : 'bg-neon-cyan/10 border border-neon-cyan/30'
+        }`}>
+          {isUser ? <User className="w-4 h-4 text-neon-orange" /> : <Bot className="w-4 h-4 text-neon-cyan" />}
+        </div>
+        <div className="max-w-[80%] px-4 py-3 rounded-xl text-sm text-white/90 bg-white/5 border border-white/10 whitespace-pre-wrap break-words">
           {message.content}
         </div>
       </motion.div>
@@ -266,7 +287,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           {isUser ? (
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
           ) : (
-            <div className="markdown-content prose prose-invert prose-sm max-w-none">
+            <div className="markdown-content prose prose-invert prose-sm max-w-none" onError={() => setRenderError(true)}>
               <ReactMarkdown
                 components={{
                   // Headings with neon glow

@@ -245,9 +245,9 @@ function DataTextRing({ status }: { status: AIStatus }) {
     return Array.from({ length: 36 }, (_, i) => ({
       id: i,
       angle: (i / 36) * 360,
-      char: hexChars[Math.floor(Math.random() * hexChars.length)],
-      fadeDelay: Math.random() * 4,
-      fadeDuration: 2 + Math.random() * 3,
+      char: hexChars[(i * 7 + 3) % hexChars.length], // Deterministic to avoid hydration mismatch
+      fadeDelay: (i * 0.11) % 4, // Deterministic pseudo-random
+      fadeDuration: 2 + (i * 0.17) % 3,
     }))
   }, [])
 
@@ -298,12 +298,13 @@ function EnergyArcs({ status }: { status: AIStatus }) {
   const config = statusConfig[status]
   const arcs = useMemo(() => {
     return Array.from({ length: config.arcCount }, (_, i) => {
-      const startAngle = (i / config.arcCount) * 360 + Math.random() * 30
-      const sweep = 15 + Math.random() * 25
-      const innerR = 30 + Math.random() * 15
-      const outerR = innerR + 10 + Math.random() * 20
-      const duration = 0.4 + Math.random() * 0.6
-      const delay = Math.random() * 2
+      // Deterministic pseudo-random to avoid hydration mismatch
+      const startAngle = (i / config.arcCount) * 360 + ((i * 7 + 3) % 30)
+      const sweep = 15 + ((i * 13 + 7) % 25)
+      const innerR = 30 + ((i * 11 + 5) % 15)
+      const outerR = innerR + 10 + ((i * 17 + 3) % 20)
+      const duration = 0.4 + ((i * 3 + 2) % 6) / 10
+      const delay = ((i * 5 + 1) % 20) / 10
       return { id: i, startAngle, sweep, innerR, outerR, duration, delay }
     })
   }, [config.arcCount])
@@ -392,10 +393,10 @@ function OrbParticles({ status }: { status: AIStatus }) {
     return Array.from({ length: 8 }, (_, i) => ({
       id: i,
       angle: (i / 8) * 360,
-      radius: 58 + Math.random() * 12,
-      size: 1.5 + Math.random() * 1.5,
-      speed: 6 + Math.random() * 4,
-      opacity: 0.3 + Math.random() * 0.3,
+      radius: 58 + ((i * 7 + 3) % 12), // Deterministic to avoid hydration mismatch
+      size: 1.5 + ((i * 3 + 2) % 15) / 10,
+      speed: 6 + ((i * 5 + 1) % 4),
+      opacity: 0.3 + ((i * 11 + 7) % 3) / 10,
     }))
   }, [])
 

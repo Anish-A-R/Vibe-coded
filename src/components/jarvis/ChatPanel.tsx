@@ -11,6 +11,7 @@ import { playMessageSound, playThinkingSound } from '@/lib/sounds'
 import { useJarvisToast } from '@/hooks/useJarvisToast'
 import { MessageBubble } from './MessageBubble'
 import { QuickCommands } from './QuickCommands'
+import { ErrorBoundary } from './ErrorBoundary'
 
 export function ChatPanel() {
   const {
@@ -39,6 +40,7 @@ export function ChatPanel() {
   const [streamingText, setStreamingText] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [showConvDropdown, setShowConvDropdown] = useState(false)
+  const [isSpeakingNow, setIsSpeakingNow] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -48,6 +50,14 @@ export function ChatPanel() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingText])
+
+  // Track speaking state with interval (avoid calling browser API during render)
+  useEffect(() => {
+    const check = setInterval(() => {
+      setIsSpeakingNow(isSpeaking())
+    }, 500)
+    return () => clearInterval(check)
+  }, [isSpeaking])
 
   // Focus input on mount
   useEffect(() => {
@@ -131,6 +141,20 @@ export function ChatPanel() {
           if (commandResult.message) {
             addMessage({ role: 'assistant', content: commandResult.message })
             if (soundEnabled) playMessageSound()
+          }
+          return
+        }
+        case 'generate': {
+          // AI Image Generation
+          if (commandResult.prompt) {
+            handleImageGeneration(commandResult.prompt)
+          }
+          return
+        }
+        case 'websearch': {
+          // Web Search
+          if (commandResult.query) {
+            handleWebSearch(commandResult.query)
           }
           return
         }
@@ -264,7 +288,12 @@ export function ChatPanel() {
         if (fullText) {
           addMessage({ role: 'assistant', content: fullText })
           if (soundEnabled) playMessageSound()
-          if (soundEnabled) speak(fullText)
+          // Delay speak to avoid race condition with setAIStatus in finally block
+          // Also limit TTS text length to prevent browser issues
+          if (soundEnabled) {
+            const speakText = fullText.length > 500 ? fullText.slice(0, 500) + '...' : fullText
+            setTimeout(() => speak(speakText), 100)
+          }
           // Notification: JARVIS responded
           addNotification({
             type: 'info',
@@ -290,7 +319,11 @@ export function ChatPanel() {
           setAIStatus('speaking')
           addMessage({ role: 'assistant', content: data.response })
           if (soundEnabled) playMessageSound()
-          if (soundEnabled) speak(data.response)
+          // Delay speak to avoid race condition
+          if (soundEnabled) {
+            const speakText = data.response.length > 500 ? data.response.slice(0, 500) + '...' : data.response
+            setTimeout(() => speak(speakText), 100)
+          }
           // Notification: JARVIS responded
           addNotification({
             type: 'info',
@@ -394,7 +427,7 @@ export function ChatPanel() {
               {aiStatus}
             </motion.span>
           )}
-          {isSpeaking() && (
+          {isSpeakingNow && (
             <button
               onClick={stop}
               className="p-1.5 rounded-md hover:bg-white/5 text-neon-orange/60 hover:text-neon-orange transition-colors"
@@ -535,9 +568,11 @@ export function ChatPanel() {
 
         {/* Message list */}
         <AnimatePresence>
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))}
+          <ErrorBoundary>
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} message={msg} />
+            ))}
+          </ErrorBoundary>
         </AnimatePresence>
 
         {/* Streaming text with dramatic cursor */}
@@ -565,7 +600,8 @@ export function ChatPanel() {
                   transition={{
                     duration: 0.8,
                     repeat: Infinity,
-                    ease: 'steps(2)',
+                    times: [0, 0.5, 0.5, 1],
+                    ease: 'linear',
                   }}
                   style={{
                     boxShadow: '0 0 6px rgba(0,240,255,0.6), 0 0 12px rgba(0,240,255,0.3)',

@@ -4,10 +4,11 @@
  */
 
 export interface CommandResult {
-  type: 'command' | 'chat' | 'url' | 'search' | 'joke' | 'system' | 'error'
+  type: 'command' | 'chat' | 'url' | 'search' | 'joke' | 'system' | 'error' | 'generate' | 'websearch'
   action?: string
   url?: string
   query?: string
+  prompt?: string
   message?: string
 }
 
@@ -31,6 +32,12 @@ const COMMAND_MAP: Record<string, { action: string; description: string }> = {
   'avengers': { action: 'avengers', description: 'Easter egg' },
   'iron man': { action: 'ironman', description: 'Easter egg' },
   'tony': { action: 'tony', description: 'Easter egg' },
+  'generate': { action: 'generate', description: 'Generate an image from a description' },
+  'draw': { action: 'generate', description: 'Generate an image from a description' },
+  'create image': { action: 'generate', description: 'Generate an image from a description' },
+  'websearch': { action: 'websearch', description: 'Search the web for information' },
+  'look up': { action: 'websearch', description: 'Search the web for information' },
+  'find': { action: 'websearch', description: 'Search the web for information' },
 }
 
 const JOKES = [
@@ -100,6 +107,22 @@ export function parseCommand(input: string): CommandResult {
             url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
             message: `Searching Google for: "${query}"`,
           }
+        }
+
+        case 'generate': {
+          const prompt = args
+          if (!prompt) {
+            return { type: 'command', action: 'generate', message: 'Please describe what you want me to create. Usage: `generate <description>` or `draw <description>`' }
+          }
+          return { type: 'generate', prompt, message: `Generating image: "${prompt}"...` }
+        }
+
+        case 'websearch': {
+          const query = args
+          if (!query) {
+            return { type: 'command', action: 'websearch', message: 'Please provide a search query. Usage: `websearch <query>` or `find <query>`' }
+          }
+          return { type: 'websearch', query, message: `Searching the web for: "${query}"...` }
         }
 
         case 'youtube': {
@@ -217,6 +240,8 @@ export function getSampleCommands(): string[] {
     'Search for latest AI news',
     'Open YouTube',
     'Tell me a joke',
+    'Generate a futuristic city skyline',
+    'Find latest AI research papers',
     'Scan systems',
     'Show diagnostics',
     'Help',

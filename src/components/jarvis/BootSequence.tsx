@@ -30,18 +30,30 @@ const BOOT_LINES: BootLine[] = [
   { text: 'Welcome back, sir.', delay: 5200 },
 ]
 
+// Pre-generated hex characters to avoid hydration mismatch with Math.random()
+const HEX_CHARS = '0123456789ABCDEF'
+
+function generateHexStream(charsPerColumn: number, seed: number): string {
+  // Deterministic hex generation using seed to avoid hydration mismatch
+  const chars: string[] = []
+  for (let i = 0; i < charsPerColumn; i++) {
+    // Use a simple deterministic sequence instead of Math.random()
+    chars.push(HEX_CHARS[(seed + i * 7 + i * i * 3) % 16])
+  }
+  return chars.join('\n')
+}
+
 // Hex data stream component - renders scrolling hex characters on the sides
 function HexDataStream({ side }: { side: 'left' | 'right' }) {
   const columns = 3
   const charsPerColumn = 30
 
   const streams = useMemo(() => {
-    return Array.from({ length: columns }, () =>
-      Array.from({ length: charsPerColumn }, () =>
-        Math.random().toString(16).charAt(2).toUpperCase()
-      ).join('\n')
+    const baseSeed = side === 'left' ? 0 : 50
+    return Array.from({ length: columns }, (_, colIdx) =>
+      generateHexStream(charsPerColumn, baseSeed + colIdx * 17)
     )
-  }, [])
+  }, [side])
 
   return (
     <div
