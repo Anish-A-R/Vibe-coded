@@ -174,13 +174,74 @@
 - CRT overlay scanline effect may slightly reduce readability on low-contrast displays — could be toggled via settings
 - Weather real data fetch can be slow (4-60s) on first request — mitigated by 10-min cache
 - No real database conversations yet (only localStorage via Zustand persist)
-- Right column may be crowded with 3 new widgets — could add scrollable container
+- Right column may be crowded with 3 new widgets — now addressed with widget collapse/expand
 - FocusTimerWidget interval dependency array includes `timeLeft` which causes re-creation every second
 
 ## Priority Recommendations for Next Phase
-1. **HIGH**: Add CRT overlay toggle in Settings
-2. **MEDIUM**: Make right column scrollable or add widget collapse/expand
-3. **MEDIUM**: Add conversation export to PDF/Markdown
+1. ~~**HIGH**: Add CRT overlay toggle in Settings~~ ✅ Done (Round 12)
+2. ~~**MEDIUM**: Make right column scrollable or add widget collapse/expand~~ ✅ Done (Round 12)
+3. ~~**MEDIUM**: Add conversation export to PDF/Markdown~~ ✅ Done (Round 12)
 4. **MEDIUM**: Add Prisma-based conversation persistence
 5. **LOW**: Add Three.js holographic globe or arc reactor visualization
 6. **LOW**: Add multi-language support for voice recognition
+
+### Round 12 Changes - Styling Enhancement + New Features (2026-05-23)
+
+#### New Features
+1. ✅ **Ambient Sound Widget** (`/src/components/jarvis/AmbientSoundWidget.tsx`) - Web Audio API-based ambient sound generator with 5 soundscapes (Rain, Cyberpunk, Space, Ocean, Fire). Uses brown/pink/white noise generation with BiquadFilter for tonal shaping and LFO for organic movement. Visualizer bars animate based on sound type. Volume slider, sound selection grid, now playing indicator. Sound selection also available in Settings panel.
+2. ✅ **System Health Score Widget** (`/src/components/jarvis/SystemHealthWidget.tsx`) - Aggregates CPU (35%), RAM (25%), Temperature (25%), and Network (15%) into a single health score (0-100). Animated SVG gauge ring with color-coded scoring. Individual metric progress bars. Status labels: Optimal/Good/Fair/Degraded/Critical. Uses useMemo for derived state (no setState in effects).
+3. ✅ **Data Ticker** (`/src/components/jarvis/DataTicker.tsx`) - Animated scrolling status messages in the header area. Cycles through 10 JARVIS-style status messages (SYS.NOMINAL, NET.STABLE, SEC.CLEAR, etc.) every 4 seconds with slide-in/out animations. Visible on desktop (lg:) below the header.
+4. ✅ **Conversation Export to Markdown** - Settings panel "Data" section now has "Export as Markdown" button that downloads the active conversation as a formatted .md file with role headers, timestamps, and horizontal rules. Original JSON export preserved as separate button.
+5. ✅ **CRT Overlay Toggle** - Settings "Display" section now has "CRT Scanline Overlay" switch (Tv icon). Toggle is persisted in Zustand store. CRT overlay div only renders when enabled.
+6. ✅ **Widget Collapse/Expand** - Ambient Sound and System Health widgets have collapsible headers. Click to toggle minimize/maximize with AnimatePresence height animation. Collapse state stored in Zustand (persisted).
+7. ✅ **Mobile Bottom Navigation** - Fixed bottom nav bar for mobile (lg:hidden) with 5 icon buttons: HOME, CHAT, DIAG, HIST, CONFIG. Glassmorphic styling with neon-cyan highlights. Floating chat button adjusted for mobile spacing.
+
+#### Styling Enhancements
+8. ✅ **Header Data Ticker** - Subtle data ticker strip below header on desktop. JARVIS-style status messages with animated dot indicators.
+9. ✅ **CRT Overlay Conditional** - CRT scanline overlay now respects `crtOverlayEnabled` setting, no longer always-on.
+10. ✅ **Widget Consistency** - New widgets use consistent glass-panel + holo-border + inner-glow styling with purple and green color variants.
+11. ✅ **Settings Panel Expansion** - Added "Ambient Sound" section with sound grid + volume slider. Added CRT toggle. Added Markdown export.
+
+#### Store Updates (`/src/hooks/useJarvisStore.ts`)
+12. ✅ Added `AmbientSound` type: `'none' | 'rain' | 'cyberpunk' | 'space' | 'ocean' | 'fire'`
+13. ✅ Added state: `crtOverlayEnabled` (default: true), `ambientSound` (default: 'none'), `ambientVolume` (default: 0.5), `collapsedWidgets` (default: [])
+14. ✅ Added actions: `setCRTOverlayEnabled`, `setAmbientSound`, `setAmbientVolume`, `toggleWidgetCollapse`
+15. ✅ All new state persisted in `partialize` config
+
+#### Bug Fixes
+16. ✅ **Home name conflict** - `Home` icon from lucide-react conflicted with `export default function Home` in page.tsx, causing 500 error. Fixed by renaming import to `HomeIcon`.
+17. ✅ **AmbientSoundWidget lint** - Fixed `react-hooks/set-state-in-effect` error by removing setState from useEffect, using event-handler-driven audio management and derived `isPlaying` state.
+18. ✅ **SystemHealthWidget lint** - Fixed `react-hooks/set-state-in-effect` by replacing useState + useEffect with useMemo for derived health score, status label, and status color.
+
+#### Component Count
+- Now **33 custom JARVIS components** + 6 custom hooks + 4 lib modules + 2500+ lines of CSS
+
+#### Verification
+- `bun run lint` ✅ Clean
+- `GET /` → 200 ✅
+- Browser QA: Boot sequence, dashboard, settings panel, all new widgets visible and interactive, mobile bottom nav, no console errors, no page errors
+- Data ticker visible below header on desktop
+- Settings shows CRT toggle, Ambient Sound section, Export as Markdown
+- System Health and Ambient Sound widgets in right column with collapse/expand
+
+## Current Project Status (Updated 2026-05-23 Round 12)
+- **Phase**: Feature-rich cinematic AI assistant with streaming chat, multi-conversation, 5 new widgets/features, ambient sound system, and enhanced UI
+- **Health**: All pages load (200), Streaming Chat API works, Weather API works, no lint issues, no runtime errors
+- **Last QA**: 2026-05-23 19:25 UTC - Full browser QA passed with new features verified
+- **Components**: 33 custom JARVIS components + 6 custom hooks
+
+## Unresolved Issues / Risks
+- Weather API 500 errors on some requests (SDK/web search intermittent)
+- No real database conversations yet (only localStorage via Zustand persist)
+- FocusTimerWidget interval dependency array includes `timeLeft` which causes re-creation every second
+- Ambient Sound Widget: sound persists on page refresh if user navigates away while playing (audioContext stays alive)
+- Right column has many widgets now (6+) — collapse/expand helps but scroll could be improved
+
+## Priority Recommendations for Next Phase
+1. **HIGH**: Add conversation search/filter in ChatPanel
+2. **MEDIUM**: Add Prisma-based conversation persistence
+3. **MEDIUM**: Add AI image generation capability in chat
+4. **MEDIUM**: Improve right column layout with better scroll/categorization
+5. **LOW**: Add Three.js holographic globe or arc reactor visualization
+6. **LOW**: Add multi-language support for voice recognition
+7. **LOW**: Add more easter eggs and JARVIS personality interactions

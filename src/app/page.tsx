@@ -12,6 +12,9 @@ import {
   Shield,
   Zap,
   ScrollText,
+  Home as HomeIcon,
+  MessageSquare,
+  BarChart3,
 } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useSystemStats } from '@/hooks/useSystemStats'
@@ -41,6 +44,9 @@ import NotificationCenter from '@/components/jarvis/NotificationCenter'
 import WorldClockWidget from '@/components/jarvis/WorldClockWidget'
 import FocusTimerWidget from '@/components/jarvis/FocusTimerWidget'
 import QuickNotesWidget from '@/components/jarvis/QuickNotesWidget'
+import AmbientSoundWidget from '@/components/jarvis/AmbientSoundWidget'
+import SystemHealthWidget from '@/components/jarvis/SystemHealthWidget'
+import DataTicker from '@/components/jarvis/DataTicker'
 
 export default function Home() {
   const {
@@ -65,6 +71,7 @@ export default function Home() {
     setEasterEggActivated,
     addNotification,
     colorTheme,
+    crtOverlayEnabled,
   } = useJarvisStore()
 
   const [showBoot, setShowBoot] = useState(!booted)
@@ -312,7 +319,7 @@ export default function Home() {
   return (
     <div className={`relative min-h-screen bg-jarvis-darker overflow-hidden hud-grid-bg theme-transition ${personalityClass} ${colorThemeClass}`}>
       {/* CRT Scanline Overlay */}
-      <div className="crt-overlay pointer-events-none" />
+      {crtOverlayEnabled && <div className="crt-overlay pointer-events-none" />}
       {/* Toast Notification Container */}
       <JarvisToastContainer soundEnabled={soundEnabled} />
       {/* Particle background */}
@@ -438,6 +445,13 @@ export default function Home() {
             </button>
           </motion.div>
         </header>
+
+        {/* ===== DATA TICKER ===== */}
+        <div className="hidden lg:block border-b border-neon-cyan/5">
+          <div className="max-w-7xl mx-auto px-6 py-1">
+            <DataTicker />
+          </div>
+        </div>
 
         {/* ===== MAIN CONTENT AREA ===== */}
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6">
@@ -742,11 +756,31 @@ export default function Home() {
                 <FocusTimerWidget />
               </motion.div>
 
-              {/* Quick Notes Widget */}
+              {/* System Health Widget */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.85 }}
+                className="w-full"
+              >
+                <SystemHealthWidget />
+              </motion.div>
+
+              {/* Ambient Sound Widget */}
               <motion.div
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.95 }}
+                className="w-full"
+              >
+                <AmbientSoundWidget />
+              </motion.div>
+
+              {/* Quick Notes Widget */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 1.05 }}
                 className="w-full"
               >
                 <QuickNotesWidget />
@@ -830,7 +864,7 @@ export default function Home() {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setShowChat(true)}
-          className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-30
+          className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-30 lg:bottom-24
             w-12 h-12 rounded-full
             bg-neon-cyan/10 border border-neon-cyan/30
             text-neon-cyan flex items-center justify-center
@@ -875,6 +909,52 @@ export default function Home() {
         active={konamiActive}
         onComplete={handleKonamiComplete}
       />
+
+      {/* ===== MOBILE BOTTOM NAV ===== */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-neon-cyan/10 bg-black/90 backdrop-blur-xl">
+        <div className="flex items-center justify-around py-2 px-4">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => { setShowChat(false); setShowSettings(false); setShowHistory(false); setShowDiagnostics(false) }}
+            className="flex flex-col items-center gap-0.5 p-2 rounded-lg text-neon-cyan/60 hover:text-neon-cyan transition-colors"
+          >
+            <HomeIcon className="w-4 h-4" />
+            <span className="text-[8px] font-mono">HOME</span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowChat(!showChat)}
+            className={`flex flex-col items-center gap-0.5 p-2 rounded-lg transition-colors ${showChat ? 'text-neon-cyan' : 'text-white/30 hover:text-neon-cyan/60'}`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span className="text-[8px] font-mono">CHAT</span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowDiagnostics(true)}
+            className="flex flex-col items-center gap-0.5 p-2 rounded-lg text-white/30 hover:text-neon-cyan/60 transition-colors"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span className="text-[8px] font-mono">DIAG</span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowHistory(true)}
+            className="flex flex-col items-center gap-0.5 p-2 rounded-lg text-white/30 hover:text-neon-cyan/60 transition-colors"
+          >
+            <History className="w-4 h-4" />
+            <span className="text-[8px] font-mono">HIST</span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowSettings(true)}
+            className="flex flex-col items-center gap-0.5 p-2 rounded-lg text-white/30 hover:text-neon-cyan/60 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="text-[8px] font-mono">CONFIG</span>
+          </motion.button>
+        </div>
+      </div>
 
       {/* ===== EVENT LOG ===== */}
       <EventLog

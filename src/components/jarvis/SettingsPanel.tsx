@@ -18,6 +18,13 @@ import {
   MapPin,
   Check,
   CheckCircle,
+  Tv,
+  FileText,
+  CloudRain,
+  Zap,
+  Rocket,
+  Waves,
+  Flame,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -27,7 +34,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { PERSONALITIES } from '@/lib/personalities'
-import type { PersonalityMode, ColorTheme } from '@/hooks/useJarvisStore'
+import type { PersonalityMode, ColorTheme, AmbientSound } from '@/hooks/useJarvisStore'
 
 interface SettingsPanelProps {
   open: boolean
@@ -118,6 +125,12 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setWeatherLocation,
     colorTheme,
     setColorTheme,
+    crtOverlayEnabled,
+    setCRTOverlayEnabled,
+    ambientSound,
+    setAmbientSound,
+    ambientVolume,
+    setAmbientVolume,
   } = useJarvisStore()
 
   const [locationInput, setLocationInput] = useState(weatherLocation)
@@ -134,6 +147,56 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  const handleExportMarkdown = () => {
+    const { conversations, activeConversationId } = useJarvisStore.getState()
+    const conv = conversations.find(c => c.id === activeConversationId)
+    if (!conv || conv.messages.length === 0) return
+
+    const lines = [
+      `# ${conv.title}`,
+      ``,
+      `> Exported from J.A.R.V.I.S. on ${new Date().toLocaleString()}`,
+      `> Personality: ${conv.personality}`,
+      ``,
+      `---`,
+      ``,
+    ]
+
+    conv.messages.forEach(msg => {
+      const time = new Date(msg.timestamp).toLocaleTimeString()
+      if (msg.role === 'user') {
+        lines.push(`### 👤 User — ${time}`)
+      } else if (msg.role === 'assistant') {
+        lines.push(`### 🤖 J.A.R.V.I.S. — ${time}`)
+      } else {
+        lines.push(`### ⚙️ System — ${time}`)
+      }
+      lines.push(``)
+      lines.push(msg.content)
+      lines.push(``)
+      lines.push(`---`)
+      lines.push(``)
+    })
+
+    const md = lines.join('\n')
+    const blob = new Blob([md], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `jarvis-${conv.title.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 30)}-${new Date().toISOString().slice(0, 10)}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const AMBIENT_SOUNDS: { key: AmbientSound; label: string; icon: React.ReactNode }[] = [
+    { key: 'none', label: 'Off', icon: <VolumeX className="size-3" /> },
+    { key: 'rain', label: 'Rain', icon: <CloudRain className="size-3" /> },
+    { key: 'cyberpunk', label: 'Cyber', icon: <Zap className="size-3" /> },
+    { key: 'space', label: 'Space', icon: <Rocket className="size-3" /> },
+    { key: 'ocean', label: 'Ocean', icon: <Waves className="size-3" /> },
+    { key: 'fire', label: 'Fire', icon: <Flame className="size-3" /> },
+  ]
 
   return (
     <AnimatePresence>
@@ -259,6 +322,17 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                         className="data-[state=checked]:bg-cyan-500"
                       />
                     </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Tv className="size-4 text-cyan-400/60" />
+                        <span className="text-sm font-mono text-white/70">CRT Scanline Overlay</span>
+                      </div>
+                      <Switch
+                        checked={crtOverlayEnabled}
+                        onCheckedChange={setCRTOverlayEnabled}
+                        className="data-[state=checked]:bg-cyan-500"
+                      />
+                    </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Palette className="size-4 text-cyan-400/60" />
@@ -370,11 +444,20 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={handleExportMarkdown}
+                      className="w-full font-mono border-cyan-500/20 text-cyan-400/70 hover:bg-cyan-500/10 hover:text-cyan-400"
+                    >
+                      <FileText className="size-4" />
+                      Export as Markdown
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleExportConversations}
                       className="w-full font-mono border-cyan-500/20 text-cyan-400/70 hover:bg-cyan-500/10 hover:text-cyan-400"
                     >
                       <Download className="size-4" />
-                      Export Conversations
+                      Export as JSON
                     </Button>
                     <Button
                       variant="outline"
@@ -385,6 +468,57 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                       <Trash2 className="size-4" />
                       Clear Chat History
                     </Button>
+                  </div>
+                </section>
+
+                <Separator className="bg-cyan-500/10" />
+
+                {/* Ambient Sound */}
+                <section>
+                  <SectionTitle icon={<CloudRain className="size-4" />}>Ambient Sound</SectionTitle>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2">
+                      {AMBIENT_SOUNDS.map(({ key, label, icon }) => (
+                        <motion.button
+                          key={key}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => setAmbientSound(key)}
+                          className={`
+                            flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-all duration-200
+                            ${ambientSound === key
+                              ? 'bg-purple-500/15 border border-purple-500/40'
+                              : 'bg-white/[0.02] border border-transparent hover:bg-white/[0.04] hover:border-white/10'
+                            }
+                          `}
+                        >
+                          <span className={ambientSound === key ? 'text-purple-400' : 'text-white/30'}>
+                            {icon}
+                          </span>
+                          <span className={`text-[9px] font-mono uppercase ${ambientSound === key ? 'text-purple-400' : 'text-white/25'}`}>
+                            {label}
+                          </span>
+                        </motion.button>
+                      ))}
+                    </div>
+                    {ambientSound !== 'none' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-mono text-white/70">Ambient Volume</span>
+                          <span className="text-xs font-mono text-purple-400/60">
+                            {Math.round(ambientVolume * 100)}%
+                          </span>
+                        </div>
+                        <Slider
+                          value={[ambientVolume * 100]}
+                          onValueChange={([v]) => setAmbientVolume(v / 100)}
+                          min={0}
+                          max={100}
+                          step={1}
+                          className="[&_[data-slot=slider-range]]:bg-purple-500 [&_[data-slot=slider-thumb]]:border-purple-500"
+                        />
+                      </div>
+                    )}
                   </div>
                 </section>
 

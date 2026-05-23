@@ -6,6 +6,7 @@ export type AIStatus = 'idle' | 'listening' | 'thinking' | 'speaking'
 export type PersonalityMode = 'professional' | 'funny' | 'boss'
 export type ActivePanel = 'chat' | 'settings' | 'history' | 'diagnostics'
 export type ColorTheme = 'cyan' | 'purple' | 'green' | 'red'
+export type AmbientSound = 'none' | 'rain' | 'cyberpunk' | 'space' | 'ocean' | 'fire'
 
 export interface Message {
   id: string
@@ -168,6 +169,20 @@ interface JarvisState {
   // Color Theme
   colorTheme: ColorTheme
   setColorTheme: (theme: ColorTheme) => void
+
+  // CRT Overlay
+  crtOverlayEnabled: boolean
+  setCRTOverlayEnabled: (enabled: boolean) => void
+
+  // Ambient Sound
+  ambientSound: AmbientSound
+  setAmbientSound: (sound: AmbientSound) => void
+  ambientVolume: number
+  setAmbientVolume: (volume: number) => void
+
+  // Widget Collapse State
+  collapsedWidgets: string[]
+  toggleWidgetCollapse: (widgetId: string) => void
 }
 
 function generateId(): string {
@@ -495,6 +510,25 @@ export const useJarvisStore = create<JarvisState>()(
       // Color Theme
       colorTheme: 'cyan',
       setColorTheme: (theme) => set({ colorTheme: theme }),
+
+      // CRT Overlay
+      crtOverlayEnabled: true,
+      setCRTOverlayEnabled: (enabled) => set({ crtOverlayEnabled: enabled }),
+
+      // Ambient Sound
+      ambientSound: 'none',
+      setAmbientSound: (sound) => set({ ambientSound: sound }),
+      ambientVolume: 0.5,
+      setAmbientVolume: (volume) => set({ ambientVolume: volume }),
+
+      // Widget Collapse
+      collapsedWidgets: [],
+      toggleWidgetCollapse: (widgetId) =>
+        set((state) => ({
+          collapsedWidgets: state.collapsedWidgets.includes(widgetId)
+            ? state.collapsedWidgets.filter((id) => id !== widgetId)
+            : [...state.collapsedWidgets, widgetId],
+        })),
     }),
     {
       name: 'jarvis-store',
@@ -515,6 +549,13 @@ export const useJarvisStore = create<JarvisState>()(
         notes: state.notes.slice(0, 20),
         // Color Theme
         colorTheme: state.colorTheme,
+        // CRT Overlay
+        crtOverlayEnabled: state.crtOverlayEnabled,
+        // Ambient Sound
+        ambientSound: state.ambientSound,
+        ambientVolume: state.ambientVolume,
+        // Widget Collapse
+        collapsedWidgets: state.collapsedWidgets,
         // events are NOT persisted (session-only)
         // notifications are NOT persisted (session-only)
         // Persist conversations (keep last 10, last 50 messages each)
