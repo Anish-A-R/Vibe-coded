@@ -1,26 +1,66 @@
 'use client'
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Mic, Cpu, Volume2 } from 'lucide-react'
+import { Mic, Cpu, Copy, Volume2, Trash2, Check } from 'lucide-react'
 import type { Message } from '@/hooks/useJarvisStore'
+import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useTTS } from '@/hooks/useTTS'
 
 interface MessageBubbleProps {
   message: Message
 }
 
+function CopyCodeButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }, [code])
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="absolute top-2 right-2 p-1 rounded bg-white/5 border border-neon-cyan/20 text-neon-cyan/40 hover:text-neon-cyan hover:bg-neon-cyan/10 transition-all"
+      aria-label="Copy code"
+    >
+      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+    </button>
+  )
+}
+
 export function MessageBubble({ message }: MessageBubbleProps) {
-  const [showTimestamp, setShowTimestamp] = useState(false)
+  const removeMessage = useJarvisStore((s) => s.removeMessage)
   const { speak } = useTTS()
   const isUser = message.role === 'user'
   const isSystem = message.role === 'system'
 
+  const [copied, setCopied] = useState(false)
+
   const timeStr = new Date(message.timestamp).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   })
+
+  const handleCopyMessage = useCallback(() => {
+    navigator.clipboard.writeText(message.content).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }, [message.content])
+
+  const handleSpeak = useCallback(() => {
+    speak(message.content)
+  }, [speak, message.content])
+
+  const handleDelete = useCallback(() => {
+    removeMessage(message.id)
+  }, [removeMessage, message.id])
 
   // System messages: centered, muted
   if (isSystem) {
@@ -43,9 +83,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className={`flex gap-3 px-4 py-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-      onMouseEnter={() => setShowTimestamp(true)}
-      onMouseLeave={() => setShowTimestamp(false)}
+      className={`flex gap-3 px-4 py-2 group ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       {/* Avatar */}
       {!isUser && (
@@ -55,7 +93,54 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       )}
 
       {/* Message content */}
-      <div className={`group relative max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`relative max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+        {/* Action buttons - top right on hover */}
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileHover={{ opacity: 1, scale: 1 }}
+            className={`absolute -top-2 ${isUser ? '-left-1' : '-right-1'} z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+          >
+            {/* Copy button */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0, duration: 0.15 }}
+              onClick={handleCopyMessage}
+              className="w-6 h-6 flex items-center justify-center rounded bg-black/60 border border-white/10 text-white/30 hover:text-neon-cyan hover:border-neon-cyan/30 transition-all"
+              aria-label="Copy message"
+            >
+              {copied ? <Check className="w-3 h-3 text-neon-cyan" /> : <Copy className="w-3 h-3" />}
+            </motion.button>
+
+            {/* Speak button */}
+            {!isUser && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.05, duration: 0.15 }}
+                onClick={handleSpeak}
+                className="w-6 h-6 flex items-center justify-center rounded bg-black/60 border border-white/10 text-white/30 hover:text-neon-cyan hover:border-neon-cyan/30 transition-all"
+                aria-label="Speak message"
+              >
+                <Volume2 className="w-3 h-3" />
+              </motion.button>
+            )}
+
+            {/* Delete button */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.15 }}
+              onClick={handleDelete}
+              className="w-6 h-6 flex items-center justify-center rounded bg-black/60 border border-white/10 text-white/30 hover:text-red-400 hover:border-red-400/30 transition-all"
+              aria-label="Delete message"
+            >
+              <Trash2 className="w-3 h-3" />
+            </motion.button>
+          </motion.div>
+        </AnimatePresence>
+
         <div
           className={`px-4 py-3 rounded-xl text-sm leading-relaxed ${
             isUser
@@ -89,23 +174,34 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     const isBlock = className?.includes('language-')
                     if (isBlock) {
                       return (
-                        <code className={`${className || ''} block bg-black/40 rounded-lg p-3 my-2 text-xs font-mono overflow-x-auto`} {...props}>
+                        <code className={`${className || ''} block text-xs font-mono overflow-x-auto`} {...props}>
                           {children}
                         </code>
                       )
                     }
                     return (
-                      <code className="bg-black/30 text-neon-cyan px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+                      <code className="bg-neon-cyan/10 text-neon-cyan px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
                         {children}
                       </code>
                     )
                   },
                   // Code blocks
-                  pre: ({ children }) => (
-                    <pre className="bg-black/40 rounded-lg p-3 my-2 overflow-x-auto border border-neon-cyan/10">
-                      {children}
-                    </pre>
-                  ),
+                  pre: ({ children }) => {
+                    // Extract code text for copy button
+                    let codeText = ''
+                    if (children && typeof children === 'object' && 'props' in children) {
+                      const childProps = (children as React.ReactElement).props
+                      if (childProps?.children) {
+                        codeText = String(childProps.children)
+                      }
+                    }
+                    return (
+                      <pre className="relative bg-black/60 rounded-lg p-3 my-2 overflow-x-auto border border-neon-cyan/20">
+                        <CopyCodeButton code={codeText} />
+                        {children}
+                      </pre>
+                    )
+                  },
                   // Lists
                   ul: ({ children }) => (
                     <ul className="list-disc list-inside space-y-1 my-1">{children}</ul>
@@ -136,28 +232,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           )}
         </div>
 
-        {/* Speak button for assistant messages */}
-        {!isUser && (
-          <button
-            onClick={() => speak(message.content)}
-            className="absolute -top-1 -right-1 p-1 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan/40 hover:text-neon-cyan hover:bg-neon-cyan/20 transition-all opacity-0 group-hover:opacity-100"
-            aria-label="Speak message"
-          >
-            <Volume2 className="w-3 h-3" />
-          </button>
-        )}
-
-        {/* Timestamp on hover */}
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: showTimestamp ? 1 : 0, y: showTimestamp ? 0 : 4 }}
-          transition={{ duration: 0.15 }}
-          className={`mt-1 text-[10px] font-mono text-white/30 ${
+        {/* Timestamp - always visible */}
+        <div
+          className={`mt-1 text-[9px] font-mono text-white/15 ${
             isUser ? 'text-right' : 'text-left'
           }`}
         >
           {timeStr}
-        </motion.div>
+        </div>
       </div>
     </motion.div>
   )

@@ -369,3 +369,77 @@
 .animate-data-scroll {
   animation: data-scroll var(--duration, 10s) linear infinite;
 }
+
+/* ===== Personality Theme Shifts ===== */
+
+/* Boss Mode - Red theme shift */
+.personality-boss {
+  --color-neon-cyan: #ff3366;
+  --color-jarvis-border: rgba(255, 51, 102, 0.15);
+}
+
+.personality-boss .glass-panel {
+  border-color: rgba(255, 51, 102, 0.12);
+}
+
+.personality-boss .hud-grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 51, 102, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 51, 102, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.personality-boss .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(255, 51, 102, 0.6),
+    0 0 20px rgba(255, 51, 102, 0.3),
+    0 0 40px rgba(255, 51, 102, 0.1);
+}
+
+.personality-boss .neon-glow-cyan {
+  box-shadow: 0 0 5px rgba(255, 51, 102, 0.3),
+    0 0 10px rgba(255, 51, 102, 0.2),
+    0 0 20px rgba(255, 51, 102, 0.1),
+    inset 0 0 5px rgba(255, 51, 102, 0.1);
+}
+
+.personality-boss .jarvis-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 51, 102, 0.03);
+}
+
+.personality-boss .jarvis-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 51, 102, 0.2);
+}
+
+.personality-boss .jarvis-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 51, 102, 0.4);
+}
+
+/* Funny Mode - Orange theme shift */
+.personality-funny .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(255, 106, 0, 0.6),
+    0 0 20px rgba(255, 106, 0, 0.3),
+    0 0 40px rgba(255, 106, 0, 0.1);
+}
+
+.personality-funny .glass-panel {
+  border-color: rgba(255, 106, 0, 0.1);
+}
+
+/* Theme transition animation */
+.theme-transition {
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Boss mode ambient red pulse */
+@keyframes boss-pulse {
+  0%, 100% {
+    opacity: 0.03;
+  }
+  50% {
+    opacity: 0.06;
+  }
+}
+
+.boss-ambient-pulse {
+  animation: boss-pulse 3s ease-in-out infinite;
+}

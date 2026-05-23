@@ -28,6 +28,7 @@ import SystemWidgets from '@/components/jarvis/SystemWidgets'
 import SettingsPanel from '@/components/jarvis/SettingsPanel'
 import ConversationHistory from '@/components/jarvis/ConversationHistory'
 import SystemDiagnostics from '@/components/jarvis/SystemDiagnostics'
+import CommandPalette from '@/components/jarvis/CommandPalette'
 import { HUDFrame, DataReadout, CornerBrackets, ScanLine } from '@/components/jarvis/HUDDecorations'
 import { useJarvisToast } from '@/hooks/useJarvisToast'
 import { JarvisToastContainer } from '@/components/jarvis/JarvisToast'
@@ -55,6 +56,7 @@ export default function Home() {
 
   const [showBoot, setShowBoot] = useState(!booted)
   const [showChat, setShowChat] = useState(false)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [greetingShown, setGreetingShown] = useState(false)
   const [greetingText, setGreetingText] = useState('')
   const [currentTime, setCurrentTime] = useState('')
@@ -108,6 +110,7 @@ export default function Home() {
         setShowSettings(false)
         setShowHistory(false)
         setShowDiagnostics(false)
+        setShowCommandPalette(false)
       }
       // Ctrl+D: Diagnostics
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
@@ -124,11 +127,16 @@ export default function Home() {
         e.preventDefault()
         setShowHistory(true)
       }
+      // Ctrl+P: Command Palette
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault()
+        setShowCommandPalette((prev) => !prev)
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setShowSettings, setShowHistory, setShowDiagnostics])
+  }, [setShowSettings, setShowHistory, setShowDiagnostics, showCommandPalette])
 
   // ===== BOOT SEQUENCE =====
   if (showBoot) {
@@ -141,8 +149,18 @@ export default function Home() {
   }
 
   // ===== MAIN DASHBOARD =====
+  // Personality-based theme class
+  const personalityClass = personalityMode === 'boss' ? 'personality-boss' : personalityMode === 'funny' ? 'personality-funny' : ''
+
+  // Ambient glow color based on personality
+  const ambientColor = personalityMode === 'boss'
+    ? { r: 255, g: 51, b: 102 }
+    : personalityMode === 'funny'
+    ? { r: 255, g: 106, b: 0 }
+    : { r: 0, g: 240, b: 255 }
+
   return (
-    <div className="relative min-h-screen bg-jarvis-darker overflow-hidden hud-grid-bg">
+    <div className={`relative min-h-screen bg-jarvis-darker overflow-hidden hud-grid-bg theme-transition ${personalityClass}`}>
       {/* Toast Notification Container */}
       <JarvisToastContainer soundEnabled={soundEnabled} />
       {/* Particle background */}
@@ -150,15 +168,21 @@ export default function Home() {
 
       {/* ===== AMBIENT GLOW EFFECTS ===== */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        {/* Top-left cyan glow */}
-        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-neon-cyan/[0.03] rounded-full blur-[120px]" />
-        {/* Bottom-right orange glow */}
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-neon-orange/[0.02] rounded-full blur-[100px]" />
+        {/* Top-left primary glow */}
+        <div
+          className={`absolute top-0 left-0 w-[600px] h-[600px] rounded-full blur-[120px] ${personalityMode === 'boss' ? 'boss-ambient-pulse' : ''}`}
+          style={{ backgroundColor: `rgba(${ambientColor.r}, ${ambientColor.g}, ${ambientColor.b}, 0.03)` }}
+        />
+        {/* Bottom-right secondary glow */}
+        <div
+          className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full blur-[100px]"
+          style={{ backgroundColor: `rgba(${ambientColor.r}, ${ambientColor.g}, ${ambientColor.b}, 0.02)` }}
+        />
         {/* Center orb glow reflection */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[80px] transition-opacity duration-1000"
           style={{
-            background: `radial-gradient(circle, rgba(0,240,255,${aiStatus === 'idle' ? 0.03 : 0.06}) 0%, transparent 70%)`,
+            background: `radial-gradient(circle, rgba(${ambientColor.r}, ${ambientColor.g}, ${ambientColor.b}, ${aiStatus === 'idle' ? 0.03 : 0.06}) 0%, transparent 70%)`,
           }}
         />
       </div>
@@ -395,6 +419,7 @@ export default function Home() {
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
                   {[
                     { key: 'Ctrl+K', label: 'Chat' },
+                    { key: 'Ctrl+P', label: 'Commands' },
                     { key: 'Ctrl+Space', label: 'Voice' },
                     { key: 'Ctrl+D', label: 'Diag' },
                   ].map((hint) => (
@@ -567,6 +592,12 @@ export default function Home() {
       <SystemDiagnostics
         open={showDiagnostics}
         onClose={() => setShowDiagnostics(false)}
+      />
+
+      {/* ===== COMMAND PALETTE ===== */}
+      <CommandPalette
+        open={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
       />
     </div>
   )

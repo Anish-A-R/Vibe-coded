@@ -44,6 +44,7 @@ interface JarvisState {
   // Chat
   messages: Message[]
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void
+  removeMessage: (id: string) => void
   clearMessages: () => void
 
   // Voice
@@ -110,6 +111,10 @@ export const useJarvisStore = create<JarvisState>()(
               timestamp: Date.now(),
             },
           ],
+        })),
+      removeMessage: (id) =>
+        set((state) => ({
+          messages: state.messages.filter((m) => m.id !== id),
         })),
       clearMessages: () => set({ messages: [] }),
 
