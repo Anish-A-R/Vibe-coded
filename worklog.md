@@ -127,3 +127,33 @@ Stage Summary:
 - Mic button is now larger and more prominent with 3-ring pulse animation
 - Real-time voice transcript bubble gives immediate visual feedback
 - Chat toggle button removed from status bar (still accessible via Ctrl+K and voice)
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Redesign voice chat as centered popup (old design style)
+
+Work Log:
+- Read current VoiceChatOverlay.tsx (side panel design), HolographicDisplay.tsx, JarvisOrb.tsx, page.tsx
+- Delegated VoiceChatOverlay rewrite to full-stack-developer subagent
+- Subagent rewrote VoiceChatOverlay as a centered popup card instead of side panel:
+  - Position: Fixed center of screen, max-w-[520px] w-[90vw]
+  - Glass panel with holographic animated borders on all 4 edges
+  - Corner bracket decorations, scanline overlay
+  - Auto-show when voice activity detected (listening + transcript, AI thinking/speaking, streaming, loading)
+  - Auto-hide after 5 seconds of inactivity
+  - Voice transcript section at top with mic icon and animated voice bars
+  - Messages area with scroll, streaming text with blinking cursor
+  - Text input at bottom with send button
+  - All existing chat logic preserved (handleSend, SSE streaming, command parsing, TTS)
+- Updated page.tsx:
+  - Removed HolographicDisplay import and component (popup now handles AI response display)
+  - Removed VoiceFeedbackBubble component and usage (popup now shows voice transcript)
+  - Simplified the main interface to just: AmbientBar + JarvisOrb + VoiceStatusBar + VoiceChatOverlay
+  - Cleaner design - the popup appears when you talk and shows everything
+
+Stage Summary:
+- Voice chat is now a centered popup that appears when talking, matching the "old design" the user requested
+- Removed redundant VoiceFeedbackBubble and HolographicDisplay components from page
+- Popup auto-shows on voice activity, auto-hides after 5s idle
+- Linter passes, dev server compiles successfully

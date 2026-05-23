@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useHydrated } from '@/hooks/useHydrated'
@@ -10,7 +10,6 @@ import { playBootSound, playStartupCompleteSound, playActivationSound, playDeact
 import { getGreeting } from '@/lib/personalities'
 import BootSequence from '@/components/jarvis/BootSequence'
 import JarvisOrb from '@/components/jarvis/JarvisOrb'
-import HolographicDisplay from '@/components/jarvis/HolographicDisplay'
 import { VoiceChatOverlay } from '@/components/jarvis/VoiceChatOverlay'
 
 export default function Home() {
@@ -225,16 +224,6 @@ export default function Home() {
         <JarvisOrb />
       </div>
 
-      {/* ===== HOLOGRAPHIC DISPLAY ===== */}
-      <HolographicDisplay />
-
-      {/* ===== VOICE FEEDBACK BUBBLE (above status bar) ===== */}
-      <VoiceFeedbackBubble
-        transcript={transcript}
-        isListening={isListening}
-        aiStatus={aiStatus}
-      />
-
       {/* ===== VOICE STATUS BAR (bottom) ===== */}
       <VoiceStatusBar
         isListening={isListening}
@@ -255,7 +244,7 @@ export default function Home() {
         onRequestMic={requestMicPermission}
       />
 
-      {/* ===== CHAT OVERLAY ===== */}
+      {/* ===== CHAT POPUP (centered, auto-shows when talking) ===== */}
       <VoiceChatOverlay open={showChat} onClose={() => setShowChat(false)} />
     </div>
   )
@@ -322,62 +311,6 @@ function AmbientBar({ greetingText, greetingShown }: { greetingText: string; gre
         </div>
       </motion.div>
     </header>
-  )
-}
-
-// ===== Voice Feedback Bubble - shows real-time transcript above mic =====
-function VoiceFeedbackBubble({
-  transcript,
-  isListening,
-  aiStatus,
-}: {
-  transcript: string
-  isListening: boolean
-  aiStatus: string
-}) {
-  const showBubble = isListening && transcript
-
-  return (
-    <AnimatePresence>
-      {showBubble && (
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.9 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-        >
-          <div className="relative px-5 py-3 rounded-xl bg-neon-cyan/10 border border-neon-cyan/25 backdrop-blur-md max-w-[400px]">
-            {/* Glow effect */}
-            <div className="absolute inset-0 rounded-xl bg-neon-cyan/5 blur-sm" />
-            {/* Animated left border */}
-            <div
-              className="absolute top-0 left-0 w-[2px] h-full rounded-l-xl"
-              style={{
-                background: 'linear-gradient(to bottom, transparent, rgba(0,240,255,0.6), rgba(0,240,255,0.2), transparent)',
-              }}
-            />
-            <p className="relative font-mono text-sm text-neon-cyan/80 text-center truncate">
-              &ldquo;{transcript}&rdquo;
-            </p>
-            {/* Listening dots */}
-            <div className="relative flex items-center justify-center gap-1 mt-1.5">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-1 h-1 rounded-full bg-neon-cyan/50"
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                />
-              ))}
-              <span className="ml-2 font-mono text-[8px] text-neon-cyan/40 uppercase tracking-wider">
-                {aiStatus === 'thinking' ? 'Processing...' : 'Listening...'}
-              </span>
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   )
 }
 
