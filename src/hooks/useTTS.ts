@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { useJarvisStore } from './useJarvisStore'
 
 /**
@@ -10,6 +10,29 @@ import { useJarvisStore } from './useJarvisStore'
 export function useTTS() {
   const { soundEnabled, volume, setAIStatus, voiceLanguage } = useJarvisStore()
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const voicesLoadedRef = useRef(false)
+
+  // Preload voices (they load asynchronously in some browsers)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return
+
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) {
+        voicesLoadedRef.current = true
+      }
+    }
+
+    // Voices might already be available
+    loadVoices()
+
+    // But in Chrome, they load asynchronously
+    window.speechSynthesis.onvoiceschanged = loadVoices
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null
+    }
+  }, [])
 
   const speak = useCallback((text: string) => {
     if (!soundEnabled || typeof window === 'undefined' || !window.speechSynthesis) return
@@ -19,6 +42,7 @@ export function useTTS() {
 
     // Clean text: remove markdown formatting
     const cleanText = text
+      .replace(/!\[.*?\]\(.*?\)/g, '[Image]') // image markdown → [Image]
       .replace(/\*\*(.*?)\*\*/g, '$1') // bold
       .replace(/\*(.*?)\*/g, '$1')     // italic
       .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // code
@@ -26,6 +50,12 @@ export function useTTS() {
       .replace(/#{1,6}\s/g, '')         // headers
       .replace(/[-*+]\s/g, '')          // list items
       .replace(/^\d+\.\s/gm, '')        // numbered lists
+      .replace(/<[^>]*>/g, '')          // HTML tags
+      .replace(/\|/g, ' ')              // table pipes
+      .replace(/---+/g, '')             // horizontal rules
+      .trim()
+
+    if (!cleanText) return
 
     const utterance = new SpeechSynthesisUtterance(cleanText)
     utterance.rate = 1.0
@@ -37,13 +67,16 @@ export function useTTS() {
     const voices = window.speechSynthesis.getVoices()
 
     // Priority: language-specific male voice > any voice in that language > default
-    const langPrefix = (voiceLanguage || 'en-US').split('-')[0]
+    const langCode = voiceLanguage || 'en-US'
+    const langPrefix = langCode.split('-')[0]
 
     const preferred = voices.find(v =>
-      v.lang === (voiceLanguage || 'en-US') && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel') || v.name.includes('Google UK English Male'))
-    ) || voices.find(v => v.lang === (voiceLanguage || 'en-US'))
+      v.lang === langCode && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel') || v.name.includes('Google UK English Male'))
+    ) || voices.find(v => v.lang === langCode)
       || voices.find(v => v.lang.startsWith(langPrefix) && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel')))
       || voices.find(v => v.lang.startsWith(langPrefix))
+      || voices.find(v => v.default)
+      || voices[0]
 
     if (preferred) utterance.voice = preferred
 

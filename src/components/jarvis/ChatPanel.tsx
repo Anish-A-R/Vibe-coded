@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare, Bot } from 'lucide-react'
+import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare, Bot, Globe } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
 import { useTTS } from '@/hooks/useTTS'
@@ -29,6 +29,7 @@ export function ChatPanel() {
     switchConversation,
     deleteConversation,
     addNotification,
+    voiceLanguage,
   } = useJarvisStore()
 
   const { transcript, isListening: voiceIsListening, onFinalTranscript, toggleListening: toggleVoiceListening } = useVoiceRecognition()
@@ -41,10 +42,12 @@ export function ChatPanel() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [showConvDropdown, setShowConvDropdown] = useState(false)
   const [isSpeakingNow, setIsSpeakingNow] = useState(false)
+  const [completedStreamMsg, setCompletedStreamMsg] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const hasSentRef = useRef<string>('') // Track last sent text to avoid duplicates
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -91,7 +94,13 @@ export function ChatPanel() {
     const messageText = (text || input).trim()
     if (!messageText || isLoading) return
 
+    // Prevent duplicate sends of the same text within 2 seconds
+    if (hasSentRef.current === messageText) return
+    hasSentRef.current = messageText
+    setTimeout(() => { hasSentRef.current = '' }, 2000)
+
     setInput('')
+    setCompletedStreamMsg(null)
     incrementCommandCount()
 
     // Parse command
@@ -145,14 +154,12 @@ export function ChatPanel() {
           return
         }
         case 'generate': {
-          // AI Image Generation
           if (commandResult.prompt) {
             handleImageGeneration(commandResult.prompt)
           }
           return
         }
         case 'websearch': {
-          // Web Search
           if (commandResult.query) {
             handleWebSearch(commandResult.query)
           }
@@ -195,6 +202,7 @@ export function ChatPanel() {
           personality: personalityMode,
           history,
           stream: true,
+          language: voiceLanguage, // Pass language for multilingual responses
         }),
         signal: abortController.signal,
       })
@@ -233,7 +241,6 @@ export function ChatPanel() {
 
           // Process complete SSE messages from buffer
           const lines = buffer.split('\n')
-          // Keep the last potentially incomplete line in the buffer
           buffer = lines.pop() || ''
 
           for (const line of lines) {
@@ -284,17 +291,20 @@ export function ChatPanel() {
           }
         }
 
-        // Streaming complete - add the full message to store
+        // Streaming complete - store the completed text to prevent flash
+        // The message will be added to store, and we keep showing it until store updates
         if (fullText) {
+          setCompletedStreamMsg(fullText)
           addMessage({ role: 'assistant', content: fullText })
           if (soundEnabled) playMessageSound()
-          // Delay speak to avoid race condition with setAIStatus in finally block
-          // Also limit TTS text length to prevent browser issues
+
+          // TTS - speak the response
           if (soundEnabled) {
             const speakText = fullText.length > 500 ? fullText.slice(0, 500) + '...' : fullText
             setTimeout(() => speak(speakText), 100)
           }
-          // Notification: JARVIS responded
+
+          // Notification
           addNotification({
             type: 'info',
             title: 'JARVIS Responded',
@@ -317,14 +327,15 @@ export function ChatPanel() {
           setIsStreaming(true)
           setStreamingText(data.response)
           setAIStatus('speaking')
+          setCompletedStreamMsg(data.response)
           addMessage({ role: 'assistant', content: data.response })
           if (soundEnabled) playMessageSound()
-          // Delay speak to avoid race condition
+
           if (soundEnabled) {
             const speakText = data.response.length > 500 ? data.response.slice(0, 500) + '...' : data.response
             setTimeout(() => speak(speakText), 100)
           }
-          // Notification: JARVIS responded
+
           addNotification({
             type: 'info',
             title: 'JARVIS Responded',
@@ -348,11 +359,91 @@ export function ChatPanel() {
     } finally {
       setIsLoading(false)
       setAIStatus('idle')
-      setStreamingText('')
-      setIsStreaming(false)
+      // Clear streaming state after a small delay to prevent flash
+      // The completedStreamMsg ensures the message stays visible during transition
+      setTimeout(() => {
+        setStreamingText('')
+        setIsStreaming(false)
+        setCompletedStreamMsg(null)
+      }, 100)
       abortControllerRef.current = null
     }
-  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, stop, addToast, speak, addNotification])
+  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, stop, addToast, speak, addNotification, voiceLanguage])
+
+  // Handle image generation
+  const handleImageGeneration = useCallback(async (prompt: string) => {
+    setIsLoading(true)
+    setAIStatus('thinking')
+    addMessage({ role: 'assistant', content: `Generating image: "${prompt}"...\n\nThis may take a moment, sir.` })
+
+    try {
+      const response = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+
+      const data = await response.json()
+
+      if (data.imageUrl) {
+        addMessage({
+          role: 'assistant',
+          content: `Here's what I generated for "${prompt}":\n\n![${prompt}](${data.imageUrl})`,
+        })
+        if (soundEnabled) playMessageSound()
+      } else {
+        addMessage({
+          role: 'assistant',
+          content: `I wasn't able to generate that image, sir. ${data.error || 'Please try a different description.'}`,
+        })
+      }
+    } catch {
+      addMessage({
+        role: 'assistant',
+        content: 'Image generation failed, sir. The creative subsystems may be offline. Please try again.',
+      })
+    } finally {
+      setIsLoading(false)
+      setAIStatus('idle')
+    }
+  }, [addMessage, setAIStatus, soundEnabled])
+
+  // Handle web search
+  const handleWebSearch = useCallback(async (query: string) => {
+    setIsLoading(true)
+    setAIStatus('thinking')
+
+    try {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      })
+
+      const data = await response.json()
+
+      if (data.results) {
+        addMessage({
+          role: 'assistant',
+          content: data.results,
+        })
+        if (soundEnabled) playMessageSound()
+      } else {
+        addMessage({
+          role: 'assistant',
+          content: `I couldn't find results for "${query}", sir. ${data.error || 'Please try a different query.'}`,
+        })
+      }
+    } catch {
+      addMessage({
+        role: 'assistant',
+        content: 'Web search failed, sir. The search subsystems may be experiencing issues. Please try again.',
+      })
+    } finally {
+      setIsLoading(false)
+      setAIStatus('idle')
+    }
+  }, [addMessage, setAIStatus, soundEnabled])
 
   // Handle quick command
   const handleQuickCommand = useCallback((cmd: string) => {
@@ -391,6 +482,14 @@ export function ChatPanel() {
   const activeConv = conversations.find((c) => c.id === activeConversationId)
   const convTitle = activeConv?.title || 'New Conversation'
 
+  // Get language display name
+  const langNames: Record<string, string> = {
+    'en-US': 'EN', 'en-GB': 'EN', 'es-ES': 'ES', 'fr-FR': 'FR',
+    'de-DE': 'DE', 'hi-IN': 'HI', 'ja-JP': 'JA', 'zh-CN': 'ZH',
+    'pt-BR': 'PT', 'ko-KR': 'KO', 'ar-SA': 'AR', 'it-IT': 'IT', 'ru-RU': 'RU',
+  }
+  const langCode = langNames[voiceLanguage] || 'EN'
+
   return (
     <div className="flex flex-col h-full glass-panel overflow-hidden relative">
       {/* Animated gradient border at top */}
@@ -421,11 +520,16 @@ export function ChatPanel() {
           </h2>
           {visibleMessageCount > 0 && (
             <span className="text-[10px] font-mono text-white/25 ml-1">
-              {visibleMessageCount} message{visibleMessageCount !== 1 ? 's' : ''}
+              {visibleMessageCount} msg{visibleMessageCount !== 1 ? 's' : ''}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Language indicator */}
+          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-neon-cyan/10 bg-neon-cyan/5">
+            <Globe className="w-2.5 h-2.5 text-neon-cyan/40" />
+            <span className="text-[9px] font-mono text-neon-cyan/50">{langCode}</span>
+          </div>
           {aiStatus !== 'idle' && (
             <motion.span
               initial={{ opacity: 0, x: 10 }}
@@ -571,20 +675,22 @@ export function ChatPanel() {
             <p className="text-sm text-white/30 font-mono text-center">
               J.A.R.V.I.S. Online
             </p>
+            <p className="text-xs text-white/15 font-mono text-center max-w-[250px]">
+              Say &ldquo;Hey Jarvis&rdquo; or type a message to start
+            </p>
           </div>
         )}
 
         {/* Message list */}
-        <AnimatePresence>
-          <ErrorBoundary>
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
-            ))}
-          </ErrorBoundary>
-        </AnimatePresence>
+        <ErrorBoundary>
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} message={msg} />
+          ))}
+        </ErrorBoundary>
 
         {/* Streaming text with dramatic cursor */}
-        {isStreaming && streamingText && (
+        {/* Show streaming text only if it hasn't been added to messages yet */}
+        {isStreaming && streamingText && !completedStreamMsg && (
           <div className="px-4 py-2">
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center mt-1">
@@ -803,6 +909,10 @@ export function ChatPanel() {
           <span className="text-[10px] font-mono text-white/10">|</span>
           <span className="text-[10px] font-mono text-white/20">
             Ctrl+Space for voice
+          </span>
+          <span className="text-[10px] font-mono text-white/10">|</span>
+          <span className="text-[10px] font-mono text-white/20">
+            Say &ldquo;Hey Jarvis&rdquo;
           </span>
         </div>
       </div>

@@ -75,6 +75,7 @@ export default function Home() {
     addNotification,
     colorTheme,
     crtOverlayEnabled,
+    voiceLanguage,
   } = useJarvisStore()
 
   const [showChat, setShowChat] = useState(false)
@@ -120,12 +121,12 @@ export default function Home() {
     // Log boot event
     addEvent({ type: 'boot', severity: 'success', message: 'System boot complete', details: 'All subsystems initialized and operational' })
 
-    // Show greeting after boot
-    const greeting = getGreeting(personalityMode)
+    // Show greeting after boot (multilingual)
+    const greeting = getGreeting(personalityMode, voiceLanguage)
     setGreetingText(greeting)
     setGreetingShown(true)
     setTimeout(() => setGreetingShown(false), 5000)
-  }, [setBooted, soundEnabled, personalityMode, addToast, addEvent])
+  }, [setBooted, soundEnabled, personalityMode, voiceLanguage, addToast, addEvent])
 
   const handleBootPhase = useCallback(
     (phase: number) => {
@@ -631,7 +632,7 @@ export default function Home() {
 
               {/* Voice Input + Quick Actions */}
               <div className="flex flex-col items-center gap-4">
-                <VoiceInput />
+                <VoiceInput onWakeWord={() => setShowChat(true)} />
 
                 {/* Quick action hints - appear one by one */}
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-1">

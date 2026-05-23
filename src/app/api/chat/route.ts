@@ -13,17 +13,35 @@ async function getZAI() {
   return zaiInstance
 }
 
+// Language instructions for multilingual support
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  'en-US': 'Respond in English.',
+  'en-GB': 'Respond in British English.',
+  'es-ES': 'Responde en español. Siempre usa español para todas las respuestas.',
+  'fr-FR': 'Répondez en français. Utilisez toujours le français pour toutes les réponses.',
+  'de-DE': 'Antworte auf Deutsch. Verwende immer Deutsch für alle Antworten.',
+  'hi-IN': 'हिंदी में उत्तर दें। सभी उत्तरों के लिए हिंदी का उपयोग करें।',
+  'ja-JP': '日本語で回答してください。すべての回答に日本語を使用してください。',
+  'zh-CN': '请用中文回答。所有回答请使用中文。',
+  'pt-BR': 'Responda em português brasileiro. Sempre use português para todas as respostas.',
+  'ko-KR': '한국어로 답변하세요. 모든 답변에 한국어를 사용하세요.',
+  'ar-SA': 'أجب باللغة العربية. استخدم العربية دائماً لجميع الإجابات.',
+  'it-IT': 'Rispondi in italiano. Usa sempre l\'italiano per tutte le risposte.',
+  'ru-RU': 'Отвечайте на русском языке. Всегда используйте русский для всех ответов.',
+}
+
 interface ChatRequest {
   message: string
   personality: PersonalityMode
   history: { role: string; content: string }[]
   stream?: boolean
+  language?: string
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json()
-    const { message, personality = 'professional', history = [], stream = true } = body
+    const { message, personality = 'professional', history = [], stream = true, language = 'en-US' } = body
 
     if (!message || message.trim().length === 0) {
       return NextResponse.json(
@@ -35,9 +53,13 @@ export async function POST(request: NextRequest) {
     const zai = await getZAI()
     const systemPrompt = getSystemPrompt(personality)
 
+    // Add language instruction to system prompt
+    const langInstruction = LANGUAGE_INSTRUCTIONS[language] || LANGUAGE_INSTRUCTIONS['en-US']
+    const fullSystemPrompt = `${systemPrompt}\n\n${langInstruction}`
+
     // Build messages array with history
     const messages: { role: string; content: string }[] = [
-      { role: 'assistant', content: systemPrompt },
+      { role: 'assistant', content: fullSystemPrompt },
     ]
 
     // Add conversation history (keep last 20 messages for context)
@@ -79,7 +101,6 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder()
 
     // Get the full response first, then stream it in chunks
-    // This avoids issues with the SDK's streaming support
     const completion = await zai.chat.completions.create({
       messages,
       thinking: { type: 'disabled' },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Radio } from 'lucide-react'
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
@@ -10,12 +10,22 @@ import { playActivationSound, playDeactivationSound } from '@/lib/sounds'
 interface VoiceInputProps {
   className?: string
   onFinalTranscript?: (text: string) => void
+  onWakeWord?: () => void
 }
 
-export function VoiceInput({ className = '', onFinalTranscript }: VoiceInputProps) {
+export function VoiceInput({ className = '', onFinalTranscript, onWakeWord }: VoiceInputProps) {
   const { soundEnabled } = useJarvisStore()
   const { isSupported, isListening, transcript, toggleListening, wakeWordDetected, onFinalTranscript: registerOnFinalTranscript } = useVoiceRecognition()
   const [lastSentText, setLastSentText] = useState('')
+  const prevWakeWordRef = useRef(false)
+
+  // Trigger onWakeWord callback when wake word is detected
+  useEffect(() => {
+    if (wakeWordDetected && !prevWakeWordRef.current && onWakeWord) {
+      onWakeWord()
+    }
+    prevWakeWordRef.current = wakeWordDetected
+  }, [wakeWordDetected, onWakeWord])
 
   // Register the final transcript callback
   useEffect(() => {
@@ -155,22 +165,25 @@ export function VoiceInput({ className = '', onFinalTranscript }: VoiceInputProp
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="text-center"
+            className="text-center max-w-[240px]"
           >
             {lastSentText ? (
               <div className="space-y-1">
                 <p className="text-xs text-neon-cyan/40 font-mono uppercase">Sent</p>
-                <p className="text-sm text-neon-cyan/80 font-mono max-w-[200px] truncate">
+                <p className="text-sm text-neon-cyan/80 font-mono max-w-[240px] truncate">
                   &ldquo;{lastSentText}&rdquo;
                 </p>
               </div>
             ) : transcript ? (
-              <p className="text-sm text-neon-cyan/80 font-mono max-w-[200px] truncate">
-                &ldquo;{transcript}&rdquo;
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs text-neon-cyan/30 font-mono uppercase">Hearing</p>
+                <p className="text-sm text-neon-cyan/80 font-mono line-clamp-2 break-words">
+                  &ldquo;{transcript}&rdquo;
+                </p>
+              </div>
             ) : (
               <p className="text-xs text-neon-cyan/50 font-mono animate-pulse">
-                {wakeWordDetected ? 'Wake word detected...' : 'Listening...'}
+                {wakeWordDetected ? 'Wake word detected — speak now...' : 'Listening...'}
               </p>
             )}
           </motion.div>
@@ -180,7 +193,14 @@ export function VoiceInput({ className = '', onFinalTranscript }: VoiceInputProp
       {/* Not supported message */}
       {!isSupported && (
         <p className="text-[10px] text-white/30 font-mono">
-          Voice not supported
+          Voice not supported in this browser
+        </p>
+      )}
+
+      {/* Wake word hint */}
+      {isSupported && !isListening && (
+        <p className="text-[9px] text-white/15 font-mono text-center">
+          Say &ldquo;Hey Jarvis&rdquo; to activate
         </p>
       )}
     </div>
