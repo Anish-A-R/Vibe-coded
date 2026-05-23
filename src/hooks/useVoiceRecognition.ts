@@ -144,10 +144,21 @@ export function useVoiceRecognition() {
   const lastActivityRef = useRef<number>(Date.now())
   const lastResultTimeRef = useRef<number>(Date.now())
   
+  // Recording buffer refs
+  const recordingBufferRef = useRef<string[]>([])
+  const isRecordingBufferRef = useRef(false)
+  const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastSpeechTimeRef = useRef<number>(0)
+
   // Function refs to break circular dependencies
   const startFreshInstanceRef = useRef<() => void>(() => {})
   const setupHandlersRef = useRef<(recognition: SpeechRecognitionInstance) => void>(() => {})
   const resetWatchdogRef = useRef<() => void>(() => {})
+  const processBufferedTextRef = useRef<() => void>(() => {})
+  const startRecordingWindowRef = useRef<() => void>(() => {})
+  const resetRecordingWindowRef = useRef<() => void>(() => {})
   
   // Browser info
   const browserInfo = useRef(detectBrowser())
@@ -162,6 +173,8 @@ export function useVoiceRecognition() {
   const [micPermission, setMicPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown')
   const [recognitionState, setRecognitionState] = useState<'inactive' | 'starting' | 'active' | 'error' | 'restarting'>('inactive')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [recordingCountdown, setRecordingCountdown] = useState(0)
+  const [isRecordingBuffer, setIsRecordingBuffer] = useState(false)
 
   // Keep isListening ref in sync
   useEffect(() => {
@@ -199,6 +212,19 @@ export function useVoiceRecognition() {
     if (restartDelayTimerRef.current) {
       clearTimeout(restartDelayTimerRef.current)
       restartDelayTimerRef.current = null
+    }
+    // Recording buffer timers
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+      countdownIntervalRef.current = null
     }
   }, [])
 
@@ -307,6 +333,142 @@ export function useVoiceRecognition() {
     startFreshInstanceRef.current = startFreshInstance
   }, [startFreshInstance])
 
+  // ===== Recording Buffer: Process buffered text =====
+  const processBufferedText = useCallback(() => {
+    if (!isRecordingBufferRef.current) return
+
+    // Clean up all recording timers
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+      countdownIntervalRef.current = null
+    }
+
+    // Combine buffered text
+    const combinedText = recordingBufferRef.current.join(' ').trim()
+
+    // Reset recording state
+    isRecordingBufferRef.current = false
+    recordingBufferRef.current = []
+    setRecordingCountdown(0)
+    setIsRecordingBuffer(false)
+
+    // Process the combined text
+    if (combinedText && onFinalTranscriptRef.current) {
+      onFinalTranscriptRef.current(combinedText)
+    }
+
+    // Reset wake word state so system goes back to wake-word detection
+    sessionWakeWordFoundRef.current = false
+    setWakeWordDetected(false)
+  }, [])
+
+  // Keep ref updated
+  useEffect(() => {
+    processBufferedTextRef.current = processBufferedText
+  }, [processBufferedText])
+
+  // ===== Recording Buffer: Reset without processing =====
+  const resetRecordingWindow = useCallback(() => {
+    // Clean up all recording timers
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current)
+      countdownIntervalRef.current = null
+    }
+
+    // Reset recording state without processing
+    isRecordingBufferRef.current = false
+    recordingBufferRef.current = []
+    setRecordingCountdown(0)
+    setIsRecordingBuffer(false)
+  }, [])
+
+  // Keep ref updated
+  useEffect(() => {
+    resetRecordingWindowRef.current = resetRecordingWindow
+  }, [resetRecordingWindow])
+
+  // ===== Recording Buffer: Start recording window =====
+  const startRecordingWindow = useCallback(() => {
+    if (isRecordingBufferRef.current) return // Already recording
+
+    isRecordingBufferRef.current = true
+    recordingBufferRef.current = []
+    lastSpeechTimeRef.current = Date.now()
+    setIsRecordingBuffer(true)
+    setRecordingCountdown(5)
+
+    console.log('[VoiceRecognition] Recording window started (5s)')
+
+    // Start countdown interval - decrements every second
+    countdownIntervalRef.current = setInterval(() => {
+      setRecordingCountdown(prev => {
+        if (prev <= 1) {
+          // 5 seconds elapsed - process the buffer
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current)
+            countdownIntervalRef.current = null
+          }
+          // Use setTimeout to avoid state update during render
+          setTimeout(() => processBufferedTextRef.current(), 0)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    // 5.5-second safety timer (slightly longer than countdown to avoid race)
+    recordingTimerRef.current = setTimeout(() => {
+      if (isRecordingBufferRef.current) {
+        console.log('[VoiceRecognition] Recording safety timer fired')
+        processBufferedTextRef.current()
+      }
+    }, 5500)
+  }, [])
+
+  // Keep ref updated
+  useEffect(() => {
+    startRecordingWindowRef.current = startRecordingWindow
+  }, [startRecordingWindow])
+
+  // ===== Recording Buffer: Reset silence timer =====
+  const resetSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+
+    lastSpeechTimeRef.current = Date.now()
+
+    // Only set silence timer if we're in a recording window
+    if (isRecordingBufferRef.current) {
+      silenceTimerRef.current = setTimeout(() => {
+        if (isRecordingBufferRef.current) {
+          const elapsed = Date.now() - lastSpeechTimeRef.current
+          if (elapsed >= 1800) { // Slightly less than 2s to account for timer drift
+            console.log('[VoiceRecognition] Silence detected, processing buffer early')
+            processBufferedTextRef.current()
+          }
+        }
+      }, 2000)
+    }
+  }, [])
+
   // ===== Setup event handlers on a recognition instance =====
   // NOTE: Defined AFTER startFreshInstance and startRecognition to satisfy declaration order
   // NOTE: This function uses refs (resetWatchdogRef, startFreshInstanceRef) to avoid
@@ -363,11 +525,15 @@ export function useVoiceRecognition() {
         cleanText = cleanText.trim()
 
         if (cleanText && (sessionWakeWordFoundRef.current || activeListeningRef.current)) {
-          if (onFinalTranscriptRef.current) {
-            onFinalTranscriptRef.current(cleanText)
+          // NEW: Buffer the text instead of processing immediately
+          // Start recording window if not already active
+          if (!isRecordingBufferRef.current) {
+            startRecordingWindowRef.current()
           }
-          sessionWakeWordFoundRef.current = false
-          setWakeWordDetected(false)
+          recordingBufferRef.current.push(cleanText)
+          console.log(`[VoiceRecognition] Buffered: "${cleanText}" (buffer: ${recordingBufferRef.current.length} items)`)
+          // Reset silence timer on each speech activity
+          resetSilenceTimer()
         }
 
         setTranscript(finalTranscript)
@@ -381,6 +547,10 @@ export function useVoiceRecognition() {
             setIsListening(true)
             setAIStatus('listening')
           }
+        }
+        // Reset silence timer on interim results (user is still speaking)
+        if (isRecordingBufferRef.current) {
+          resetSilenceTimer()
         }
       }
     }
@@ -649,7 +819,10 @@ export function useVoiceRecognition() {
     setTranscript('')
     setWakeWordDetected(false)
     sessionWakeWordFoundRef.current = false
-    
+
+    // Reset recording window (discard any buffered text)
+    resetRecordingWindowRef.current()
+
     if (recognitionRef.current) {
       try { recognitionRef.current.abort() } catch { /* ignore */ }
     }
@@ -695,5 +868,7 @@ export function useVoiceRecognition() {
     errorMessage,
     requestMicPermission,
     browserInfo: browserInfo.current,
+    recordingCountdown,
+    isRecordingBuffer,
   }
 }

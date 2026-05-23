@@ -6,6 +6,16 @@ import { cn } from '@/lib/utils'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import type { AIStatus } from '@/hooks/useJarvisStore'
 
+// ===== Theme Color Map =====
+const themeColors: Record<string, { primary: string; hex: string; secondary: string }> = {
+  cyan: { primary: 'rgba(0, 240, 255, 1)', hex: '#00f0ff', secondary: 'rgba(0, 102, 255, 0.6)' },
+  red: { primary: 'rgba(255, 51, 102, 1)', hex: '#ff3366', secondary: 'rgba(255, 80, 120, 0.6)' },
+  green: { primary: 'rgba(0, 255, 136, 1)', hex: '#00ff88', secondary: 'rgba(16, 185, 129, 0.6)' },
+  purple: { primary: 'rgba(139, 92, 246, 1)', hex: '#8b5cf6', secondary: 'rgba(192, 38, 211, 0.6)' },
+  orange: { primary: 'rgba(255, 106, 0, 1)', hex: '#ff6a00', secondary: 'rgba(255, 149, 0, 0.6)' },
+  arctic: { primary: 'rgba(96, 165, 250, 1)', hex: '#60a5fa', secondary: 'rgba(56, 189, 248, 0.6)' },
+}
+
 // ===== Status Configuration =====
 const statusConfig: Record<AIStatus, {
   ringSpeeds: number[]
@@ -220,7 +230,7 @@ function generateEnergyArcs(count: number) {
 
 // ===== Sub-Components =====
 
-function TickMarks() {
+function TickMarks({ colorPrimary }: { colorPrimary: string }) {
   const ticks = useMemo(() => generateTickMarks(), [])
   return (
     <g>
@@ -235,7 +245,8 @@ function TickMarks() {
             y1={Math.sin(rad) * innerR}
             x2={Math.cos(rad) * outerR}
             y2={Math.sin(rad) * outerR}
-            stroke="rgba(0, 240, 255, 0.15)"
+            stroke={colorPrimary}
+            strokeOpacity={0.15}
             strokeWidth={tick.isMajor ? 0.8 : 0.4}
           />
         )
@@ -306,7 +317,19 @@ function EnergyArcs({ count, config }: { count: number; config: typeof statusCon
 
 export default function JarvisOrb({ className }: { className?: string }) {
   const aiStatus = useJarvisStore((s) => s.aiStatus)
-  const config = statusConfig[aiStatus]
+  const colorTheme = useJarvisStore((s) => s.colorTheme)
+  const baseConfig = statusConfig[aiStatus]
+  
+  // Override colors based on theme (except thinking which uses orange intentionally)
+  const themeColor = themeColors[colorTheme] || themeColors.cyan
+  const config = aiStatus === 'thinking' || aiStatus === 'speaking'
+    ? baseConfig // thinking/speaking keep their own distinct colors
+    : {
+        ...baseConfig,
+        colorPrimary: themeColor.primary,
+        colorHex: themeColor.hex,
+        colorSecondary: themeColor.secondary,
+      }
 
   const ringDefs = useMemo(() => generateRingDefs(), [])
   const dataChars = useMemo(() => generateDataChars(), [])
@@ -582,7 +605,7 @@ export default function JarvisOrb({ className }: { className?: string }) {
         </motion.g>
 
         {/* ===== Tick Marks ===== */}
-        <TickMarks />
+        <TickMarks colorPrimary={config.colorPrimary} />
 
         {/* ===== Energy Arcs ===== */}
         <EnergyArcs count={config.arcCount} config={config} />

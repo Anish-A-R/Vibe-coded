@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useJarvisStore, type ColorTheme } from '@/hooks/useJarvisStore'
+import { useThemeColors } from '@/hooks/useThemeColors'
 
 // ─── Theme definitions ────────────────────────────────────────────────
 const themes: { id: ColorTheme; label: string; subtitle: string; hex: string }[] = [
@@ -138,6 +139,7 @@ function HexSwatch({
 export function ThemeSwitcher({ open, onClose }: ThemeSwitcherProps) {
   const colorTheme = useJarvisStore((s) => s.colorTheme)
   const setColorTheme = useJarvisStore((s) => s.setColorTheme)
+  const tc = useThemeColors()
 
   // Sync data-theme attribute on change
   useEffect(() => {
@@ -177,8 +179,8 @@ export function ThemeSwitcher({ open, onClose }: ThemeSwitcherProps) {
               className="pointer-events-auto max-w-[400px] w-[92vw] relative overflow-hidden glass-panel-strong"
               style={{
                 borderRadius: '12px',
-                border: `1px solid rgba(0,240,255,0.2)`,
-                boxShadow: `0 0 30px rgba(0,240,255,0.08), 0 0 60px rgba(0,240,255,0.04), 0 8px 32px rgba(0,0,0,0.5)`,
+                border: `1px solid ${tc.rgba(0.2)}`,
+                boxShadow: `0 0 30px ${tc.rgba(0.08)}, 0 0 60px ${tc.rgba(0.04)}, 0 8px 32px rgba(0,0,0,0.5)`,
               }}
             >
               {/* Corner brackets */}

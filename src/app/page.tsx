@@ -11,6 +11,8 @@ import { getGreeting } from '@/lib/personalities'
 import BootSequence from '@/components/jarvis/BootSequence'
 import JarvisOrb from '@/components/jarvis/JarvisOrb'
 import { VoiceChatOverlay } from '@/components/jarvis/VoiceChatOverlay'
+import { ThemeSwitcher } from '@/components/jarvis/ThemeSwitcher'
+import type { ColorTheme } from '@/hooks/useJarvisStore'
 
 export default function Home() {
   const {
@@ -43,6 +45,7 @@ export default function Home() {
   const [greetingShown, setGreetingShown] = useState(false)
   const [greetingText, setGreetingText] = useState('')
   const [lastProcessedVoice, setLastProcessedVoice] = useState('')
+  const [showThemeSwitcher, setShowThemeSwitcher] = useState(false)
 
   const { speak, stop: stopSpeaking } = useTTS()
   const {
@@ -55,6 +58,8 @@ export default function Home() {
     recognitionState,
     requestMicPermission,
     errorMessage: voiceError,
+    recordingCountdown,
+    isRecordingBuffer,
   } = useVoiceRecognition()
 
   // Process voice input -> send to chat or execute command
@@ -104,13 +109,44 @@ export default function Home() {
       return
     }
 
+    // Voice commands for theme switching
+    const colorThemeMap: Record<string, ColorTheme> = {
+      'cyan': 'cyan', 'blue': 'arctic', 'arctic': 'arctic', 'ice': 'arctic',
+      'red': 'red', 'alert': 'red', 'boss': 'red',
+      'green': 'green', 'matrix': 'green', 'hacker': 'green',
+      'purple': 'purple', 'nebula': 'purple', 'violet': 'purple',
+      'orange': 'orange', 'flame': 'orange', 'fire': 'orange',
+    }
+    const themeMatch = Object.entries(colorThemeMap).find(([keyword]) => lowerText.includes(keyword))
+    if (lowerText.includes('theme') || lowerText.includes('color') || lowerText.includes('colour') || lowerText.includes('mode')) {
+      if (themeMatch) {
+        const newTheme = themeMatch[1]
+        const { setColorTheme } = useJarvisStore.getState()
+        setColorTheme(newTheme)
+        if (soundEnabled) speak(`Theme changed to ${newTheme}, sir.`)
+        return
+      }
+      // Just said 'change theme' without specifying - open the theme picker
+      setShowThemeSwitcher(true)
+      if (soundEnabled) speak('Opening theme selector, sir.')
+      return
+    }
+    // Direct color name without 'theme' keyword
+    if (themeMatch && (lowerText.includes('change') || lowerText.includes('switch') || lowerText.includes('set'))) {
+      const newTheme = themeMatch[1]
+      const { setColorTheme } = useJarvisStore.getState()
+      setColorTheme(newTheme)
+      if (soundEnabled) speak(`Theme changed to ${newTheme}, sir.`)
+      return
+    }
+
     // All other voice input goes to the chat system via pendingVoiceInput
     // Auto-open chat so the user can see the response
     if (!showChat) {
       setShowChat(true)
     }
     setPendingVoiceInput(text)
-  }, [lastProcessedVoice, setShowChat, setPendingVoiceInput, showChat, stopSpeaking, setAIStatus, soundEnabled, speak, clearMessages])
+  }, [lastProcessedVoice, setShowChat, setPendingVoiceInput, showChat, stopSpeaking, setAIStatus, soundEnabled, speak, clearMessages, setShowThemeSwitcher])
 
   // Register voice transcript callback
   useEffect(() => {
@@ -234,6 +270,8 @@ export default function Home() {
         micPermission={micPermission}
         isSupported={isSupported}
         voiceError={voiceError}
+        recordingCountdown={recordingCountdown}
+        isRecordingBuffer={isRecordingBuffer}
         onToggleMic={() => {
           if (soundEnabled) {
             if (!isListening) playActivationSound()
@@ -244,8 +282,26 @@ export default function Home() {
         onRequestMic={requestMicPermission}
       />
 
+      {/* ===== THEME SWITCHER BUTTON (top-right, below JARVIS label) ===== */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5 }}
+        onClick={() => setShowThemeSwitcher(true)}
+        className="fixed top-4 right-6 z-30 pointer-events-auto group"
+        aria-label="Change theme"
+      >
+        <div className="relative w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 transition-all duration-300 group-hover:scale-110" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)', background: 'var(--theme-primary)' }} />
+          <div className="absolute inset-0 w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: '0 0 12px var(--theme-primary)' }} />
+        </div>
+      </motion.button>
+
       {/* ===== CHAT POPUP (centered, auto-shows when talking) ===== */}
       <VoiceChatOverlay open={showChat} onClose={() => setShowChat(false)} />
+
+      {/* ===== THEME SWITCHER PANEL ===== */}
+      <ThemeSwitcher open={showThemeSwitcher} onClose={() => setShowThemeSwitcher(false)} />
     </div>
   )
 }
@@ -323,6 +379,8 @@ function VoiceStatusBar({
   micPermission,
   isSupported,
   voiceError,
+  recordingCountdown,
+  isRecordingBuffer,
   onToggleMic,
   onRequestMic,
 }: {
@@ -334,6 +392,8 @@ function VoiceStatusBar({
   micPermission: string
   isSupported: boolean
   voiceError: string | null
+  recordingCountdown: number
+  isRecordingBuffer: boolean
   onToggleMic: () => void
   onRequestMic: () => void
 }) {
@@ -346,6 +406,7 @@ function VoiceStatusBar({
     if (recognitionState === 'restarting') return 'RECONNECTING'
     if (aiStatus === 'thinking') return 'PROCESSING'
     if (aiStatus === 'speaking') return 'SPEAKING'
+    if (isRecordingBuffer) return `RECORDING ${recordingCountdown}s`
     if (isListening && transcript) return 'HEARING'
     if (isListening) return 'LISTENING'
     if (wakeWordDetected) return 'WAKE WORD'
@@ -356,9 +417,15 @@ function VoiceStatusBar({
     if (micPermission === 'denied' || recognitionState === 'error') return 'text-neon-red/70'
     if (aiStatus === 'thinking') return 'text-neon-orange/70'
     if (aiStatus === 'speaking') return 'text-neon-blue/70'
+    if (isRecordingBuffer) return 'text-neon-green/80'
     if (isListening) return 'text-neon-cyan/80'
     return 'text-white/30'
   })()
+
+  // Circular progress for recording countdown
+  const countdownProgress = recordingCountdown > 0 ? ((5 - recordingCountdown) / 5) * 100 : 0
+  const progressCircumference = 2 * Math.PI * 28 // matches SVG circle r=28
+  const strokeDashoffset = progressCircumference - (countdownProgress / 100) * progressCircumference
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 z-20 pointer-events-auto">
@@ -394,7 +461,7 @@ function VoiceStatusBar({
         {/* Mic button - larger and more prominent */}
         <div className="relative">
           <AnimatePresence>
-            {isListening && (
+            {isListening && !isRecordingBuffer && (
               <>
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0.5 }}
@@ -421,6 +488,56 @@ function VoiceStatusBar({
             )}
           </AnimatePresence>
 
+          {/* Circular countdown progress indicator */}
+          <AnimatePresence>
+            {isRecordingBuffer && recordingCountdown > 0 && (
+              <motion.svg
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.3 }}
+                className="absolute inset-0 w-16 h-16 -rotate-90 pointer-events-none"
+                style={{ zIndex: 10 }}
+              >
+                {/* Background circle */}
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  fill="none"
+                  stroke="rgba(0, 240, 255, 0.1)"
+                  strokeWidth="2"
+                />
+                {/* Progress arc */}
+                <motion.circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  fill="none"
+                  stroke="rgba(0, 255, 136, 0.6)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 28}
+                  initial={{ strokeDashoffset: 2 * Math.PI * 28 }}
+                  animate={{ strokeDashoffset }}
+                  transition={{ duration: 1, ease: 'linear' }}
+                />
+              </motion.svg>
+            )}
+          </AnimatePresence>
+
+          {/* Recording pulse ring */}
+          <AnimatePresence>
+            {isRecordingBuffer && (
+              <motion.div
+                initial={{ scale: 1, opacity: 0.5 }}
+                animate={{ scale: 1.6, opacity: 0 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'easeOut' }}
+                className="absolute inset-0 rounded-full border-2 border-neon-green/40"
+              />
+            )}
+          </AnimatePresence>
+
           <motion.button
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
@@ -431,6 +548,8 @@ function VoiceStatusBar({
               transition-all duration-300
               ${micPermission === 'denied'
                 ? 'bg-neon-red/10 border-2 border-neon-red/30'
+                : isRecordingBuffer
+                ? 'bg-neon-green/15 border-2 border-neon-green/60 shadow-[0_0_30px_rgba(0,255,136,0.25)]'
                 : isListening
                 ? 'bg-neon-cyan/15 border-2 border-neon-cyan/60 shadow-[0_0_30px_rgba(0,240,255,0.25)]'
                 : 'bg-white/5 border-2 border-white/15 hover:border-neon-cyan/30 hover:bg-neon-cyan/5'
@@ -439,7 +558,13 @@ function VoiceStatusBar({
             `}
             aria-label={isListening ? 'Stop listening' : 'Start listening'}
           >
-            {isListening ? (
+            {isRecordingBuffer ? (
+              <div className="flex items-center justify-center">
+                <span className="font-mono text-lg font-bold text-neon-green/90">
+                  {recordingCountdown}
+                </span>
+              </div>
+            ) : isListening ? (
               <div className="flex items-center justify-center gap-[3px]">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <motion.div

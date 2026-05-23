@@ -21,6 +21,7 @@ import {
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useTTS } from '@/hooks/useTTS'
 import { useJarvisToast } from '@/hooks/useJarvisToast'
+import { useThemeColors } from '@/hooks/useThemeColors'
 import { parseCommand } from '@/lib/commands'
 import { playMessageSound, playThinkingSound } from '@/lib/sounds'
 
@@ -32,9 +33,10 @@ interface VoiceChatOverlayProps {
 
 // ─── Corner Bracket Decorations ───────────────────────────────────────
 function CornerBrackets() {
+  const tc = useThemeColors()
   const size = 18
   const thickness = 2
-  const color = 'rgba(0, 240, 255, 0.5)'
+  const color = tc.rgba(0.5)
 
   return (
     <>
@@ -65,6 +67,7 @@ function CornerBrackets() {
 // ─── Typewriter Text for AI Responses ─────────────────────────────────
 function TypewriterText({ text, speed = 18 }: { text: string; speed?: number }) {
   const [displayedLength, setDisplayedLength] = useState(0)
+  const tc = useThemeColors()
 
   useEffect(() => {
     if (displayedLength >= text.length) return
@@ -165,7 +168,7 @@ function TypewriterText({ text, speed = 18 }: { text: string; speed?: number }) 
       {!isComplete && (
         <motion.span
           className="inline-block w-[6px] h-[13px] bg-neon-cyan ml-0.5 align-middle rounded-[1px]"
-          style={{ boxShadow: '0 0 6px rgba(0,240,255,0.6), 0 0 12px rgba(0,240,255,0.3)' }}
+          style={{ boxShadow: `0 0 6px ${tc.rgba(0.6)}, 0 0 12px ${tc.rgba(0.3)}` }}
           animate={{ opacity: [1, 1, 0, 0] }}
           transition={{
             duration: 0.8,
@@ -185,6 +188,7 @@ function OverlayMessage({
 }: {
   message: { id: string; role: string; content: string; timestamp: number; isVoice?: boolean }
 }) {
+  const tc = useThemeColors()
   const isUser = message.role === 'user'
   const isSystem = message.role === 'system'
   const timeStr = new Date(message.timestamp).toLocaleTimeString('en-US', {
@@ -240,7 +244,7 @@ function OverlayMessage({
               className="absolute top-0 left-0 w-[2px] h-full"
               style={{
                 background:
-                  'linear-gradient(to bottom, transparent, rgba(0,240,255,0.35), rgba(0,240,255,0.1), transparent)',
+                  `linear-gradient(to bottom, transparent, ${tc.rgba(0.35)}, ${tc.rgba(0.1)}, transparent)`,
               }}
             />
           )}
@@ -381,6 +385,7 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
 
   const { speak, stop, isSpeaking } = useTTS()
   const { addToast } = useJarvisToast()
+  const tc = useThemeColors()
 
   // ── Local state ──
   const [input, setInput] = useState('')
@@ -896,9 +901,9 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
               className="pointer-events-auto max-w-[520px] w-[90vw] flex flex-col glass-panel-strong relative overflow-hidden"
               style={{
                 borderRadius: '12px',
-                border: '1px solid rgba(0,240,255,0.2)',
+                border: `1px solid ${tc.rgba(0.2)}`,
                 boxShadow:
-                  '0 0 30px rgba(0,240,255,0.1), 0 0 60px rgba(0,240,255,0.05), 0 8px 32px rgba(0,0,0,0.5)',
+                  `0 0 30px ${tc.rgba(0.1)}, 0 0 60px ${tc.rgba(0.05)}, 0 8px 32px rgba(0,0,0,0.5)`,
                 maxHeight: '80vh',
               }}
             >
@@ -911,7 +916,7 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
                   className="h-full w-[200%]"
                   style={{
                     background:
-                      'linear-gradient(90deg, transparent, rgba(0,240,255,0.6), rgba(0,240,255,0.1), rgba(255,165,0,0.4), transparent, rgba(0,240,255,0.6), transparent)',
+                      `linear-gradient(90deg, transparent, ${tc.rgba(0.6)}, ${tc.rgba(0.1)}, rgba(255,165,0,0.4), transparent, ${tc.rgba(0.6)}, transparent)`,
                     backgroundSize: '200% 100%',
                   }}
                   animate={{ backgroundPosition: ['0% 0%', '200% 0%'] }}
@@ -924,7 +929,7 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
                   className="h-full w-[200%]"
                   style={{
                     background:
-                      'linear-gradient(90deg, transparent, rgba(0,240,255,0.4), rgba(0,240,255,0.08), rgba(255,165,0,0.3), transparent, rgba(0,240,255,0.4), transparent)',
+                      `linear-gradient(90deg, transparent, ${tc.rgba(0.4)}, ${tc.rgba(0.08)}, rgba(255,165,0,0.3), transparent, ${tc.rgba(0.4)}, transparent)`,
                     backgroundSize: '200% 100%',
                   }}
                   animate={{ backgroundPosition: ['200% 0%', '0% 0%'] }}
@@ -937,7 +942,7 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
                   className="w-full h-[200%]"
                   style={{
                     background:
-                      'linear-gradient(180deg, transparent, rgba(0,240,255,0.5), rgba(0,240,255,0.1), transparent, rgba(0,240,255,0.5), transparent)',
+                      `linear-gradient(180deg, transparent, ${tc.rgba(0.5)}, ${tc.rgba(0.1)}, transparent, ${tc.rgba(0.5)}, transparent)`,
                     backgroundSize: '100% 200%',
                   }}
                   animate={{ backgroundPosition: ['0% 0%', '0% 200%'] }}
@@ -950,7 +955,7 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
                   className="w-full h-[200%]"
                   style={{
                     background:
-                      'linear-gradient(180deg, transparent, rgba(0,240,255,0.5), rgba(0,240,255,0.1), transparent, rgba(0,240,255,0.5), transparent)',
+                      `linear-gradient(180deg, transparent, ${tc.rgba(0.5)}, ${tc.rgba(0.1)}, transparent, ${tc.rgba(0.5)}, transparent)`,
                     backgroundSize: '100% 200%',
                   }}
                   animate={{ backgroundPosition: ['0% 200%', '0% 0%'] }}

@@ -1,217 +1,25 @@
-# JARVIS AI Voice Agent - Worklog
-
-## Project Status
-JARVIS has been completely redesigned from an OS-style interface to a **voice-first Iron Man JARVIS assistant**. No desktop icons, no taskbar, no window manager - just voice interaction with holographic-style answer displays.
-
-## Completed Changes
-
-### Task 1: Project Analysis
-- Read all existing files to understand current architecture
-- Previous design was an OS-style interface with Desktop, Taskbar, AppLauncher, WindowManager
-- Voice recognition hooks already had Windows/Chrome fixes (watchdog, periodic restart, etc.)
-
-### Task 2-a: JarvisOrb Component
-- Created `/src/components/jarvis/JarvisOrb.tsx`
-- Central glowing arc reactor with 6 concentric rotating rings
-- Reacts to AI status: idle (slow pulse), listening (bright pulsing), thinking (fast spinning), speaking (pulsating)
-- Orbital particles, HUD arc segments, data text ring, tick marks
-- 200px mobile / 300px desktop responsive sizing
-- No mouse interaction - purely visual display element
-
-### Task 2-b: HolographicDisplay Component
-- Created `/src/components/jarvis/HolographicDisplay.tsx`
-- Floating holographic cards for AI responses
-- Corner bracket decorations, typewriter streaming effect
-- Markdown rendering with JARVIS theme
-- Auto-dismiss after 30 seconds
-- Voice transcript card above response
-- Status indicators: Listening, Processing, Speaking
-
-### Task 2-c: VoiceChatOverlay Component
-- Created `/src/components/jarvis/VoiceChatOverlay.tsx`
-- Floating chat panel slides in from right
-- Toggled via voice commands or Ctrl+K
-- SSE streaming with blinking cursor
-- Command handling (open, search, clear, etc.)
-- TTS integration for speaking responses
-- Text input fallback for non-voice scenarios
-
-### Task 3: page.tsx Rewrite
-- Complete rewrite from OS interface to voice-first design
-- Central orb with holographic display
-- Ambient info bar (time, date, JARVIS branding)
-- Voice status bar at bottom with mic button, status text, chat toggle
-- Auto-starts wake word listening after boot
-- Keyboard shortcuts: Ctrl+Space (voice), Ctrl+K (chat), Escape (close)
-
-### Task 4: Store Update
-- Added `showChat` / `setShowChat` to useJarvisStore
-- Session-only state (not persisted)
-
-### Task 5: Speech Recognition Fix
-- Voice recognition auto-starts after boot (key fix for Windows)
-- Wake word detection enabled by default
-- Mic button prominently displayed at bottom
-- Watchdog timer, periodic restart, and error recovery already in place
-
-## Key Architecture Decisions
-1. **Voice-first**: No mouse-clickable icons - everything controlled by voice
-2. **Chat overlay**: Available via voice command or keyboard, not always visible
-3. **Holographic display**: AI responses shown as floating cards, auto-dismiss
-4. **Iron Man aesthetic**: Arc reactor orb, HUD grid, neon cyan, corner brackets
-
-## Unresolved Issues
-- The HolographicDisplay and VoiceChatOverlay both handle pending voice input - need to ensure no duplicate processing
-- Need to verify Windows Chrome speech recognition works end-to-end on real hardware
-- The boot sequence still references "AI Operating System" - should be updated to "Voice Agent"
-- CRT overlay might cause performance issues on low-end devices
-- Need to add more voice commands (settings, personality change, etc.)
-
-## Next Priority Recommendations
-1. Test on real Windows/Chrome hardware to verify speech recognition
-2. Add voice commands for settings/personality switching
-3. Optimize animations for low-end devices
-4. Update boot sequence text for voice agent branding
-5. Add conversation title auto-generation from first message
-
 ---
-
-Task ID: 2
-Agent: Main Agent
-Task: Fix speech recognition dropping after 2-3 conversations
+Task ID: 1
+Agent: Main
+Task: Add color theme switching and 5-second voice recording timer
 
 Work Log:
-- Analyzed useVoiceRecognition.ts hook (620 lines) and identified root causes:
-  1. Chrome SpeechRecognition instance gets corrupted after multiple start/stop cycles - start() succeeds but no events fire
-  2. The same instance was reused (only calling .start()/.stop()) instead of creating fresh instances
-  3. sessionWakeWordFound was a local variable inside useEffect closure - resets on every effect re-run
-  4. No restart mechanism after AI finishes speaking (TTS) - recognition could silently die during speech
-  5. onend handler had conditional restart logic that could skip restarting in certain states
-  6. Retry backoff grew too aggressively (exponential base 2)
-- Complete rewrite of useVoiceRecognition.ts:
-  1. Creates FRESH SpeechRecognition instance after every 3 restart cycles (MAX_RESTARTS_BEFORE_FRESH = 3)
-  2. Moves sessionWakeWordFound and lastProcessedIndex to refs (persist across instance recreations)
-  3. Adds explicit restart after AI finishes speaking (aiStatus = 'idle' effect)
-  4. Simplified onend handler: always restart if shouldListenRef is true
-  5. More aggressive watchdog: 8s inactivity check (was 12s), 15s no-results check
-  6. Health check: if recognition is "active" but no results for 15s, force fresh instance
-  7. Periodic Chrome health check every 15s
-  8. Slower backoff growth (base 1.5 instead of 2), higher max retries (10 instead of 5)
-  9. Uses refs for callback functions to avoid circular dependency issues
-- Fixed page.tsx: auto-open chat panel when voice input is detected (so user can see AI response)
-- Added "clear chat" / "clear history" voice command handling path
+- Read current project state: globals.css already had `--theme-primary-rgb` CSS variables, `[data-theme]` selectors, and `personality-*` classes
+- Added ThemeSync component to layout.tsx for syncing data-theme attribute on <html>
+- Added theme switcher hexagonal button to page.tsx (top-right corner)
+- Imported ThemeSwitcher component and wired it up with showThemeSwitcher state
+- Added voice commands for theme switching: "change theme to cyan/red/green/purple/orange/arctic", "change color", "switch mode"
+- Created useThemeColors hook for providing theme-aware inline style values
+- Updated JarvisOrb to read colorTheme from store and override statusConfig colors per theme
+- Updated TickMarks in JarvisOrb to accept colorPrimary prop
+- Updated VoiceChatOverlay to use useThemeColors for inline styles (card border, animated borders, corner brackets, holographic accent bars, cursor)
+- Updated ThemeSwitcher panel border to use theme-aware colors
+- 5-second voice recording timer was already implemented by subagent (recordingBufferRef, countdownIntervalRef, silenceTimerRef, recordingCountdown state, circular SVG progress indicator on mic button, green recording state)
 
 Stage Summary:
-- Speech recognition should now survive 2-3+ conversations due to fresh instance creation
-- Auto-open chat on voice input ensures user can always see responses
-- All lint checks pass, app compiles and loads correctly
-
----
-
-Task ID: 3
-Agent: Main Agent
-Task: Fix chat text display, update boot sequence, add voice commands, improve UI
-
-Work Log:
-- Fixed VoiceChatOverlay.tsx: `completedStreamMsg` variable was referenced but never defined - added state variable and set it properly during streaming completion
-- Updated BootSequence.tsx: Changed "J.A.R.V.I.S. SYSTEM" → "J.A.R.V.I.S. VOICE AGENT", "Scanning environment" → "Activating voice agent", "Activating HUD interface" → "Loading personality matrix", "All systems operational" → "Voice agent online. All systems operational", "Welcome back, sir." → "Welcome back, sir. Say 'Jarvis' to begin."
-- Added voice commands to page.tsx: "stop speaking", "stop talking", "be quiet", "shut up", "quiet", "silence" → stops TTS; "clear chat", "clear history", "clear conversation", "new chat" → clears messages and speaks confirmation
-- Improved VoiceStatusBar: Removed chat toggle button (voice-first design), enlarged mic button from w-12 to w-16, added 3rd pulsing ring animation, added "Say 'Jarvis' or click the mic" animated prompt, added voice error display, status label now uses AnimatePresence for smooth transitions
-- Added VoiceFeedbackBubble component: Shows real-time transcript above the mic button when listening, with neon glow, animated left border, and listening dots
-- All lint checks pass
-
-Stage Summary:
-- Chat text display bug fixed (completedStreamMsg was undefined)
-- Boot sequence now says "Voice Agent" throughout
-- 7+ new voice commands for hands-free control
-- Mic button is now larger and more prominent with 3-ring pulse animation
-- Real-time voice transcript bubble gives immediate visual feedback
-- Chat toggle button removed from status bar (still accessible via Ctrl+K and voice)
-
----
-Task ID: 4
-Agent: Main Agent
-Task: Redesign voice chat as centered popup (old design style)
-
-Work Log:
-- Read current VoiceChatOverlay.tsx (side panel design), HolographicDisplay.tsx, JarvisOrb.tsx, page.tsx
-- Delegated VoiceChatOverlay rewrite to full-stack-developer subagent
-- Subagent rewrote VoiceChatOverlay as a centered popup card instead of side panel:
-  - Position: Fixed center of screen, max-w-[520px] w-[90vw]
-  - Glass panel with holographic animated borders on all 4 edges
-  - Corner bracket decorations, scanline overlay
-  - Auto-show when voice activity detected (listening + transcript, AI thinking/speaking, streaming, loading)
-  - Auto-hide after 5 seconds of inactivity
-  - Voice transcript section at top with mic icon and animated voice bars
-  - Messages area with scroll, streaming text with blinking cursor
-  - Text input at bottom with send button
-  - All existing chat logic preserved (handleSend, SSE streaming, command parsing, TTS)
-- Updated page.tsx:
-  - Removed HolographicDisplay import and component (popup now handles AI response display)
-  - Removed VoiceFeedbackBubble component and usage (popup now shows voice transcript)
-  - Simplified the main interface to just: AmbientBar + JarvisOrb + VoiceStatusBar + VoiceChatOverlay
-  - Cleaner design - the popup appears when you talk and shows everything
-
-Stage Summary:
-- Voice chat is now a centered popup that appears when talking, matching the "old design" the user requested
-- Removed redundant VoiceFeedbackBubble and HolographicDisplay components from page
-- Popup auto-shows on voice activity, auto-hides after 5s idle
-- Linter passes, dev server compiles successfully
-
----
-
-Task ID: 5
-Agent: Main Agent
-Task: Create hexagon tab icon and make everything downloadable
-
-Work Log:
-- Created `/home/z/my-project/public/favicon.svg` — A JARVIS-themed hexagon favicon with:
-  - Outer hexagon with cyan gradient glow
-  - Dark inner fill matching the JARVIS theme
-  - Inner hexagonal ring decorations (2 concentric rings)
-  - Arc reactor core center with 3 concentric glowing dots
-  - Bold "J" letter in the center with glow filter
-  - Corner accent dots at each hexagon vertex
-- Updated `/home/z/my-project/src/app/layout.tsx` — Changed icon from external CDN URL to local `/favicon.svg`
-- Added download functionality to VoiceChatOverlay:
-  - `handleDownloadText()` — Exports full chat as formatted .txt file with headers, separators, timestamps, and voice indicators
-  - `handleDownloadMarkdown()` — Exports full chat as .md file with markdown headings, blockquotes, and separators
-  - `handleDownloadMessage()` — Exports individual message as .txt file
-  - Download as .md button (FileDown icon) in header
-  - Download as .txt button (Download icon) in header
-  - Per-message download button (appears on hover) next to each message's timestamp
-- Added voice command "download chat" / "save chat" / "export chat" / "download conversation" in page.tsx
-- Voice command dispatches `jarvis-download-chat` custom event that VoiceChatOverlay listens for
-- All toast notifications for download confirmations
-- Lint passes, dev server compiles successfully
-
-Stage Summary:
-- Tab icon is now a glowing cyan hexagon with "J" — matching JARVIS aesthetic
-- Full conversation can be downloaded as .txt or .md from header buttons
-- Individual messages can be downloaded on hover
-- Voice command "download chat" triggers text export
-- All downloads use browser native Blob + URL.createObjectURL
-
----
-Task ID: 6
-Agent: Main Agent
-Task: Fix critical TDZ error causing app crash + fix voice recognition infinite restart loop
-
-Work Log:
-- Diagnosed app crash: `ReferenceError: Cannot access 'handleDownloadText' before initialization` in VoiceChatOverlay.tsx
-- Root cause: useEffect (line 518) referenced `handleDownloadText` useCallback (line 893) - TDZ violation
-- Moved the download callback definitions (handleDownloadText, handleDownloadMarkdown, handleDownloadMessage) BEFORE the useEffect that references them
-- Removed the duplicate callback definitions that remained at the old location
-- Fixed VoiceRecognition infinite restart loop when mic is denied:
-  - Added `micPermission === 'denied'` guard to main initialization useEffect
-  - Added `micPermission === 'denied'` guard to isListening change handler
-  - Added `micPermission !== 'denied'` check to wakeWordEnabled change handler
-  - Added `micPermission` to all relevant dependency arrays
-- Verified app loads correctly with agent-browser: 200 OK, no errors
-- Hexagon favicon confirmed working in browser tab
-
-Stage Summary:
-- Critical TDZ bug fixed: download callbacks now defined before the useEffect that references them
-- Voice recognition no longer infinitely restarts when mic permission is denied
-- App fully functional, hexagon favicon displaying correctly
-- All lint checks pass
+- 6 color themes available: cyan (default), red, green, purple, orange, arctic
+- Theme can be changed via: hexagonal button in top-right, voice commands, or ThemeSwitcher panel
+- CSS classes (glass-panel, neon-glow-cyan, neon-text-cyan, etc.) use var(--theme-primary-rgb) for automatic theme switching
+- Voice recording buffers for 5 seconds with 2-second silence detection for early processing
+- Visual feedback: circular SVG progress ring around mic button, countdown number, green glow state
+- Status label shows "RECORDING 5s" → "RECORDING 1s" during buffer window
