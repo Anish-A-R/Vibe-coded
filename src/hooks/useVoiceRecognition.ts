@@ -100,24 +100,59 @@ function detectBrowser(): { name: string; isChromeBased: boolean; isFirefox: boo
   return { name, isChromeBased, isFirefox, isSafari }
 }
 
+// Max consecutive restarts on same instance before creating a fresh one
+const MAX_RESTARTS_BEFORE_FRESH = 3
+// Max retries with backoff
+const MAX_RETRIES = 10
+
 /**
- * Enhanced Voice Recognition Hook
+ * Robust Voice Recognition Hook
  * 
- * Windows/Chrome fixes:
- * 1. Watchdog timer - restarts recognition if no events received for 12s (Chrome silent death bug)
- * 2. Periodic force-restart every 25s to prevent Chrome's continuous mode from silently failing
- * 3. Delayed restart on onend (300ms) to avoid race conditions
- * 4. Proper result index tracking using event.resultIndex
- * 5. Better error recovery with retry backoff
- * 6. Microphone permission detection
- * 7. Browser compatibility detection
+ * Key fixes for "stops after 2-3 conversations":
+ * 1. Creates a FRESH SpeechRecognition instance after every few restart cycles (fixes Chrome corruption)
+ * 2. Tracks restart cycle count and forces fresh instance after MAX_RESTARTS_BEFORE_FRESH cycles
+ * 3. Moves sessionWakeWordFound to a ref (persists across instance recreations)
+ * 4. Explicitly restarts recognition after AI finishes speaking
+ * 5. Simplified onend handler: always restart if shouldListen is true
+ * 6. More aggressive watchdog (8s instead of 12s)
+ * 7. Health check: if recognition state is "active" but no results for 15s, force fresh instance
+ * 8. Uses refs for callback functions to avoid circular dependency issues
  */
 export function useVoiceRecognition() {
   const { isListening, setIsListening, aiStatus, setAIStatus, wakeWordEnabled, voiceLanguage } = useJarvisStore()
+  
+  // ===== Persistent refs (survive across recognition instance recreations) =====
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const isListeningRef = useRef(isListening)
   const onFinalTranscriptRef = useRef<OnFinalTranscript | null>(null)
   const shouldListenRef = useRef(false)
+  const activeListeningRef = useRef(false)
+  
+  // Session-level state (persists across instance recreations)
+  const sessionWakeWordFoundRef = useRef(false)
+  const lastProcessedIndexRef = useRef(-1)
+  
+  // Restart tracking
+  const restartCycleCountRef = useRef(0)
+  const retryCountRef = useRef(0)
+  const isStoppingRef = useRef(false)
+  
+  // Timers
+  const watchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const forceRestartTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const restartDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastActivityRef = useRef<number>(Date.now())
+  const lastResultTimeRef = useRef<number>(Date.now())
+  
+  // Function refs to break circular dependencies
+  const startFreshInstanceRef = useRef<() => void>(() => {})
+  const setupHandlersRef = useRef<(recognition: SpeechRecognitionInstance) => void>(() => {})
+  const resetWatchdogRef = useRef<() => void>(() => {})
+  
+  // Browser info
+  const browserInfo = useRef(detectBrowser())
+
+  // ===== React state (for UI rendering) =====
   const [transcript, setTranscript] = useState('')
   const [isSupported] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -128,26 +163,7 @@ export function useVoiceRecognition() {
   const [recognitionState, setRecognitionState] = useState<'inactive' | 'starting' | 'active' | 'error' | 'restarting'>('inactive')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Track whether we're in active listening mode (user-initiated) vs passive wake-word listening
-  const activeListeningRef = useRef(false)
-
-  // Watchdog timer refs
-  const watchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const forceRestartTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const restartDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastActivityRef = useRef<number>(Date.now())
-
-  // Retry backoff
-  const retryCountRef = useRef(0)
-  const maxRetries = 5
-
-  // Track if we're currently in the process of creating/starting recognition
-  const isCreatingRef = useRef(false)
-
-  // Browser info
-  const browserInfo = useRef(detectBrowser())
-
-  // Keep ref in sync
+  // Keep isListening ref in sync
   useEffect(() => {
     isListeningRef.current = isListening
     activeListeningRef.current = isListening
@@ -156,7 +172,6 @@ export function useVoiceRecognition() {
   // ===== Check Microphone Permission =====
   useEffect(() => {
     if (typeof window === 'undefined' || !navigator.permissions) return
-
     const checkPermission = async () => {
       try {
         const result = await navigator.permissions.query({ name: 'microphone' as PermissionName })
@@ -165,35 +180,13 @@ export function useVoiceRecognition() {
           setMicPermission(result.state as 'granted' | 'denied' | 'prompt')
         }
       } catch {
-        // permissions.query not supported for microphone in all browsers
         setMicPermission('unknown')
       }
     }
-
     checkPermission()
   }, [])
 
-  // ===== Watchdog: Restart recognition if no activity for 12 seconds =====
-  const resetWatchdog = useCallback(() => {
-    lastActivityRef.current = Date.now()
-    if (watchdogTimerRef.current) {
-      clearTimeout(watchdogTimerRef.current)
-    }
-    // Check every 3 seconds if recognition is still alive
-    watchdogTimerRef.current = setTimeout(() => {
-      const elapsed = Date.now() - lastActivityRef.current
-      if (elapsed > 12000 && shouldListenRef.current && recognitionRef.current) {
-        console.warn('[VoiceRecognition] Watchdog triggered - no activity for 12s, restarting recognition')
-        setRecognitionState('restarting')
-        try {
-          recognitionRef.current.abort()
-        } catch { /* ignore */ }
-        // The onend handler will restart it
-      }
-    }, 15000)
-  }, [])
-
-  // ===== Stop all timers =====
+  // ===== Clear all timers =====
   const clearAllTimers = useCallback(() => {
     if (watchdogTimerRef.current) {
       clearTimeout(watchdogTimerRef.current)
@@ -209,86 +202,124 @@ export function useVoiceRecognition() {
     }
   }, [])
 
-  // ===== Create recognition instance =====
-  // NOTE: startRecognition is defined inline here to avoid circular dependency
-  useEffect(() => {
-    if (!isSupported || typeof window === 'undefined') return
-
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognitionAPI) return
-
-    // Prevent double-creation
-    if (isCreatingRef.current) return
-    isCreatingRef.current = true
-
-    // Stop existing
-    if (recognitionRef.current) {
-      try { recognitionRef.current.abort() } catch { /* ignore */ }
+  // ===== Watchdog: Check if recognition is actually alive =====
+  const resetWatchdog = useCallback(() => {
+    lastActivityRef.current = Date.now()
+    if (watchdogTimerRef.current) {
+      clearTimeout(watchdogTimerRef.current)
     }
+    watchdogTimerRef.current = setTimeout(() => {
+      const elapsed = Date.now() - lastActivityRef.current
+      const resultElapsed = Date.now() - lastResultTimeRef.current
+      
+      if (elapsed > 8000 && shouldListenRef.current) {
+        console.warn(`[VoiceRecognition] Watchdog: no activity for ${Math.round(elapsed/1000)}s, forcing fresh instance`)
+        restartCycleCountRef.current = MAX_RESTARTS_BEFORE_FRESH
+        setRecognitionState('restarting')
+        try { recognitionRef.current?.abort() } catch { /* onend will handle restart */ }
+      } else if (resultElapsed > 15000 && shouldListenRef.current) {
+        console.warn(`[VoiceRecognition] Watchdog: no results for ${Math.round(resultElapsed/1000)}s, forcing fresh instance`)
+        restartCycleCountRef.current = MAX_RESTARTS_BEFORE_FRESH
+        try { recognitionRef.current?.abort() } catch { /* onend will handle restart */ }
+      }
+    }, 4000)
+  }, [])
+
+  // Keep ref updated
+  useEffect(() => {
+    resetWatchdogRef.current = resetWatchdog
+  }, [resetWatchdog])
+
+  // ===== Create a fresh SpeechRecognition instance =====
+  const createRecognitionInstance = useCallback((): SpeechRecognitionInstance | null => {
+    if (typeof window === 'undefined') return null
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognitionAPI) return null
 
     const recognition = new SpeechRecognitionAPI()
-    
-    // IMPORTANT: Chrome on Windows has a bug where continuous mode silently dies.
-    // We use continuous = true but implement our own watchdog and periodic restart.
     recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = voiceLanguage || 'en-US'
     recognition.maxAlternatives = 1
+    return recognition
+  }, [voiceLanguage])
 
-    // Session tracking
-    let sessionWakeWordFound = false
-    let lastProcessedIndex = -1
+  // ===== Start a recognition instance =====
+  const startRecognition = useCallback((recognition: SpeechRecognitionInstance) => {
+    if (!shouldListenRef.current) return
 
-    // ===== Local startRecognition function (avoids circular dep) =====
-    const startRecognition = (rec: SpeechRecognitionInstance) => {
-      if (!shouldListenRef.current) return
+    try {
+      setRecognitionState('starting')
+      recognition.start()
+      retryCountRef.current = 0
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : String(e)
+      if (!errMsg.includes('already started') && !errMsg.includes('started')) {
+        console.warn('[VoiceRecognition] Start error:', errMsg)
+        setRecognitionState('error')
+        setErrorMessage(`Failed to start recognition: ${errMsg}`)
 
-      try {
-        setRecognitionState('starting')
-        rec.start()
-        retryCountRef.current = 0
-      } catch (e: unknown) {
-        const errMsg = e instanceof Error ? e.message : String(e)
-        if (!errMsg.includes('already started') && !errMsg.includes('started')) {
-          console.warn('[VoiceRecognition] Start error:', errMsg)
-          setRecognitionState('error')
-          setErrorMessage(`Failed to start recognition: ${errMsg}`)
-
-          // Retry with backoff
-          if (retryCountRef.current < maxRetries) {
-            retryCountRef.current++
-            const delay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 8000)
-            console.log(`[VoiceRecognition] Retrying start in ${delay}ms (attempt ${retryCountRef.current}/${maxRetries})`)
-            restartDelayTimerRef.current = setTimeout(() => {
-              if (shouldListenRef.current) {
-                startRecognition(rec)
-              }
-            }, delay)
-          }
-        } else {
-          setRecognitionState('active')
+        if (retryCountRef.current < MAX_RETRIES) {
+          retryCountRef.current++
+          const delay = Math.min(500 * Math.pow(1.5, retryCountRef.current - 1), 5000)
+          console.log(`[VoiceRecognition] Retrying start in ${delay}ms (attempt ${retryCountRef.current}/${MAX_RETRIES})`)
+          restartDelayTimerRef.current = setTimeout(() => {
+            if (shouldListenRef.current) {
+              startFreshInstanceRef.current()
+            }
+          }, delay)
         }
+      } else {
+        setRecognitionState('active')
       }
     }
+  }, [])
 
+  // ===== Create and start a completely fresh instance =====
+  const startFreshInstance = useCallback(() => {
+    if (!shouldListenRef.current) return
+    if (typeof window === 'undefined') return
+
+    // Abort and discard old instance
+    if (recognitionRef.current) {
+      isStoppingRef.current = true
+      try { recognitionRef.current.abort() } catch { /* ignore */ }
+      recognitionRef.current = null
+    }
+
+    const freshRecognition = createRecognitionInstance()
+    if (!freshRecognition) {
+      setRecognitionState('error')
+      setErrorMessage('Speech recognition not supported in this browser.')
+      return
+    }
+
+    setupHandlersRef.current(freshRecognition)
+    recognitionRef.current = freshRecognition
+    lastProcessedIndexRef.current = -1
+    isStoppingRef.current = false
+
+    startRecognition(freshRecognition)
+  }, [createRecognitionInstance, startRecognition])
+
+  // Keep ref updated
+  useEffect(() => {
+    startFreshInstanceRef.current = startFreshInstance
+  }, [startFreshInstance])
+
+  // ===== Setup event handlers on a recognition instance =====
+  // NOTE: Defined AFTER startFreshInstance and startRecognition to satisfy declaration order
+  // NOTE: This function uses refs (resetWatchdogRef, startFreshInstanceRef) to avoid
+  // circular dependency issues with useCallback ordering
+  const setupRecognitionHandlers = useCallback((recognition: SpeechRecognitionInstance) => {
     // ===== onresult handler =====
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      // Reset watchdog on any activity
-      if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current)
-      }
       lastActivityRef.current = Date.now()
-      // Set up next watchdog check
-      watchdogTimerRef.current = setTimeout(() => {
-        const elapsed = Date.now() - lastActivityRef.current
-        if (elapsed > 12000 && shouldListenRef.current && recognitionRef.current) {
-          console.warn('[VoiceRecognition] Watchdog triggered - no activity for 12s')
-          setRecognitionState('restarting')
-          try { recognitionRef.current.abort() } catch { /* ignore */ }
-        }
-      }, 15000)
+      lastResultTimeRef.current = Date.now()
 
-      // Process ALL new results since last processed index
+      // Reset watchdog
+      resetWatchdogRef.current()
+
       let interimTranscript = ''
       let finalTranscript = ''
 
@@ -297,28 +328,26 @@ export function useVoiceRecognition() {
         const text = result[0].transcript.trim()
 
         if (result.isFinal) {
-          if (i > lastProcessedIndex) {
+          if (i > lastProcessedIndexRef.current) {
             finalTranscript += text
-            lastProcessedIndex = i
+            lastProcessedIndexRef.current = i
           }
         } else {
           interimTranscript = text
         }
       }
 
-      // Update the displayed transcript with interim results for real-time feedback
       if (interimTranscript) {
         setTranscript(interimTranscript)
       }
 
-      // Process final transcript
       if (finalTranscript) {
         const lowerText = finalTranscript.toLowerCase()
         const wakeWords = getWakeWords(voiceLanguage)
         const hasWakeWord = wakeWords.some(w => lowerText.includes(w))
 
-        if (hasWakeWord && !sessionWakeWordFound) {
-          sessionWakeWordFound = true
+        if (hasWakeWord && !sessionWakeWordFoundRef.current) {
+          sessionWakeWordFoundRef.current = true
           setWakeWordDetected(true)
 
           if (!activeListeningRef.current) {
@@ -333,11 +362,11 @@ export function useVoiceRecognition() {
         }
         cleanText = cleanText.trim()
 
-        if (cleanText && (sessionWakeWordFound || activeListeningRef.current)) {
+        if (cleanText && (sessionWakeWordFoundRef.current || activeListeningRef.current)) {
           if (onFinalTranscriptRef.current) {
             onFinalTranscriptRef.current(cleanText)
           }
-          sessionWakeWordFound = false
+          sessionWakeWordFoundRef.current = false
           setWakeWordDetected(false)
         }
 
@@ -345,8 +374,8 @@ export function useVoiceRecognition() {
       } else if (interimTranscript) {
         const lowerInterim = interimTranscript.toLowerCase()
         const wakeWords = getWakeWords(voiceLanguage)
-        if (wakeWords.some(w => lowerInterim.includes(w)) && !sessionWakeWordFound) {
-          sessionWakeWordFound = true
+        if (wakeWords.some(w => lowerInterim.includes(w)) && !sessionWakeWordFoundRef.current) {
+          sessionWakeWordFoundRef.current = true
           setWakeWordDetected(true)
           if (!activeListeningRef.current) {
             setIsListening(true)
@@ -358,10 +387,7 @@ export function useVoiceRecognition() {
 
     // ===== onerror handler =====
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      // Reset watchdog
-      if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current)
-      }
+      lastActivityRef.current = Date.now()
 
       if (event.error === 'not-allowed') {
         console.warn('[VoiceRecognition] Microphone permission denied.')
@@ -381,21 +407,22 @@ export function useVoiceRecognition() {
       }
 
       if (event.error === 'aborted') {
+        if (isStoppingRef.current) return
         return
       }
 
       if (event.error === 'network') {
         console.warn('[VoiceRecognition] Network error - speech service unreachable')
         setRecognitionState('error')
-        setErrorMessage('Network error - speech recognition service unreachable. Check your internet connection.')
-        retryCountRef.current = Math.min(retryCountRef.current + 1, maxRetries)
+        setErrorMessage('Network error - speech recognition service unreachable.')
+        retryCountRef.current = Math.min(retryCountRef.current + 1, MAX_RETRIES)
         return
       }
 
       if (event.error === 'audio-capture') {
         console.warn('[VoiceRecognition] No microphone found')
         setRecognitionState('error')
-        setErrorMessage('No microphone detected. Please connect a microphone and try again.')
+        setErrorMessage('No microphone detected. Please connect a microphone.')
         shouldListenRef.current = false
         setIsListening(false)
         activeListeningRef.current = false
@@ -406,7 +433,7 @@ export function useVoiceRecognition() {
       if (event.error === 'service-not-allowed') {
         console.warn('[VoiceRecognition] Speech service not allowed')
         setRecognitionState('error')
-        setErrorMessage('Speech recognition service not allowed in this browser/environment.')
+        setErrorMessage('Speech recognition not allowed in this browser.')
         shouldListenRef.current = false
         setIsListening(false)
         activeListeningRef.current = false
@@ -415,20 +442,50 @@ export function useVoiceRecognition() {
       }
 
       console.warn('[VoiceRecognition] Error:', event.error, event.message)
-      retryCountRef.current = Math.min(retryCountRef.current + 1, maxRetries)
+      retryCountRef.current = Math.min(retryCountRef.current + 1, MAX_RETRIES)
     }
 
-    // ===== onend handler - auto-restart with delay =====
+    // ===== onend handler - CRITICAL: Always restart if we should be listening =====
     recognition.onend = () => {
+      if (isStoppingRef.current) {
+        isStoppingRef.current = false
+        setRecognitionState('inactive')
+        return
+      }
+
       if (!shouldListenRef.current) {
         setRecognitionState('inactive')
         return
       }
 
-      // Calculate restart delay with exponential backoff for repeated failures
-      const baseDelay = 300
+      restartCycleCountRef.current++
+      console.log(`[VoiceRecognition] onend fired. Restart cycle: ${restartCycleCountRef.current}`)
+
+      // After MAX_RESTARTS_BEFORE_FRESH cycles on the same instance, force a completely fresh one
+      // This is the KEY FIX for Chrome's recognition corruption bug
+      if (restartCycleCountRef.current >= MAX_RESTARTS_BEFORE_FRESH) {
+        console.log('[VoiceRecognition] Max restart cycles reached, creating fresh instance')
+        restartCycleCountRef.current = 0
+        lastProcessedIndexRef.current = -1
+
+        try { recognition.abort() } catch { /* ignore */ }
+        recognitionRef.current = null
+
+        setRecognitionState('restarting')
+        restartDelayTimerRef.current = setTimeout(() => {
+          if (shouldListenRef.current) {
+            startFreshInstanceRef.current()
+          } else {
+            setRecognitionState('inactive')
+          }
+        }, 500)
+        return
+      }
+
+      // Normal restart with exponential backoff
+      const baseDelay = 200
       const backoffDelay = retryCountRef.current > 0
-        ? Math.min(baseDelay * Math.pow(2, retryCountRef.current - 1), 5000)
+        ? Math.min(baseDelay * Math.pow(1.5, retryCountRef.current - 1), 3000)
         : baseDelay
 
       setRecognitionState('restarting')
@@ -439,12 +496,18 @@ export function useVoiceRecognition() {
           return
         }
 
-        if (activeListeningRef.current && recognitionRef.current) {
-          startRecognition(recognitionRef.current)
-        } else if (wakeWordEnabled && !activeListeningRef.current) {
-          startRecognition(recognitionRef.current)
-        } else {
-          setRecognitionState('inactive')
+        // Always restart - no conditional logic based on activeListening or wakeWordEnabled
+        try {
+          if (recognitionRef.current === recognition) {
+            startRecognition(recognition)
+          } else if (recognitionRef.current) {
+            startRecognition(recognitionRef.current)
+          } else {
+            startFreshInstanceRef.current()
+          }
+        } catch {
+          console.warn('[VoiceRecognition] Restart failed, creating fresh instance')
+          startFreshInstanceRef.current()
         }
       }, backoffDelay)
     }
@@ -452,106 +515,78 @@ export function useVoiceRecognition() {
     // ===== onstart handler =====
     recognition.onstart = () => {
       lastActivityRef.current = Date.now()
+      lastResultTimeRef.current = Date.now()
       setRecognitionState('active')
       setErrorMessage(null)
       retryCountRef.current = 0
+      isStoppingRef.current = false
+      resetWatchdogRef.current()
+    }
 
-      // Set up watchdog
-      if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current)
-      }
-      watchdogTimerRef.current = setTimeout(() => {
-        const elapsed = Date.now() - lastActivityRef.current
-        if (elapsed > 12000 && shouldListenRef.current && recognitionRef.current) {
-          console.warn('[VoiceRecognition] Watchdog triggered after start')
-          try { recognitionRef.current.abort() } catch { /* ignore */ }
+    // ===== Audio event handlers =====
+    recognition.onaudiostart = () => { lastActivityRef.current = Date.now() }
+    recognition.onaudioend = () => { lastActivityRef.current = Date.now() }
+    recognition.onspeechstart = () => { lastActivityRef.current = Date.now() }
+    recognition.onspeechend = () => { lastActivityRef.current = Date.now() }
+    recognition.onnomatch = () => { lastActivityRef.current = Date.now() }
+  }, [voiceLanguage, wakeWordEnabled, clearAllTimers, setIsListening, setAIStatus, startRecognition, startFreshInstance])
+
+  // Keep handler ref updated
+  useEffect(() => {
+    setupHandlersRef.current = setupRecognitionHandlers
+  }, [setupRecognitionHandlers])
+
+  // ===== Main initialization effect =====
+  useEffect(() => {
+    if (!isSupported || typeof window === 'undefined') return
+
+    if (isListeningRef.current || wakeWordEnabled) {
+      shouldListenRef.current = true
+    }
+
+    if (shouldListenRef.current) {
+      startFreshInstance()
+    }
+
+    // Periodic health check for Chrome
+    if (browserInfo.current.isChromeBased) {
+      forceRestartTimerRef.current = setInterval(() => {
+        if (shouldListenRef.current) {
+          const resultElapsed = Date.now() - lastResultTimeRef.current
+          const activityElapsed = Date.now() - lastActivityRef.current
+          
+          if (resultElapsed > 20000 && activityElapsed > 5000) {
+            console.log('[VoiceRecognition] Periodic health check: forcing fresh instance')
+            restartCycleCountRef.current = MAX_RESTARTS_BEFORE_FRESH
+            if (recognitionRef.current) {
+              try { recognitionRef.current.abort() } catch { /* ignore */ }
+            }
+          }
         }
       }, 15000)
     }
 
-    // ===== Audio event handlers for better activity tracking =====
-    recognition.onaudiostart = () => {
-      lastActivityRef.current = Date.now()
-    }
-    recognition.onaudioend = () => {
-      lastActivityRef.current = Date.now()
-    }
-    recognition.onspeechstart = () => {
-      lastActivityRef.current = Date.now()
-    }
-    recognition.onspeechend = () => {
-      lastActivityRef.current = Date.now()
-    }
-    recognition.onnomatch = () => {
-      lastActivityRef.current = Date.now()
-    }
-
-    recognitionRef.current = recognition
-
-    // ===== Start listening based on current state =====
-    shouldListenRef.current = true
-
-    if (isListeningRef.current) {
-      startRecognition(recognition)
-    } else if (wakeWordEnabled) {
-      startRecognition(recognition)
-    }
-
-    // ===== Periodic force-restart for Chrome on Windows =====
-    if (browserInfo.current.isChromeBased) {
-      forceRestartTimerRef.current = setInterval(() => {
-        if (shouldListenRef.current && recognitionRef.current && activeListeningRef.current) {
-          const elapsed = Date.now() - lastActivityRef.current
-          if (elapsed > 5000) {
-            console.log('[VoiceRecognition] Periodic force-restart (Chrome/Windows workaround)')
-            try {
-              recognitionRef.current.stop()
-            } catch {
-              try {
-                recognitionRef.current.abort()
-              } catch { /* ignore */ }
-            }
-          }
-        }
-      }, 25000)
-    }
-
-    isCreatingRef.current = false
-
-    // ===== Cleanup =====
     return () => {
       shouldListenRef.current = false
-      isCreatingRef.current = false
+      isStoppingRef.current = true
       clearAllTimers()
-
       if (recognitionRef.current) {
         try { recognitionRef.current.abort() } catch { /* ignore */ }
       }
       recognitionRef.current = null
       setRecognitionState('inactive')
     }
-  }, [isSupported, voiceLanguage, wakeWordEnabled, clearAllTimers, setIsListening, setAIStatus])
+  }, [isSupported, voiceLanguage, wakeWordEnabled, clearAllTimers, startFreshInstance])
 
-  // ===== Handle isListening changes separately =====
+  // ===== Handle isListening changes =====
   useEffect(() => {
-    const recognition = recognitionRef.current
-    if (!recognition) return
-
     if (isListening) {
       activeListeningRef.current = true
       shouldListenRef.current = true
-      try {
-        setRecognitionState('starting')
-        recognition.start()
-        retryCountRef.current = 0
-        setAIStatus('listening')
-      } catch (e: unknown) {
-        const errMsg = e instanceof Error ? e.message : String(e)
-        if (!errMsg.includes('already started') && !errMsg.includes('started')) {
-          console.warn('[VoiceRecognition] Start error on isListening change:', errMsg)
-        } else {
-          setRecognitionState('active')
-        }
+      setAIStatus('listening')
+      
+      if (recognitionState === 'inactive' || recognitionState === 'error') {
+        startFreshInstance()
       }
     } else {
       activeListeningRef.current = false
@@ -559,7 +594,40 @@ export function useVoiceRecognition() {
         setAIStatus('idle')
       }
     }
-  }, [isListening, aiStatus, setAIStatus])
+  }, [isListening, aiStatus, setAIStatus, recognitionState, startFreshInstance])
+
+  // ===== CRITICAL FIX: Restart recognition after AI finishes speaking =====
+  useEffect(() => {
+    if (aiStatus === 'idle' && shouldListenRef.current) {
+      const checkDelay = setTimeout(() => {
+        if (!shouldListenRef.current) return
+        
+        const resultElapsed = Date.now() - lastResultTimeRef.current
+        const currentState = recognitionState
+        
+        if (currentState === 'inactive' || currentState === 'error') {
+          console.log('[VoiceRecognition] AI finished speaking, recognition not active - restarting')
+          startFreshInstance()
+        } else if (currentState === 'active' && resultElapsed > 20000) {
+          console.log('[VoiceRecognition] AI finished speaking, recognition stale - forcing fresh instance')
+          restartCycleCountRef.current = MAX_RESTARTS_BEFORE_FRESH
+          try { recognitionRef.current?.abort() } catch { /* ignore */ }
+        }
+      }, 800)
+      
+      return () => clearTimeout(checkDelay)
+    }
+  }, [aiStatus, recognitionState, startFreshInstance])
+
+  // ===== Handle wakeWordEnabled changes =====
+  useEffect(() => {
+    if (wakeWordEnabled && !shouldListenRef.current && !isListening) {
+      shouldListenRef.current = true
+      if (recognitionState === 'inactive') {
+        startFreshInstance()
+      }
+    }
+  }, [wakeWordEnabled, isListening, recognitionState, startFreshInstance])
 
   // ===== Public API =====
   const startListening = useCallback(() => {
@@ -570,9 +638,16 @@ export function useVoiceRecognition() {
   }, [isSupported, setIsListening])
 
   const stopListening = useCallback(() => {
+    isStoppingRef.current = true
+    shouldListenRef.current = false
     setIsListening(false)
     setTranscript('')
     setWakeWordDetected(false)
+    sessionWakeWordFoundRef.current = false
+    
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort() } catch { /* ignore */ }
+    }
   }, [setIsListening])
 
   const toggleListening = useCallback(() => {
@@ -589,7 +664,6 @@ export function useVoiceRecognition() {
 
   const requestMicPermission = useCallback(async () => {
     if (typeof window === 'undefined') return
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       stream.getTracks().forEach(track => track.stop())

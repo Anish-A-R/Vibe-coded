@@ -808,6 +808,10 @@ interface JarvisState {
 
   // ===== NEW: Window Toggle =====
   toggleWindowMinimize: (id: string) => void
+
+  // ===== Voice-First UI =====
+  showChat: boolean
+  setShowChat: (show: boolean) => void
 }
 
 function generateId(): string {
@@ -1455,6 +1459,10 @@ export const useJarvisStore = create<JarvisState>()(
       // ===== NEW: App Launcher =====
       showAppLauncher: false,
       setShowAppLauncher: (show) => set({ showAppLauncher: show }),
+
+      // ===== Voice-First UI =====
+      showChat: false,
+      setShowChat: (show) => set({ showChat: show }),
 
       // ===== NEW: Window Toggle =====
       toggleWindowMinimize: (id) => {
