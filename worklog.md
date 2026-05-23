@@ -157,3 +157,37 @@ Stage Summary:
 - Removed redundant VoiceFeedbackBubble and HolographicDisplay components from page
 - Popup auto-shows on voice activity, auto-hides after 5s idle
 - Linter passes, dev server compiles successfully
+
+---
+
+Task ID: 5
+Agent: Main Agent
+Task: Create hexagon tab icon and make everything downloadable
+
+Work Log:
+- Created `/home/z/my-project/public/favicon.svg` — A JARVIS-themed hexagon favicon with:
+  - Outer hexagon with cyan gradient glow
+  - Dark inner fill matching the JARVIS theme
+  - Inner hexagonal ring decorations (2 concentric rings)
+  - Arc reactor core center with 3 concentric glowing dots
+  - Bold "J" letter in the center with glow filter
+  - Corner accent dots at each hexagon vertex
+- Updated `/home/z/my-project/src/app/layout.tsx` — Changed icon from external CDN URL to local `/favicon.svg`
+- Added download functionality to VoiceChatOverlay:
+  - `handleDownloadText()` — Exports full chat as formatted .txt file with headers, separators, timestamps, and voice indicators
+  - `handleDownloadMarkdown()` — Exports full chat as .md file with markdown headings, blockquotes, and separators
+  - `handleDownloadMessage()` — Exports individual message as .txt file
+  - Download as .md button (FileDown icon) in header
+  - Download as .txt button (Download icon) in header
+  - Per-message download button (appears on hover) next to each message's timestamp
+- Added voice command "download chat" / "save chat" / "export chat" / "download conversation" in page.tsx
+- Voice command dispatches `jarvis-download-chat` custom event that VoiceChatOverlay listens for
+- All toast notifications for download confirmations
+- Lint passes, dev server compiles successfully
+
+Stage Summary:
+- Tab icon is now a glowing cyan hexagon with "J" — matching JARVIS aesthetic
+- Full conversation can be downloaded as .txt or .md from header buttons
+- Individual messages can be downloaded on hover
+- Voice command "download chat" triggers text export
+- All downloads use browser native Blob + URL.createObjectURL

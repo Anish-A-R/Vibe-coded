@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="hexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00f0ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#00b8d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f0ff;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="innerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0e17;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d1525;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="innerGlow">
+      <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Outer hexagon glow -->
+  <polygon points="32,2 58,17 58,47 32,62 6,47 6,17" fill="none" stroke="#00f0ff" stroke-width="2.5" filter="url(#glow)" opacity="0.6"/>
+  <!-- Main hexagon fill -->
+  <polygon points="32,4 56,18 56,46 32,60 8,46 8,18" fill="url(#innerGrad)" stroke="url(#hexGrad)" stroke-width="2"/>
+  <!-- Inner hexagon ring -->
+  <polygon points="32,10 50,21 50,43 32,54 14,43 14,21" fill="none" stroke="#00f0ff" stroke-width="0.8" opacity="0.4"/>
+  <!-- Inner hexagon ring 2 -->
+  <polygon points="32,14 46,23 46,41 32,50 18,41 18,23" fill="none" stroke="#00f0ff" stroke-width="0.5" opacity="0.25"/>
+  <!-- Center dot / arc reactor core -->
+  <circle cx="32" cy="32" r="5" fill="#00f0ff" opacity="0.15" filter="url(#innerGlow)"/>
+  <circle cx="32" cy="32" r="3" fill="#00f0ff" opacity="0.3" filter="url(#innerGlow)"/>
+  <circle cx="32" cy="32" r="1.5" fill="#00f0ff" opacity="0.9" filter="url(#innerGlow)"/>
+  <!-- J letter -->
+  <text x="32" y="37" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#00f0ff" text-anchor="middle" filter="url(#innerGlow)" opacity="0.9">J</text>
+  <!-- Corner accent dots -->
+  <circle cx="32" cy="4" r="1.2" fill="#00f0ff" opacity="0.8"/>
+  <circle cx="56" cy="18" r="1.2" fill="#00f0ff" opacity="0.8"/>
+  <circle cx="56" cy="46" r="1.2" fill="#00f0ff" opacity="0.8"/>
+  <circle cx="32" cy="60" r="1.2" fill="#00f0ff" opacity="0.8"/>
+  <circle cx="8" cy="46" r="1.2" fill="#00f0ff" opacity="0.8"/>
+  <circle cx="8" cy="18" r="1.2" fill="#00f0ff" opacity="0.8"/>
+</svg>

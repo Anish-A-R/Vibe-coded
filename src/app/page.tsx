@@ -104,6 +104,16 @@ export default function Home() {
       return
     }
 
+    // Voice command to download chat
+    if (lowerText.includes('download chat') || lowerText.includes('save chat') || lowerText.includes('export chat') || lowerText.includes('download conversation')) {
+      // Trigger download via custom event
+      window.dispatchEvent(new CustomEvent('jarvis-download-chat'))
+      if (soundEnabled) {
+        speak('Downloading conversation, sir.')
+      }
+      return
+    }
+
     // All other voice input goes to the chat system via pendingVoiceInput
     // Auto-open chat so the user can see the response
     if (!showChat) {
