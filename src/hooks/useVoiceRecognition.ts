@@ -540,6 +540,9 @@ export function useVoiceRecognition() {
   useEffect(() => {
     if (!isSupported || typeof window === 'undefined') return
 
+    // Don't start if mic permission was denied
+    if (micPermission === 'denied') return
+
     if (isListeningRef.current || wakeWordEnabled) {
       shouldListenRef.current = true
     }
@@ -576,11 +579,13 @@ export function useVoiceRecognition() {
       recognitionRef.current = null
       setRecognitionState('inactive')
     }
-  }, [isSupported, voiceLanguage, wakeWordEnabled, clearAllTimers, startFreshInstance])
+  }, [isSupported, voiceLanguage, wakeWordEnabled, micPermission, clearAllTimers, startFreshInstance])
 
   // ===== Handle isListening changes =====
   useEffect(() => {
     if (isListening) {
+      // Don't start if mic permission was denied
+      if (micPermission === 'denied') return
       activeListeningRef.current = true
       shouldListenRef.current = true
       setAIStatus('listening')
@@ -594,7 +599,7 @@ export function useVoiceRecognition() {
         setAIStatus('idle')
       }
     }
-  }, [isListening, aiStatus, setAIStatus, recognitionState, startFreshInstance])
+  }, [isListening, aiStatus, setAIStatus, recognitionState, micPermission, startFreshInstance])
 
   // ===== CRITICAL FIX: Restart recognition after AI finishes speaking =====
   useEffect(() => {
@@ -621,13 +626,13 @@ export function useVoiceRecognition() {
 
   // ===== Handle wakeWordEnabled changes =====
   useEffect(() => {
-    if (wakeWordEnabled && !shouldListenRef.current && !isListening) {
+    if (wakeWordEnabled && !shouldListenRef.current && !isListening && micPermission !== 'denied') {
       shouldListenRef.current = true
       if (recognitionState === 'inactive') {
         startFreshInstance()
       }
     }
-  }, [wakeWordEnabled, isListening, recognitionState, startFreshInstance])
+  }, [wakeWordEnabled, isListening, recognitionState, micPermission, startFreshInstance])
 
   // ===== Public API =====
   const startListening = useCallback(() => {

@@ -191,3 +191,27 @@ Stage Summary:
 - Individual messages can be downloaded on hover
 - Voice command "download chat" triggers text export
 - All downloads use browser native Blob + URL.createObjectURL
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Fix critical TDZ error causing app crash + fix voice recognition infinite restart loop
+
+Work Log:
+- Diagnosed app crash: `ReferenceError: Cannot access 'handleDownloadText' before initialization` in VoiceChatOverlay.tsx
+- Root cause: useEffect (line 518) referenced `handleDownloadText` useCallback (line 893) - TDZ violation
+- Moved the download callback definitions (handleDownloadText, handleDownloadMarkdown, handleDownloadMessage) BEFORE the useEffect that references them
+- Removed the duplicate callback definitions that remained at the old location
+- Fixed VoiceRecognition infinite restart loop when mic is denied:
+  - Added `micPermission === 'denied'` guard to main initialization useEffect
+  - Added `micPermission === 'denied'` guard to isListening change handler
+  - Added `micPermission !== 'denied'` check to wakeWordEnabled change handler
+  - Added `micPermission` to all relevant dependency arrays
+- Verified app loads correctly with agent-browser: 200 OK, no errors
+- Hexagon favicon confirmed working in browser tab
+
+Stage Summary:
+- Critical TDZ bug fixed: download callbacks now defined before the useEffect that references them
+- Voice recognition no longer infinitely restarts when mic permission is denied
+- App fully functional, hexagon favicon displaying correctly
+- All lint checks pass
