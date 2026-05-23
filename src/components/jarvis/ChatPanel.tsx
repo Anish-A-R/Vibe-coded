@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Mic, Trash2, VolumeX, Plus, MessageSquare } from 'lucide-react'
+import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
 import { useTTS } from '@/hooks/useTTS'
@@ -10,52 +10,7 @@ import { parseCommand } from '@/lib/commands'
 import { playMessageSound, playThinkingSound } from '@/lib/sounds'
 import { useJarvisToast } from '@/hooks/useJarvisToast'
 import { MessageBubble } from './MessageBubble'
-import { TypingIndicator } from './TypingIndicator'
 import { QuickCommands } from './QuickCommands'
-
-function SpinningOrb() {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <div className="relative w-6 h-6">
-        {/* Outer ring spinning */}
-        <motion.div
-          className="absolute inset-0 rounded-full border border-neon-cyan/40"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-        />
-        {/* Inner pulsing orb */}
-        <motion.div
-          className="absolute inset-1.5 rounded-full bg-neon-cyan/30"
-          animate={{
-            scale: [1, 1.4, 1],
-            opacity: [0.4, 0.9, 0.4],
-          }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        {/* Glow effect */}
-        <motion.div
-          className="absolute inset-0 rounded-full"
-          animate={{
-            boxShadow: [
-              '0 0 4px rgba(0,240,255,0.2)',
-              '0 0 12px rgba(0,240,255,0.5)',
-              '0 0 4px rgba(0,240,255,0.2)',
-            ],
-          }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </div>
-      <div className="flex flex-col">
-        <span className="text-[10px] font-mono text-neon-cyan/60 uppercase tracking-wider">
-          Processing
-        </span>
-        <span className="text-xs font-mono text-white/40">
-          Analyzing your request...
-        </span>
-      </div>
-    </div>
-  )
-}
 
 export function ChatPanel() {
   const {
@@ -67,6 +22,11 @@ export function ChatPanel() {
     personalityMode,
     soundEnabled,
     incrementCommandCount,
+    conversations,
+    activeConversationId,
+    addConversation,
+    switchConversation,
+    deleteConversation,
   } = useJarvisStore()
 
   const { transcript, isListening: voiceIsListening } = useVoiceRecognition()
@@ -75,56 +35,45 @@ export function ChatPanel() {
 
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [typingText, setTypingText] = useState('')
-  const [isTypingEffect, setIsTypingEffect] = useState(false)
+  const [streamingText, setStreamingText] = useState('')
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [showConvDropdown, setShowConvDropdown] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, typingText])
+  }, [messages, streamingText])
 
   // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
 
-  // Typing effect for AI responses
-  const typeResponse = useCallback((text: string) => {
-    setIsTypingEffect(true)
-    setTypingText('')
-    let index = 0
-
-    if (typingIntervalRef.current) {
-      clearInterval(typingIntervalRef.current)
-    }
-
-    typingIntervalRef.current = setInterval(() => {
-      if (index < text.length) {
-        setTypingText(text.slice(0, index + 1))
-        index++
-      } else {
-        if (typingIntervalRef.current) {
-          clearInterval(typingIntervalRef.current)
-        }
-        setIsTypingEffect(false)
-        addMessage({ role: 'assistant', content: text })
-        setTypingText('')
-        setAIStatus('idle')
-        if (soundEnabled) playMessageSound()
-        if (soundEnabled) speak(text)
-      }
-    }, 20)
-
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showConvDropdown) return
+    const handleClick = () => setShowConvDropdown(false)
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleClick, { once: true })
+    }, 0)
     return () => {
-      if (typingIntervalRef.current) {
-        clearInterval(typingIntervalRef.current)
+      clearTimeout(timer)
+      document.removeEventListener('click', handleClick)
+    }
+  }, [showConvDropdown])
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
       }
     }
-  }, [addMessage, setAIStatus, soundEnabled, speak])
+  }, [])
 
   // Handle sending a message
   const handleSend = useCallback(async (text?: string) => {
@@ -196,10 +145,16 @@ export function ChatPanel() {
       }
     }
 
-    // Chat: Send to AI API
+    // Chat: Send to AI API with streaming
     setIsLoading(true)
     setAIStatus('thinking')
+    setStreamingText('')
+    setIsStreaming(false)
     if (soundEnabled) playThinkingSound()
+
+    // Create abort controller for this request
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
 
     try {
       const history = messages.map((m) => ({
@@ -214,12 +169,13 @@ export function ChatPanel() {
           message: messageText,
           personality: personalityMode,
           history,
+          stream: true,
         }),
+        signal: abortController.signal,
       })
 
-      const data = await response.json()
-
-      if (!response.ok || data.error) {
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Unknown error' }))
         addMessage({
           role: 'assistant',
           content: `I encountered an error: ${data.error || 'Unknown error'}. Please try again.`,
@@ -228,21 +184,127 @@ export function ChatPanel() {
         return
       }
 
-      if (data.response) {
-        typeResponse(data.response)
+      // Check if response is SSE stream
+      const contentType = response.headers.get('content-type') || ''
+      if (contentType.includes('text/event-stream')) {
+        // Consume SSE stream
+        const reader = response.body?.getReader()
+        if (!reader) {
+          throw new Error('No readable stream available')
+        }
+
+        const decoder = new TextDecoder()
+        let fullText = ''
+        let firstChunkReceived = false
+        let buffer = ''
+
+        setIsStreaming(true)
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+
+          // Process complete SSE messages from buffer
+          const lines = buffer.split('\n')
+          // Keep the last potentially incomplete line in the buffer
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed || !trimmed.startsWith('data: ')) continue
+
+            const data = trimmed.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.error) {
+                addMessage({
+                  role: 'assistant',
+                  content: `I encountered an error: ${parsed.error}. Please try again.`,
+                })
+                if (soundEnabled) playMessageSound()
+                return
+              }
+              if (parsed.content) {
+                fullText += parsed.content
+                setStreamingText(fullText)
+
+                if (!firstChunkReceived) {
+                  firstChunkReceived = true
+                  setAIStatus('speaking')
+                }
+              }
+            } catch {
+              // Skip malformed JSON lines
+            }
+          }
+        }
+
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          const trimmed = buffer.trim()
+          if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(trimmed.slice(6))
+              if (parsed.content) {
+                fullText += parsed.content
+                setStreamingText(fullText)
+              }
+            } catch {
+              // Skip
+            }
+          }
+        }
+
+        // Streaming complete - add the full message to store
+        if (fullText) {
+          addMessage({ role: 'assistant', content: fullText })
+          if (soundEnabled) playMessageSound()
+          if (soundEnabled) speak(fullText)
+        }
+      } else {
+        // Non-streaming JSON response (fallback)
+        const data = await response.json()
+        if (data.error) {
+          addMessage({
+            role: 'assistant',
+            content: `I encountered an error: ${data.error}. Please try again.`,
+          })
+          if (soundEnabled) playMessageSound()
+          return
+        }
+        if (data.response) {
+          setIsStreaming(true)
+          setStreamingText(data.response)
+          setAIStatus('speaking')
+          addMessage({ role: 'assistant', content: data.response })
+          if (soundEnabled) playMessageSound()
+          if (soundEnabled) speak(data.response)
+        }
       }
     } catch (error) {
-      console.error('Chat error:', error)
-      addToast('error', 'Connection Error', 'Unable to reach AI systems. Please try again.')
-      addMessage({
-        role: 'assistant',
-        content: 'I seem to be experiencing a connectivity issue, sir. My systems are working to restore the connection. Please try again in a moment.',
-      })
-      if (soundEnabled) playMessageSound()
+      if ((error as Error).name === 'AbortError') {
+        // User cancelled the request
+      } else {
+        console.error('Chat error:', error)
+        addToast('error', 'Connection Error', 'Unable to reach AI systems. Please try again.')
+        addMessage({
+          role: 'assistant',
+          content: 'I seem to be experiencing a connectivity issue, sir. My systems are working to restore the connection. Please try again in a moment.',
+        })
+        if (soundEnabled) playMessageSound()
+      }
     } finally {
       setIsLoading(false)
+      setAIStatus('idle')
+      setStreamingText('')
+      setIsStreaming(false)
+      abortControllerRef.current = null
     }
-  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, typeResponse, stop, addToast])
+  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, stop, addToast, speak])
 
   // Handle quick command
   const handleQuickCommand = useCallback((cmd: string) => {
@@ -264,19 +326,14 @@ export function ChatPanel() {
     }
   }, [voiceIsListening, transcript])
 
-  // Cleanup typing interval on unmount
-  useEffect(() => {
-    return () => {
-      if (typingIntervalRef.current) {
-        clearInterval(typingIntervalRef.current)
-      }
-    }
-  }, [])
-
   const showQuickCommands = messages.length <= 1
 
   // Count non-system messages
   const visibleMessageCount = messages.filter((m) => m.role !== 'system').length
+
+  // Get active conversation title
+  const activeConv = conversations.find((c) => c.id === activeConversationId)
+  const convTitle = activeConv?.title || 'New Conversation'
 
   return (
     <div className="flex flex-col h-full glass-panel overflow-hidden relative">
@@ -347,34 +404,99 @@ export function ChatPanel() {
         </div>
       </div>
 
-      {/* New Conversation button */}
-      <AnimatePresence>
-        {messages.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="px-4 pt-3"
+      {/* Conversation Selector */}
+      <div className="relative border-b border-neon-cyan/10">
+        <div className="flex items-center gap-2 px-4 py-2">
+          {/* New conversation button */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              addConversation()
+              if (soundEnabled) playMessageSound()
+            }}
+            className="flex-shrink-0 p-1.5 rounded-md text-white/30 hover:text-neon-cyan/70 bg-white/[0.02] border border-white/5 hover:border-neon-cyan/20 transition-all"
+            aria-label="New conversation"
+            title="New Chat"
           >
-            <button
-              onClick={() => {
-                clearMessages()
-                stop()
-                if (soundEnabled) playMessageSound()
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-mono text-white/20 hover:text-neon-cyan/60 bg-white/[0.02] border border-white/5 hover:border-neon-cyan/15 transition-all w-full justify-center"
+            <Plus className="w-3.5 h-3.5" />
+          </motion.button>
+
+          {/* Conversation dropdown */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowConvDropdown(!showConvDropdown)
+            }}
+            className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] font-mono text-white/40 hover:text-white/60 bg-white/[0.02] border border-white/5 hover:border-neon-cyan/15 transition-all min-w-0"
+          >
+            <MessageSquare className="w-3 h-3 flex-shrink-0 text-neon-cyan/40" />
+            <span className="truncate flex-1 text-left">{convTitle}</span>
+            <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${showConvDropdown ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* Dropdown */}
+        <AnimatePresence>
+          {showConvDropdown && (
+            <motion.div
+              initial={{ opacity: 0, y: -5, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -5, height: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-4 right-4 top-full z-20 overflow-hidden rounded-md border border-neon-cyan/15 bg-black/95 backdrop-blur-xl shadow-lg shadow-black/50"
             >
-              <Plus className="w-3 h-3" />
-              NEW CONVERSATION
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <div className="max-h-48 overflow-y-auto jarvis-scrollbar py-1">
+                {conversations.length === 0 ? (
+                  <div className="px-3 py-2 text-[10px] font-mono text-white/20 text-center">
+                    No conversations yet
+                  </div>
+                ) : (
+                  conversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      className={`group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors ${
+                        conv.id === activeConversationId
+                          ? 'bg-neon-cyan/10 text-neon-cyan/70'
+                          : 'text-white/40 hover:bg-white/5 hover:text-white/60'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        switchConversation(conv.id)
+                        setShowConvDropdown(false)
+                      }}
+                    >
+                      <MessageSquare className="w-3 h-3 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-mono truncate">{conv.title}</div>
+                        <div className="text-[9px] font-mono text-white/20">
+                          {conv.messages.length} msg{conv.messages.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      {conversations.length > 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteConversation(conv.id)
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded text-white/20 hover:text-red-400 transition-all"
+                          aria-label="Delete conversation"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto jarvis-scrollbar py-4">
-        {messages.length === 0 && !isTypingEffect && (
+        {messages.length === 0 && !isStreaming && (
           <div className="flex flex-col items-center justify-center h-full gap-4 px-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -397,23 +519,23 @@ export function ChatPanel() {
           ))}
         </AnimatePresence>
 
-        {/* Typing effect text */}
-        {isTypingEffect && typingText && (
+        {/* Streaming text with blinking cursor */}
+        {isStreaming && streamingText && (
           <div className="px-4 py-2">
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center mt-1">
                 <div className="w-3 h-3 rounded-full bg-neon-cyan/60" />
               </div>
               <div className="px-4 py-3 rounded-xl rounded-tl-sm bg-neon-cyan/5 border border-neon-cyan/15 text-sm text-white/90">
-                {typingText}
-                <span className="typing-cursor ml-0.5" />
+                <span>{streamingText}</span>
+                <span className="inline-block w-[2px] h-[14px] bg-neon-cyan/80 ml-0.5 align-middle animate-pulse" />
               </div>
             </div>
           </div>
         )}
 
         {/* Thinking indicator with spinning orb */}
-        {aiStatus === 'thinking' && !isTypingEffect && (
+        {aiStatus === 'thinking' && !isStreaming && (
           <div className="px-2 py-2">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neon-cyan/5 border border-neon-cyan/10">
               <div className="relative w-5 h-5 flex-shrink-0">

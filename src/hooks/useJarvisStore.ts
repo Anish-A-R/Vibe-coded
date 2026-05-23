@@ -14,6 +14,15 @@ export interface Message {
   isVoice?: boolean
 }
 
+export interface Conversation {
+  id: string
+  title: string
+  messages: Message[]
+  createdAt: number
+  updatedAt: number
+  personality: PersonalityMode
+}
+
 export interface SystemStats {
   cpu: number
   ram: number
@@ -30,6 +39,19 @@ export interface WeatherData {
   location: string
 }
 
+// ===== Event Log Types =====
+export type EventSeverity = 'info' | 'warning' | 'success' | 'error'
+export type EventType = 'boot' | 'chat' | 'command' | 'connection' | 'voice' | 'system'
+
+export interface SystemEvent {
+  id: string
+  type: EventType
+  severity: EventSeverity
+  message: string
+  timestamp: number
+  details?: string
+}
+
 interface JarvisState {
   // Boot sequence
   booted: boolean
@@ -41,11 +63,19 @@ interface JarvisState {
   aiStatus: AIStatus
   setAIStatus: (status: AIStatus) => void
 
-  // Chat
+  // Chat - messages derived from active conversation
   messages: Message[]
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void
   removeMessage: (id: string) => void
   clearMessages: () => void
+
+  // Multi-conversation support
+  conversations: Conversation[]
+  activeConversationId: string | null
+  addConversation: () => string
+  switchConversation: (id: string) => void
+  deleteConversation: (id: string) => void
+  updateConversationTitle: (id: string, title: string) => void
 
   // Voice
   isListening: boolean
@@ -84,11 +114,20 @@ interface JarvisState {
   setEasterEggActivated: (activated: boolean) => void
   commandCount: number
   incrementCommandCount: () => void
+
+  // Event Log
+  events: SystemEvent[]
+  addEvent: (event: Omit<SystemEvent, 'id' | 'timestamp'>) => void
+  clearEvents: () => void
+}
+
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
 export const useJarvisStore = create<JarvisState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Boot sequence
       booted: false,
       bootPhase: 0,
@@ -99,24 +138,181 @@ export const useJarvisStore = create<JarvisState>()(
       aiStatus: 'idle',
       setAIStatus: (status) => set({ aiStatus: status }),
 
-      // Chat
+      // Chat - messages derived from active conversation
       messages: [],
-      addMessage: (message) =>
+      addMessage: (message) => {
+        const state = get()
+        const newMsg: Message = {
+          ...message,
+          id: `msg-${generateId()}`,
+          timestamp: Date.now(),
+        }
+
+        // Update the active conversation if one exists
+        let updatedConversations = state.conversations
+        let activeId = state.activeConversationId
+
+        if (activeId) {
+          updatedConversations = state.conversations.map((conv) => {
+            if (conv.id === activeId) {
+              const updatedMessages = [...conv.messages, newMsg]
+              // Auto-title: if this is the first user message, use it as title
+              let title = conv.title
+              if (
+                message.role === 'user' &&
+                conv.messages.filter((m) => m.role === 'user').length === 0
+              ) {
+                title = message.content.slice(0, 30) + (message.content.length > 30 ? '...' : '')
+              }
+              return {
+                ...conv,
+                messages: updatedMessages,
+                title,
+                updatedAt: Date.now(),
+              }
+            }
+            return conv
+          })
+        } else {
+          // No active conversation, create one
+          const newConv: Conversation = {
+            id: `conv-${generateId()}`,
+            title: message.role === 'user'
+              ? message.content.slice(0, 30) + (message.content.length > 30 ? '...' : '')
+              : 'New Conversation',
+            messages: [newMsg],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            personality: state.personalityMode,
+          }
+          activeId = newConv.id
+          updatedConversations = [newConv, ...state.conversations]
+        }
+
+        // Get messages from the active conversation
+        const activeConv = updatedConversations.find((c) => c.id === activeId)
+        const newMessages = activeConv ? activeConv.messages : [...state.messages, newMsg]
+
+        set({
+          messages: newMessages,
+          conversations: updatedConversations,
+          activeConversationId: activeId,
+        })
+      },
+      removeMessage: (id) => {
+        const state = get()
+        const filteredMessages = state.messages.filter((m) => m.id !== id)
+
+        // Also update the conversation
+        let updatedConversations = state.conversations
+        if (state.activeConversationId) {
+          updatedConversations = state.conversations.map((conv) => {
+            if (conv.id === state.activeConversationId) {
+              return {
+                ...conv,
+                messages: conv.messages.filter((m) => m.id !== id),
+                updatedAt: Date.now(),
+              }
+            }
+            return conv
+          })
+        }
+
+        set({
+          messages: filteredMessages,
+          conversations: updatedConversations,
+        })
+      },
+      clearMessages: () => {
+        const state = get()
+        // Create a new empty conversation
+        const newConv: Conversation = {
+          id: `conv-${generateId()}`,
+          title: 'New Conversation',
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          personality: state.personalityMode,
+        }
+        set({
+          messages: [],
+          conversations: [newConv, ...state.conversations],
+          activeConversationId: newConv.id,
+        })
+      },
+
+      // Multi-conversation support
+      conversations: [],
+      activeConversationId: null,
+      addConversation: () => {
+        const state = get()
+        const newConv: Conversation = {
+          id: `conv-${generateId()}`,
+          title: 'New Conversation',
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          personality: state.personalityMode,
+        }
+        set({
+          conversations: [newConv, ...state.conversations],
+          activeConversationId: newConv.id,
+          messages: [],
+        })
+        return newConv.id
+      },
+      switchConversation: (id) => {
+        const state = get()
+        const conv = state.conversations.find((c) => c.id === id)
+        if (conv) {
+          set({
+            activeConversationId: id,
+            messages: conv.messages,
+            personalityMode: conv.personality,
+          })
+        }
+      },
+      deleteConversation: (id) => {
+        const state = get()
+        const filtered = state.conversations.filter((c) => c.id !== id)
+
+        // If deleting the active conversation, switch to another or create new
+        if (state.activeConversationId === id) {
+          if (filtered.length > 0) {
+            const nextConv = filtered[0]
+            set({
+              conversations: filtered,
+              activeConversationId: nextConv.id,
+              messages: nextConv.messages,
+              personalityMode: nextConv.personality,
+            })
+          } else {
+            // No conversations left, create a fresh one
+            const newConv: Conversation = {
+              id: `conv-${generateId()}`,
+              title: 'New Conversation',
+              messages: [],
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              personality: state.personalityMode,
+            }
+            set({
+              conversations: [newConv],
+              activeConversationId: newConv.id,
+              messages: [],
+            })
+          }
+        } else {
+          set({ conversations: filtered })
+        }
+      },
+      updateConversationTitle: (id, title) => {
         set((state) => ({
-          messages: [
-            ...state.messages,
-            {
-              ...message,
-              id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-              timestamp: Date.now(),
-            },
-          ],
-        })),
-      removeMessage: (id) =>
-        set((state) => ({
-          messages: state.messages.filter((m) => m.id !== id),
-        })),
-      clearMessages: () => set({ messages: [] }),
+          conversations: state.conversations.map((conv) =>
+            conv.id === id ? { ...conv, title, updatedAt: Date.now() } : conv
+          ),
+        }))
+      },
 
       // Voice
       isListening: false,
@@ -136,7 +332,20 @@ export const useJarvisStore = create<JarvisState>()(
 
       // Settings
       personalityMode: 'professional',
-      setPersonalityMode: (mode) => set({ personalityMode: mode }),
+      setPersonalityMode: (mode) => {
+        set((state) => {
+          // Also update the active conversation's personality
+          let updatedConversations = state.conversations
+          if (state.activeConversationId) {
+            updatedConversations = state.conversations.map((conv) =>
+              conv.id === state.activeConversationId
+                ? { ...conv, personality: mode, updatedAt: Date.now() }
+                : conv
+            )
+          }
+          return { personalityMode: mode, conversations: updatedConversations }
+        })
+      },
       soundEnabled: true,
       setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
       volume: 0.7,
@@ -162,6 +371,21 @@ export const useJarvisStore = create<JarvisState>()(
       commandCount: 0,
       incrementCommandCount: () =>
         set((state) => ({ commandCount: state.commandCount + 1 })),
+
+      // Event Log (session-only, not persisted)
+      events: [],
+      addEvent: (event) =>
+        set((state) => {
+          const newEvent: SystemEvent = {
+            ...event,
+            id: `evt-${generateId()}`,
+            timestamp: Date.now(),
+          }
+          // Keep last 50 events
+          const updated = [newEvent, ...state.events].slice(0, 50)
+          return { events: updated }
+        }),
+      clearEvents: () => set({ events: [] }),
     }),
     {
       name: 'jarvis-store',
@@ -171,9 +395,15 @@ export const useJarvisStore = create<JarvisState>()(
         volume: state.volume,
         particlesEnabled: state.particlesEnabled,
         wakeWordEnabled: state.wakeWordEnabled,
-        messages: state.messages.slice(-100), // Keep last 100 messages
         commandCount: state.commandCount,
         easterEggActivated: state.easterEggActivated,
+        // events are NOT persisted (session-only)
+        // Persist conversations (keep last 10, last 50 messages each)
+        conversations: state.conversations.slice(0, 10).map((conv) => ({
+          ...conv,
+          messages: conv.messages.slice(-50),
+        })),
+        activeConversationId: state.activeConversationId,
       }),
     }
   )

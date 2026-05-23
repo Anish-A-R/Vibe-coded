@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageCircle,
@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Shield,
   Zap,
+  ScrollText,
 } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useSystemStats } from '@/hooks/useSystemStats'
@@ -32,7 +33,10 @@ import CommandPalette from '@/components/jarvis/CommandPalette'
 import { HUDFrame, DataReadout, CornerBrackets, ScanLine } from '@/components/jarvis/HUDDecorations'
 import { useJarvisToast } from '@/hooks/useJarvisToast'
 import { JarvisToastContainer } from '@/components/jarvis/JarvisToast'
-import type { AIStatus } from '@/hooks/useJarvisStore'
+import type { AIStatus, EventType } from '@/hooks/useJarvisStore'
+import KeyboardShortcutsOverlay from '@/components/jarvis/KeyboardShortcutsOverlay'
+import KonamiEffect from '@/components/jarvis/KonamiEffect'
+import EventLog from '@/components/jarvis/EventLog'
 
 export default function Home() {
   const {
@@ -52,16 +56,27 @@ export default function Home() {
     showDiagnostics,
     setShowDiagnostics,
     messages,
+    addEvent,
+    easterEggActivated,
+    setEasterEggActivated,
   } = useJarvisStore()
 
   const [showBoot, setShowBoot] = useState(!booted)
   const [showChat, setShowChat] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showEventLog, setShowEventLog] = useState(false)
+  const [konamiActive, setKonamiActive] = useState(false)
+  const [orbGlow, setOrbGlow] = useState(false)
   const [greetingShown, setGreetingShown] = useState(false)
   const [greetingText, setGreetingText] = useState('')
   const [currentTime, setCurrentTime] = useState('')
   const stats = useSystemStats()
   const { addToast } = useJarvisToast()
+
+  // Konami code tracking
+  const konamiSequence = useRef<string[]>([])
+  const KONAMI_CODE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA']
 
   // Update time string for data readouts
   useEffect(() => {
@@ -82,12 +97,15 @@ export default function Home() {
     // Show toast notification on boot complete
     addToast('success', 'System Online', 'All systems operational. J.A.R.V.I.S. ready.')
 
+    // Log boot event
+    addEvent({ type: 'boot', severity: 'success', message: 'System boot complete', details: 'All subsystems initialized and operational' })
+
     // Show greeting after boot
     const greeting = getGreeting(personalityMode)
     setGreetingText(greeting)
     setGreetingShown(true)
     setTimeout(() => setGreetingShown(false), 5000)
-  }, [setBooted, soundEnabled, personalityMode, addToast])
+  }, [setBooted, soundEnabled, personalityMode, addToast, addEvent])
 
   const handleBootPhase = useCallback(
     (phase: number) => {
@@ -99,10 +117,59 @@ export default function Home() {
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if typing in an input field (except for Escape and modifier combos)
+      const target = e.target as HTMLElement
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+
+      // Konami code tracking (always active)
+      const konamiKey = e.code || e.key
+      const expectedIdx = konamiSequence.current.length
+      if (expectedIdx < KONAMI_CODE.length && konamiKey === KONAMI_CODE[expectedIdx]) {
+        konamiSequence.current.push(konamiKey)
+        if (konamiSequence.current.length === KONAMI_CODE.length) {
+          // Konami code activated!
+          konamiSequence.current = []
+          setKonamiActive(true)
+          setEasterEggActivated(true)
+          setOrbGlow(true)
+          addToast('success', 'KONAMI CODE ACTIVATED!', 'Tony Stark would be proud.')
+          addEvent({ type: 'system', severity: 'success', message: 'Konami code activated', details: '↑↑↓↓←→←→BA — I am Iron Man' })
+          // Remove orb glow after 5 seconds
+          setTimeout(() => setOrbGlow(false), 5000)
+          // Play special sound
+          if (soundEnabled) {
+            try {
+              const ctx = new AudioContext()
+              const osc = ctx.createOscillator()
+              const gain = ctx.createGain()
+              osc.connect(gain)
+              gain.connect(ctx.destination)
+              osc.type = 'sine'
+              osc.frequency.setValueAtTime(523, ctx.currentTime)
+              osc.frequency.setValueAtTime(659, ctx.currentTime + 0.15)
+              osc.frequency.setValueAtTime(784, ctx.currentTime + 0.3)
+              osc.frequency.setValueAtTime(1047, ctx.currentTime + 0.45)
+              gain.gain.setValueAtTime(0.1, ctx.currentTime)
+              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7)
+              osc.start(ctx.currentTime)
+              osc.stop(ctx.currentTime + 0.7)
+            } catch { /* Audio not available */ }
+          }
+        }
+      } else if (
+        // Reset if wrong key pressed (not a modifier key)
+        !e.ctrlKey && !e.metaKey && !e.altKey &&
+        konamiSequence.current.length > 0 &&
+        konamiKey !== KONAMI_CODE[expectedIdx]
+      ) {
+        konamiSequence.current = []
+      }
+
       // Ctrl+K: Toggle chat
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
         setShowChat((prev) => !prev)
+        addEvent({ type: 'command', severity: 'info', message: 'Chat panel toggled' })
       }
       // Escape: Close all panels
       if (e.key === 'Escape') {
@@ -111,32 +178,53 @@ export default function Home() {
         setShowHistory(false)
         setShowDiagnostics(false)
         setShowCommandPalette(false)
+        setShowShortcuts(false)
+        setShowEventLog(false)
       }
       // Ctrl+D: Diagnostics
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         e.preventDefault()
         setShowDiagnostics(true)
+        addEvent({ type: 'command', severity: 'info', message: 'Diagnostics opened' })
       }
       // Ctrl+,: Settings
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault()
         setShowSettings(true)
+        addEvent({ type: 'command', severity: 'info', message: 'Settings opened' })
       }
       // Ctrl+H: History
       if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
         e.preventDefault()
         setShowHistory(true)
+        addEvent({ type: 'command', severity: 'info', message: 'History opened' })
       }
       // Ctrl+P: Command Palette
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault()
         setShowCommandPalette((prev) => !prev)
+        addEvent({ type: 'command', severity: 'info', message: 'Command palette toggled' })
+      }
+      // ?: Show shortcuts (only when not in an input)
+      if (!isInput && e.key === '?' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        setShowShortcuts((prev) => !prev)
+      }
+      // Ctrl+Space: Toggle voice (handled by VoiceInput component, just log)
+      if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
+        e.preventDefault()
+        addEvent({ type: 'voice', severity: 'info', message: 'Voice input toggled' })
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setShowSettings, setShowHistory, setShowDiagnostics, showCommandPalette])
+  }, [setShowSettings, setShowHistory, setShowDiagnostics, showCommandPalette, addEvent, setEasterEggActivated, addToast, soundEnabled])
+
+  // Konami code complete handler
+  const handleKonamiComplete = useCallback(() => {
+    setKonamiActive(false)
+  }, [])
 
   // ===== BOOT SEQUENCE =====
   if (showBoot) {
@@ -342,6 +430,24 @@ export default function Home() {
                 </div>
 
                 <CircularOrb status={aiStatus} />
+
+                {/* Konami orb glow effect */}
+                {orbGlow && (
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div
+                      className="w-[280px] h-[280px] rounded-full"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(0,240,255,0.3) 0%, rgba(0,240,255,0.1) 40%, transparent 70%)',
+                        boxShadow: '0 0 60px rgba(0,240,255,0.4), 0 0 120px rgba(0,240,255,0.2)',
+                      }}
+                    />
+                  </motion.div>
+                )}
               </div>
 
               {/* Voice Equalizer */}
@@ -422,13 +528,17 @@ export default function Home() {
                     { key: 'Ctrl+P', label: 'Commands' },
                     { key: 'Ctrl+Space', label: 'Voice' },
                     { key: 'Ctrl+D', label: 'Diag' },
+                    { key: '?', label: 'Shortcuts' },
                   ].map((hint) => (
-                    <span
+                    <button
                       key={hint.key}
+                      onClick={() => {
+                        if (hint.key === '?') setShowShortcuts(true)
+                      }}
                       className="text-[9px] font-mono text-white/15 px-2 py-1 rounded border border-white/5 hover:border-neon-cyan/20 hover:text-neon-cyan/30 transition-colors"
                     >
                       {hint.key} {hint.label}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -525,11 +635,23 @@ export default function Home() {
         </main>
 
         {/* ===== STATUS BAR ===== */}
-        <StatusBar
-          status={aiStatus}
-          networkStatus={systemStats.network}
-          commandCount={commandCount}
-        />
+        <div className="relative">
+          <StatusBar
+            status={aiStatus}
+            networkStatus={systemStats.network}
+            commandCount={commandCount}
+          />
+          {/* Event log button in status bar */}
+          <button
+            onClick={() => setShowEventLog(true)}
+            className="absolute right-12 sm:right-16 top-1/2 -translate-y-1/2
+              p-1.5 rounded text-white/20 hover:text-neon-cyan/60 hover:bg-white/5 transition-colors"
+            aria-label="Event Log"
+            title="Event Log"
+          >
+            <ScrollText className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* ===== CHAT PANEL (Slide-in from right) ===== */}
@@ -598,6 +720,24 @@ export default function Home() {
       <CommandPalette
         open={showCommandPalette}
         onClose={() => setShowCommandPalette(false)}
+      />
+
+      {/* ===== KEYBOARD SHORTCUTS OVERLAY ===== */}
+      <KeyboardShortcutsOverlay
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
+
+      {/* ===== KONAMI CODE EFFECT ===== */}
+      <KonamiEffect
+        active={konamiActive}
+        onComplete={handleKonamiComplete}
+      />
+
+      {/* ===== EVENT LOG ===== */}
+      <EventLog
+        open={showEventLog}
+        onClose={() => setShowEventLog(false)}
       />
     </div>
   )
