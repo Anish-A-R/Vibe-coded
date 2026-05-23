@@ -17,17 +17,17 @@ interface BootLine {
 }
 
 const BOOT_LINES: BootLine[] = [
-  { text: '[J.A.R.V.I.S. SYSTEM v4.2.1]', delay: 1400 }, // delayed for scan animation
+  { text: '[J.A.R.V.I.S. VOICE AGENT v4.2.1]', delay: 1400 }, // delayed for scan animation
   { text: 'Initializing neural networks...', delay: 1800 },
   { text: 'Loading cognitive modules...', hasOk: true, delay: 2150 },
   { text: 'Calibrating voice recognition...', hasOk: true, delay: 2500 },
   { text: 'Establishing secure connections...', hasOk: true, delay: 2900 },
-  { text: 'Scanning environment...', hasOk: true, delay: 3300 },
-  { text: 'Activating HUD interface...', hasOk: true, delay: 3700 },
+  { text: 'Activating voice agent...', hasOk: true, delay: 3300 },
+  { text: 'Loading personality matrix...', hasOk: true, delay: 3700 },
   { text: 'Running diagnostics...', hasOk: true, delay: 4100 },
-  { text: 'All systems operational.', delay: 4600 },
+  { text: 'Voice agent online. All systems operational.', delay: 4600 },
   { text: '', delay: 4900 },
-  { text: 'Welcome back, sir.', delay: 5200 },
+  { text: 'Welcome back, sir. Say "Jarvis" to begin.', delay: 5200 },
 ]
 
 // Pre-generated hex characters to avoid hydration mismatch with Math.random()
@@ -288,7 +288,7 @@ export default function BootSequence({ onComplete, onPhase, className }: BootSeq
                 }, 150)
               }
               // Welcome flash effect
-              if (line.text === 'Welcome back, sir.') {
+              if (line.text.includes('Welcome back')) {
                 setShowWelcomeFlash(true)
                 setTimeout(() => setShowWelcomeFlash(false), 1200)
               }
@@ -377,7 +377,7 @@ export default function BootSequence({ onComplete, onPhase, className }: BootSeq
               {BOOT_LINES.slice(0, visibleLines).map((line, index) => {
                 const isCurrentLine = index === visibleLines - 1
                 const showOkForLine = okMarkers.has(index)
-                const isWelcome = line.text === 'Welcome back, sir.'
+                const isWelcome = line.text.includes('Welcome back')
 
                 return (
                   <motion.div

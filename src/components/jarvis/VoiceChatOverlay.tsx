@@ -58,6 +58,7 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
   const [isStreaming, setIsStreaming] = useState(false)
   const [isSpeakingNow, setIsSpeakingNow] = useState(false)
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null)
+  const [completedStreamMsg, setCompletedStreamMsg] = useState<string | null>(null)
 
   // ── Refs ──
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -126,6 +127,7 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
       isLoadingRef.current = true
       setInput('')
       setStreamingMsgId(null)
+      setCompletedStreamMsg(null)
       incrementCommandCount()
 
       // Parse command
@@ -352,10 +354,12 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
           }
 
           // Clear streaming state after a short delay to allow the message to render
+          setCompletedStreamMsg(fullText)
           setTimeout(() => {
             setIsStreaming(false)
             setStreamingText('')
             setStreamingMsgId(null)
+            setCompletedStreamMsg(null)
           }, 150)
         } else {
           // Non-streaming JSON fallback
@@ -388,9 +392,11 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
             })
 
             // Clear streaming state after a short delay
+            setCompletedStreamMsg(data.response)
             setTimeout(() => {
               setIsStreaming(false)
               setStreamingText('')
+              setCompletedStreamMsg(null)
             }, 150)
           }
         }

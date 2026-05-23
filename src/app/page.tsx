@@ -8,7 +8,6 @@ import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
 import { useTTS } from '@/hooks/useTTS'
 import { playBootSound, playStartupCompleteSound, playActivationSound, playDeactivationSound } from '@/lib/sounds'
 import { getGreeting } from '@/lib/personalities'
-import { parseCommand } from '@/lib/commands'
 import BootSequence from '@/components/jarvis/BootSequence'
 import JarvisOrb from '@/components/jarvis/JarvisOrb'
 import HolographicDisplay from '@/components/jarvis/HolographicDisplay'
@@ -36,6 +35,7 @@ export default function Home() {
     crtOverlayEnabled,
     addEvent,
     addNotification,
+    clearMessages,
   } = useJarvisStore()
 
   const hydrated = useHydrated()
@@ -55,6 +55,7 @@ export default function Home() {
     micPermission,
     recognitionState,
     requestMicPermission,
+    errorMessage: voiceError,
   } = useVoiceRecognition()
 
   // Process voice input -> send to chat or execute command
@@ -63,7 +64,7 @@ export default function Home() {
     setLastProcessedVoice(text)
     setTimeout(() => setLastProcessedVoice(''), 3000)
 
-    const lowerText = text.toLowerCase()
+    const lowerText = text.toLowerCase().trim()
 
     // Voice commands for UI control
     if (lowerText.includes('open chat') || lowerText.includes('show chat') || lowerText.includes('open messages')) {
@@ -74,10 +75,34 @@ export default function Home() {
       setShowChat(false)
       return
     }
+
+    // Voice commands to stop AI speaking
+    if (
+      lowerText === 'stop' ||
+      lowerText === 'stop speaking' ||
+      lowerText === 'stop talking' ||
+      lowerText === 'be quiet' ||
+      lowerText === 'shut up' ||
+      lowerText === 'quiet' ||
+      lowerText === 'silence'
+    ) {
+      stopSpeaking()
+      setAIStatus('idle')
+      if (soundEnabled) {
+        speak('Right away, sir.')
+      }
+      return
+    }
+
     // Voice command to clear chat
-    if (lowerText === 'clear chat' || lowerText === 'clear history' || lowerText === 'clear conversation') {
-      // This will be handled by the command parser in VoiceChatOverlay
-      // but we still need to open chat and send the command
+    if (lowerText === 'clear chat' || lowerText === 'clear history' || lowerText === 'clear conversation' || lowerText === 'new chat') {
+      clearMessages()
+      stopSpeaking()
+      setAIStatus('idle')
+      if (soundEnabled) {
+        speak('Chat history cleared, sir.')
+      }
+      return
     }
 
     // All other voice input goes to the chat system via pendingVoiceInput
@@ -86,7 +111,7 @@ export default function Home() {
       setShowChat(true)
     }
     setPendingVoiceInput(text)
-  }, [lastProcessedVoice, setShowChat, setPendingVoiceInput, showChat])
+  }, [lastProcessedVoice, setShowChat, setPendingVoiceInput, showChat, stopSpeaking, setAIStatus, soundEnabled, speak, clearMessages])
 
   // Register voice transcript callback
   useEffect(() => {
@@ -129,7 +154,6 @@ export default function Home() {
   useEffect(() => {
     if (!booted || !isSupported) return
 
-    // After boot, automatically enable wake word listening
     if (!isListening && wakeWordEnabled) {
       const timer = setTimeout(() => {
         setIsListening(true)
@@ -204,6 +228,13 @@ export default function Home() {
       {/* ===== HOLOGRAPHIC DISPLAY ===== */}
       <HolographicDisplay />
 
+      {/* ===== VOICE FEEDBACK BUBBLE (above status bar) ===== */}
+      <VoiceFeedbackBubble
+        transcript={transcript}
+        isListening={isListening}
+        aiStatus={aiStatus}
+      />
+
       {/* ===== VOICE STATUS BAR (bottom) ===== */}
       <VoiceStatusBar
         isListening={isListening}
@@ -213,6 +244,7 @@ export default function Home() {
         recognitionState={recognitionState}
         micPermission={micPermission}
         isSupported={isSupported}
+        voiceError={voiceError}
         onToggleMic={() => {
           if (soundEnabled) {
             if (!isListening) playActivationSound()
@@ -293,6 +325,62 @@ function AmbientBar({ greetingText, greetingShown }: { greetingText: string; gre
   )
 }
 
+// ===== Voice Feedback Bubble - shows real-time transcript above mic =====
+function VoiceFeedbackBubble({
+  transcript,
+  isListening,
+  aiStatus,
+}: {
+  transcript: string
+  isListening: boolean
+  aiStatus: string
+}) {
+  const showBubble = isListening && transcript
+
+  return (
+    <AnimatePresence>
+      {showBubble && (
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 10, scale: 0.9 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+        >
+          <div className="relative px-5 py-3 rounded-xl bg-neon-cyan/10 border border-neon-cyan/25 backdrop-blur-md max-w-[400px]">
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-xl bg-neon-cyan/5 blur-sm" />
+            {/* Animated left border */}
+            <div
+              className="absolute top-0 left-0 w-[2px] h-full rounded-l-xl"
+              style={{
+                background: 'linear-gradient(to bottom, transparent, rgba(0,240,255,0.6), rgba(0,240,255,0.2), transparent)',
+              }}
+            />
+            <p className="relative font-mono text-sm text-neon-cyan/80 text-center truncate">
+              &ldquo;{transcript}&rdquo;
+            </p>
+            {/* Listening dots */}
+            <div className="relative flex items-center justify-center gap-1 mt-1.5">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-1 h-1 rounded-full bg-neon-cyan/50"
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                />
+              ))}
+              <span className="ml-2 font-mono text-[8px] text-neon-cyan/40 uppercase tracking-wider">
+                {aiStatus === 'thinking' ? 'Processing...' : 'Listening...'}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 function VoiceStatusBar({
   isListening,
   wakeWordDetected,
@@ -301,6 +389,7 @@ function VoiceStatusBar({
   recognitionState,
   micPermission,
   isSupported,
+  voiceError,
   onToggleMic,
   onRequestMic,
 }: {
@@ -311,12 +400,12 @@ function VoiceStatusBar({
   recognitionState: string
   micPermission: string
   isSupported: boolean
+  voiceError: string | null
   onToggleMic: () => void
   onRequestMic: () => void
 }) {
-  const voiceLanguage = useJarvisStore((s) => s.voiceLanguage)
-  const showChat = useJarvisStore((s) => s.showChat)
-  const setShowChat = useJarvisStore((s) => s.setShowChat)
+  // Show voice error if present
+  const showError = voiceError !== null
 
   const statusLabel = (() => {
     if (micPermission === 'denied') return 'MIC DENIED'
@@ -340,56 +429,91 @@ function VoiceStatusBar({
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 z-20 pointer-events-auto">
-      <div className="flex items-center justify-center gap-6 px-6 py-4">
-        {/* Mic button */}
+      <div className="flex flex-col items-center gap-2 px-6 py-4">
+        {/* Status label */}
+        <div className="flex flex-col items-center gap-1">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={statusLabel}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.2 }}
+              className={`font-mono text-[11px] tracking-[0.25em] uppercase ${statusColor}`}
+            >
+              {statusLabel}
+            </motion.p>
+          </AnimatePresence>
+
+          {/* Say JARVIS prompt with subtle animation */}
+          {!isListening && aiStatus === 'idle' && micPermission !== 'denied' && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0.2, 0.5, 0.2] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              className="font-mono text-[9px] text-neon-cyan/30 tracking-wider"
+            >
+              Say &ldquo;Jarvis&rdquo; or click the mic
+            </motion.p>
+          )}
+        </div>
+
+        {/* Mic button - larger and more prominent */}
         <div className="relative">
           <AnimatePresence>
             {isListening && (
               <>
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0.5 }}
-                  animate={{ scale: 2.2, opacity: 0 }}
+                  animate={{ scale: 2.5, opacity: 0 }}
                   exit={{ scale: 0.8, opacity: 0 }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
                   className="absolute inset-0 rounded-full border border-neon-cyan/30"
                 />
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0.4 }}
-                  animate={{ scale: 1.6, opacity: 0 }}
+                  animate={{ scale: 1.8, opacity: 0 }}
                   exit={{ scale: 0.9, opacity: 0 }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut', delay: 0.3 }}
                   className="absolute inset-0 rounded-full border border-neon-cyan/20"
+                />
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0.3 }}
+                  animate={{ scale: 1.4, opacity: 0 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut', delay: 0.5 }}
+                  className="absolute inset-0 rounded-full border border-neon-cyan/15"
                 />
               </>
             )}
           </AnimatePresence>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
             onClick={micPermission === 'denied' ? onRequestMic : onToggleMic}
             disabled={!isSupported && micPermission !== 'denied'}
             className={`
-              relative w-12 h-12 rounded-full flex items-center justify-center
+              relative w-16 h-16 rounded-full flex items-center justify-center
               transition-all duration-300
               ${micPermission === 'denied'
-                ? 'bg-neon-red/10 border border-neon-red/30'
+                ? 'bg-neon-red/10 border-2 border-neon-red/30'
                 : isListening
-                ? 'bg-neon-cyan/15 border border-neon-cyan/60 shadow-[0_0_20px_rgba(0,240,255,0.2)]'
-                : 'bg-white/5 border border-white/15 hover:border-neon-cyan/30 hover:bg-neon-cyan/5'
+                ? 'bg-neon-cyan/15 border-2 border-neon-cyan/60 shadow-[0_0_30px_rgba(0,240,255,0.25)]'
+                : 'bg-white/5 border-2 border-white/15 hover:border-neon-cyan/30 hover:bg-neon-cyan/5'
               }
               ${!isSupported ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
             `}
             aria-label={isListening ? 'Stop listening' : 'Start listening'}
           >
             {isListening ? (
-              <div className="flex items-center justify-center gap-[2px]">
+              <div className="flex items-center justify-center gap-[3px]">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-[2px] rounded-full bg-neon-cyan"
+                    className="w-[3px] rounded-full bg-neon-cyan"
                     animate={{
-                      height: [4, 14, 8, 16, 6, 12, 4],
+                      height: [6, 18, 10, 20, 8, 15, 6],
                     }}
                     transition={{
                       duration: 0.8,
@@ -401,7 +525,7 @@ function VoiceStatusBar({
                 ))}
               </div>
             ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={micPermission === 'denied' ? 'text-neon-red/60' : 'text-white/30'}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={micPermission === 'denied' ? 'text-neon-red/60' : 'text-white/30'}>
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                 <line x1="12" x2="12" y1="19" y2="22" />
@@ -409,39 +533,21 @@ function VoiceStatusBar({
             )}
           </motion.button>
         </div>
-
-        {/* Status text */}
-        <div className="flex flex-col items-center gap-0.5 min-w-[120px]">
-          <p className={`font-mono text-[10px] tracking-[0.2em] uppercase ${statusColor}`}>
-            {statusLabel}
-          </p>
-          {isListening && transcript && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="font-mono text-xs text-neon-cyan/50 max-w-[300px] truncate text-center"
-            >
-              &ldquo;{transcript}&rdquo;
-            </motion.p>
-          )}
-        </div>
-
-        {/* Chat toggle hint */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowChat(!showChat)}
-          className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/[0.03] border border-white/10 hover:border-neon-cyan/20 hover:bg-neon-cyan/5 transition-all duration-200"
-          aria-label="Toggle chat"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/30">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          <span className="font-mono text-[9px] text-white/25 tracking-wider uppercase">
-            {showChat ? 'Hide' : 'Chat'}
-          </span>
-        </motion.button>
       </div>
+
+      {/* Error message display */}
+      <AnimatePresence>
+        {showError && voiceError && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-neon-red/10 border border-neon-red/20 max-w-[300px]"
+          >
+            <p className="font-mono text-[10px] text-neon-red/70 text-center">{voiceError}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom hint */}
       <div className="flex justify-center pb-2">

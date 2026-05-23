@@ -105,3 +105,25 @@ Stage Summary:
 - Speech recognition should now survive 2-3+ conversations due to fresh instance creation
 - Auto-open chat on voice input ensures user can always see responses
 - All lint checks pass, app compiles and loads correctly
+
+---
+
+Task ID: 3
+Agent: Main Agent
+Task: Fix chat text display, update boot sequence, add voice commands, improve UI
+
+Work Log:
+- Fixed VoiceChatOverlay.tsx: `completedStreamMsg` variable was referenced but never defined - added state variable and set it properly during streaming completion
+- Updated BootSequence.tsx: Changed "J.A.R.V.I.S. SYSTEM" → "J.A.R.V.I.S. VOICE AGENT", "Scanning environment" → "Activating voice agent", "Activating HUD interface" → "Loading personality matrix", "All systems operational" → "Voice agent online. All systems operational", "Welcome back, sir." → "Welcome back, sir. Say 'Jarvis' to begin."
+- Added voice commands to page.tsx: "stop speaking", "stop talking", "be quiet", "shut up", "quiet", "silence" → stops TTS; "clear chat", "clear history", "clear conversation", "new chat" → clears messages and speaks confirmation
+- Improved VoiceStatusBar: Removed chat toggle button (voice-first design), enlarged mic button from w-12 to w-16, added 3rd pulsing ring animation, added "Say 'Jarvis' or click the mic" animated prompt, added voice error display, status label now uses AnimatePresence for smooth transitions
+- Added VoiceFeedbackBubble component: Shows real-time transcript above the mic button when listening, with neon glow, animated left border, and listening dots
+- All lint checks pass
+
+Stage Summary:
+- Chat text display bug fixed (completedStreamMsg was undefined)
+- Boot sequence now says "Voice Agent" throughout
+- 7+ new voice commands for hands-free control
+- Mic button is now larger and more prominent with 3-ring pulse animation
+- Real-time voice transcript bubble gives immediate visual feedback
+- Chat toggle button removed from status bar (still accessible via Ctrl+K and voice)
