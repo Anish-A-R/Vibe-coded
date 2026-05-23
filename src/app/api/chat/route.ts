@@ -182,51 +182,66 @@ export async function POST(request: NextRequest) {
 
     const readable = new ReadableStream({
       async start(controller) {
+        let closed = false
+
+        const safeEnqueue = (data: Uint8Array) => {
+          if (closed) return false
+          try {
+            controller.enqueue(data)
+            return true
+          } catch {
+            closed = true
+            return false
+          }
+        }
+
+        const safeClose = () => {
+          if (closed) return
+          closed = true
+          try {
+            controller.close()
+          } catch {
+            // Already closed - this is fine
+          }
+        }
+
         try {
           if (!fullResponse) {
-            controller.enqueue(
+            safeEnqueue(
               encoder.encode(`data: ${JSON.stringify({ error: 'No response from AI' })}\n\n`)
             )
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-            controller.close()
+            safeEnqueue(encoder.encode('data: [DONE]\n\n'))
+            safeClose()
             return
           }
 
           // If input was translated, send the translation info first
           if (englishMessage !== message) {
-            controller.enqueue(
+            if (!safeEnqueue(
               encoder.encode(`data: ${JSON.stringify({ translatedInput: englishMessage, originalInput: message })}\n\n`)
-            )
+            )) return
           }
 
           // Simulate streaming by sending the response in word chunks
           const words = fullResponse.split(/(\s+)/)
           for (const word of words) {
-            controller.enqueue(
+            if (!safeEnqueue(
               encoder.encode(`data: ${JSON.stringify({ content: word })}\n\n`)
-            )
+            )) return
             // Small delay for natural streaming feel
             await new Promise((resolve) => setTimeout(resolve, 12))
           }
 
           // Send done signal
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-          controller.close()
+          safeEnqueue(encoder.encode('data: [DONE]\n\n'))
+          safeClose()
         } catch (error) {
           console.error('Streaming error:', error)
-          try {
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ error: 'Streaming failed' })}\n\n`)
-            )
-            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-          } catch {
-            // Controller already closed
-          }
-          try {
-            controller.close()
-          } catch {
-            // Already closed
-          }
+          safeEnqueue(
+            encoder.encode(`data: ${JSON.stringify({ error: 'Streaming failed' })}\n\n`)
+          )
+          safeEnqueue(encoder.encode('data: [DONE]\n\n'))
+          safeClose()
         }
       },
     })

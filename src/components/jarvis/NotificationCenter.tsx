@@ -195,7 +195,7 @@ export default function NotificationCenter() {
             <motion.div
               key={`badge-${unreadCount}`}
               initial={{ scale: 0 }}
-              animate={{ scale: [0, 1.4, 1] }}
+              animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               transition={{ type: 'spring', stiffness: 500, damping: 15 }}
               className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center

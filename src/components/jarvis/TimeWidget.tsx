@@ -118,10 +118,10 @@ export default function TimeWidget() {
               <motion.div
                 className="w-1.5 h-1.5 rounded-full bg-cyan-400"
                 animate={{
-                  opacity: [1, 0.3, 1],
-                  scale: [1, 1.4, 1],
+                  opacity: [1, 0.3],
+                  scale: [1, 1.2],
                 }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 0.75, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
               />
               <span className="text-[8px] font-mono text-cyan-400/60 tracking-widest">LIVE</span>
             </div>

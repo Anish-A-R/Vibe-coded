@@ -82,6 +82,7 @@ export function ChatPanel() {
   const inputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const hasSentRef = useRef<string>('') // Track last sent text to avoid duplicates
+  const isLoadingRef = useRef(false) // Track loading state in ref to avoid stale closure
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -126,13 +127,14 @@ export function ChatPanel() {
   // Handle sending a message with translation support
   const handleSend = useCallback(async (text?: string, preTranslated?: string) => {
     const messageText = (text || input).trim()
-    if (!messageText || isLoading) return
+    if (!messageText || isLoadingRef.current) return
 
     // Prevent duplicate sends of the same text within 2 seconds
     if (hasSentRef.current === messageText) return
     hasSentRef.current = messageText
     setTimeout(() => { hasSentRef.current = '' }, 2000)
 
+    isLoadingRef.current = true
     setInput('')
     setCompletedStreamMsg(null)
     setTranslatedInput(null)
@@ -178,6 +180,7 @@ export function ChatPanel() {
             addMessage({ role: 'assistant', content: commandResult.message })
             if (soundEnabled) playMessageSound()
           }
+          isLoadingRef.current = false
           return
         }
         case 'system': {
@@ -185,6 +188,7 @@ export function ChatPanel() {
             clearMessages()
             addToast('info', 'Chat Cleared', 'Conversation history has been cleared.')
             if (soundEnabled) playMessageSound()
+            isLoadingRef.current = false
             return
           }
           if (commandResult.action === 'diagnostics') {
@@ -197,6 +201,7 @@ export function ChatPanel() {
             addMessage({ role: 'assistant', content: commandResult.message })
             if (soundEnabled) playMessageSound()
           }
+          isLoadingRef.current = false
           return
         }
         case 'search': {
@@ -208,18 +213,21 @@ export function ChatPanel() {
             addMessage({ role: 'assistant', content: commandResult.message })
             if (soundEnabled) playMessageSound()
           }
+          isLoadingRef.current = false
           return
         }
         case 'generate': {
           if (commandResult.prompt) {
             handleImageGeneration(commandResult.prompt)
           }
+          isLoadingRef.current = false
           return
         }
         case 'websearch': {
           if (commandResult.query) {
             handleWebSearch(commandResult.query)
           }
+          isLoadingRef.current = false
           return
         }
         case 'joke':
@@ -229,6 +237,7 @@ export function ChatPanel() {
             addMessage({ role: 'assistant', content: commandResult.message })
             if (soundEnabled) playMessageSound()
           }
+          isLoadingRef.current = false
           return
         }
       }
@@ -246,7 +255,9 @@ export function ChatPanel() {
     abortControllerRef.current = abortController
 
     try {
-      const history = messages.map((m) => ({
+      // Use store.getState() to get the latest messages instead of stale closure
+      const currentMessages = useJarvisStore.getState().messages
+      const history = currentMessages.map((m) => ({
         role: m.role,
         content: m.content,
       }))
@@ -360,8 +371,9 @@ export function ChatPanel() {
           addMessage({ role: 'assistant', content: fullText })
           if (soundEnabled) playMessageSound()
 
-          // TTS - speak the response
+          // TTS - speak the response (set status to speaking immediately)
           if (soundEnabled) {
+            setAIStatus('speaking')
             const speakText = fullText.length > 500 ? fullText.slice(0, 500) + '...' : fullText
             setTimeout(() => speak(speakText), 100)
           }
@@ -424,8 +436,13 @@ export function ChatPanel() {
         if (soundEnabled) playMessageSound()
       }
     } finally {
+      isLoadingRef.current = false
       setIsLoading(false)
-      setAIStatus('idle')
+      // Don't set AI status to idle if TTS is speaking
+      // The TTS onend handler will set it to idle when speech finishes
+      if (!soundEnabled || !isSpeaking()) {
+        setAIStatus('idle')
+      }
       // Clear streaming state after a small delay to prevent flash
       setTimeout(() => {
         setStreamingText('')
@@ -434,10 +451,11 @@ export function ChatPanel() {
       }, 100)
       abortControllerRef.current = null
     }
-  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, stop, addToast, speak, addNotification, voiceLanguage, translatedInput])
+  }, [input, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, addToast, speak, addNotification, voiceLanguage])
 
   // Handle image generation
   const handleImageGeneration = useCallback(async (prompt: string) => {
+    isLoadingRef.current = true
     setIsLoading(true)
     setAIStatus('thinking')
     addMessage({ role: 'assistant', content: `Generating image: "${prompt}"...\n\nThis may take a moment, sir.` })
@@ -469,6 +487,7 @@ export function ChatPanel() {
         content: 'Image generation failed, sir. The creative subsystems may be offline. Please try again.',
       })
     } finally {
+      isLoadingRef.current = false
       setIsLoading(false)
       setAIStatus('idle')
     }
@@ -476,6 +495,7 @@ export function ChatPanel() {
 
   // Handle web search
   const handleWebSearch = useCallback(async (query: string) => {
+    isLoadingRef.current = true
     setIsLoading(true)
     setAIStatus('thinking')
 
@@ -506,6 +526,7 @@ export function ChatPanel() {
         content: 'Web search failed, sir. The search subsystems may be experiencing issues. Please try again.',
       })
     } finally {
+      isLoadingRef.current = false
       setIsLoading(false)
       setAIStatus('idle')
     }
@@ -774,12 +795,26 @@ export function ChatPanel() {
           )}
         </AnimatePresence>
 
-        {/* Message list */}
-        <ErrorBoundary>
-          {messages.map((msg) => (
+        {/* Message list - each message has its own ErrorBoundary so one bad render doesn't kill the entire list */}
+        {messages.map((msg) => (
+          <ErrorBoundary
+            key={msg.id}
+            fallback={
+              <div className={`flex gap-3 px-4 py-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 ${
+                  msg.role === 'user' ? 'bg-neon-orange/10 border border-neon-orange/30' : 'bg-neon-cyan/10 border border-neon-cyan/30'
+                }`}>
+                  <Bot className="w-4 h-4 text-neon-cyan" />
+                </div>
+                <div className="max-w-[80%] px-4 py-3 rounded-xl text-sm text-white/90 bg-white/5 border border-white/10 whitespace-pre-wrap break-words">
+                  {msg.content}
+                </div>
+              </div>
+            }
+          >
             <MessageBubble key={msg.id} message={msg} />
-          ))}
-        </ErrorBoundary>
+          </ErrorBoundary>
+        ))}
 
         {/* Translating indicator */}
         {isTranslating && (

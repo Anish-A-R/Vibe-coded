@@ -471,3 +471,28 @@ Round 14 content
 - `bun run lint` ✅ Clean
 - Browser QA: Chat panel opens, text messages send and receive correctly, AI response displays with full markdown rendering
 - Single voice recognition instance (VoiceInput only), ChatPanel communicates via store
+
+### Round 14 Changes - Bug Fixes & Error Resolution (2026-05-24)
+
+#### Critical Bug Fixes
+1. ✅ **ErrorBoundary per-message isolation** (ChatPanel.tsx) - Previously, a single ErrorBoundary wrapped ALL messages. If any MessageBubble threw a rendering error (e.g., ReactMarkdown/SyntaxHighlighter crash), the entire message list would disappear, making it look like "text not printing in chat". Now each MessageBubble has its own ErrorBoundary with a plain-text fallback, so one bad message doesn't affect others.
+2. ✅ **Streaming API controller race condition** (api/chat/route.ts) - Fixed `TypeError: Invalid state: Controller is already closed` error. Added `safeEnqueue()` and `safeClose()` helper functions that track closed state and gracefully handle attempts to write to a closed stream. This prevents errors when clients disconnect during streaming.
+3. ✅ **Stale closure in handleSend** (ChatPanel.tsx) - The `handleSend` useCallback had `messages` and `isLoading` in its dependency array, causing frequent recreation and potential stale closure issues. Fixed by: (a) using `useJarvisStore.getState().messages` instead of closure variable for API history, (b) adding `isLoadingRef` ref for synchronous loading state tracking, (c) removing `messages`, `isLoading`, `stop`, and `translatedInput` from dependency array.
+4. ✅ **isLoadingRef for all async handlers** (ChatPanel.tsx) - `handleImageGeneration` and `handleWebSearch` now also use `isLoadingRef.current` for proper loading state tracking, preventing duplicate sends.
+5. ✅ **TTS + AI status flow conflict** (ChatPanel.tsx) - Previously, the `finally` block set `aiStatus` to `idle` immediately, but then TTS `speak()` would set it to `speaking` 100ms later, causing a confusing status flash. Fixed by: (a) setting `aiStatus('speaking')` immediately when TTS will be used, (b) checking `isSpeaking()` in the finally block before resetting to idle.
+6. ✅ **Framer Motion spring 3-keyframe error** (TimeWidget.tsx, NotificationCenter.tsx) - Fixed `Runtime Error: Only two keyframes currently supported with spring and inertia animations`. TimeWidget's LIVE indicator dot changed from 3-keyframe `[1, 1.4, 1]` to 2-keyframe `[1, 1.2]` with `repeatType: 'reverse'`. NotificationCenter's badge changed from `[0, 1.4, 1]` to `animate={{ scale: 1 }}` with spring transition.
+
+#### Files Changed
+- `src/components/jarvis/ChatPanel.tsx` - ErrorBoundary isolation, stale closure fix, isLoadingRef, TTS status flow
+- `src/app/api/chat/route.ts` - Safe stream controller helpers
+- `src/components/jarvis/TimeWidget.tsx` - Spring keyframe fix
+- `src/components/jarvis/NotificationCenter.tsx` - Spring keyframe fix
+
+#### Verification
+- `bun run lint` ✅ Clean
+- Browser QA: No runtime errors, no console errors (except expected microphone permission warning in headless)
+- Chat messages send and receive correctly with streaming
+- AI responses display with full markdown rendering (bullet points, code blocks, etc.)
+- Status transitions work correctly (idle → thinking → speaking → idle)
+- No more "Controller is already closed" streaming errors
+- No more Framer Motion spring keyframe errors
