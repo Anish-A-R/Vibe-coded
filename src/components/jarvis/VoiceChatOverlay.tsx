@@ -17,9 +17,6 @@ import {
   Loader2,
   Sparkles,
   ChevronRight,
-  Download,
-  FileText,
-  FileDown,
 } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useTTS } from '@/hooks/useTTS'
@@ -185,10 +182,8 @@ function TypewriterText({ text, speed = 18 }: { text: string; speed?: number }) 
 // ─── Overlay Message Component ────────────────────────────────────────
 function OverlayMessage({
   message,
-  onDownload,
 }: {
   message: { id: string; role: string; content: string; timestamp: number; isVoice?: boolean }
-  onDownload: (msg: { content: string; role: string; timestamp: number }) => void
 }) {
   const isUser = message.role === 'user'
   const isSystem = message.role === 'system'
@@ -352,24 +347,13 @@ function OverlayMessage({
           )}
         </div>
 
-        {/* Timestamp + Download */}
+        {/* Timestamp */}
         <div
-          className={`mt-0.5 flex items-center gap-1.5 ${
-            isUser ? 'justify-end' : 'justify-start'
+          className={`mt-0.5 ${
+            isUser ? 'text-right' : 'text-left'
           }`}
         >
           <span className="text-[8px] font-mono text-white/10">{timeStr}</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDownload(message)
-            }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-white/5 text-white/15 hover:text-neon-cyan/50"
-            aria-label="Download message"
-            title="Download this message"
-          >
-            <Download className="w-2.5 h-2.5" />
-          </button>
         </div>
       </div>
     </motion.div>
@@ -513,94 +497,6 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
       }
     }
   }, [])
-
-  // ── Download chat as text ──
-  const handleDownloadText = useCallback(() => {
-    if (messages.length === 0) return
-    const dateStr = new Date().toISOString().slice(0, 10)
-    const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-    let content = `J.A.R.V.I.S. Conversation Export\n`
-    content += `Date: ${dateStr} ${timeStr}\n`
-    content += `${'═'.repeat(50)}\n\n`
-
-    for (const msg of messages) {
-      if (msg.role === 'system') continue
-      const time = new Date(msg.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-      const role = msg.role === 'user' ? '👤 USER' : '🤖 JARVIS'
-      const voiceTag = msg.isVoice ? ' [Voice]' : ''
-      content += `[${time}] ${role}${voiceTag}:\n${msg.content}\n\n${'─'.repeat(40)}\n\n`
-    }
-
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `jarvis-chat-${dateStr}.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    addToast('success', 'Downloaded', 'Chat exported as text file.')
-  }, [messages, addToast])
-
-  // ── Download chat as markdown ──
-  const handleDownloadMarkdown = useCallback(() => {
-    if (messages.length === 0) return
-    const dateStr = new Date().toISOString().slice(0, 10)
-    let content = `# J.A.R.V.I.S. Conversation\n\n`
-    content += `> Exported on ${new Date().toLocaleString()}\n\n`
-    content += `---\n\n`
-
-    for (const msg of messages) {
-      if (msg.role === 'system') continue
-      const time = new Date(msg.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-      const voiceTag = msg.isVoice ? ' 🎤' : ''
-      if (msg.role === 'user') {
-        content += `### 👤 User${voiceTag} — ${time}\n\n${msg.content}\n\n`
-      } else {
-        content += `### 🤖 JARVIS — ${time}\n\n${msg.content}\n\n`
-      }
-      content += `---\n\n`
-    }
-
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `jarvis-chat-${dateStr}.md`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    addToast('success', 'Downloaded', 'Chat exported as markdown file.')
-  }, [messages, addToast])
-
-  // ── Download individual message ──
-  const handleDownloadMessage = useCallback((msg: { content: string; role: string; timestamp: number }) => {
-    const dateStr = new Date(msg.timestamp).toISOString().slice(0, 10)
-    const timeStr = new Date(msg.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-    const role = msg.role === 'user' ? 'user' : 'jarvis'
-    const content = `[${timeStr}] ${role.toUpperCase()}:\n\n${msg.content}`
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `jarvis-${role}-${dateStr}-${timeStr.replace(':', '')}.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    addToast('success', 'Downloaded', 'Message exported.')
-  }, [addToast])
-
-  // ── Listen for download chat voice command event ──
-  useEffect(() => {
-    const handleDownloadEvent = () => {
-      handleDownloadText()
-    }
-    window.addEventListener('jarvis-download-chat', handleDownloadEvent)
-    return () => window.removeEventListener('jarvis-download-chat', handleDownloadEvent)
-  }, [handleDownloadText])
 
   // ── Handle sending a message ──
   const handleSend = useCallback(
@@ -1101,30 +997,6 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
                     </button>
                   )}
 
-                  {/* Download as Markdown */}
-                  {messages.length > 0 && (
-                    <button
-                      onClick={handleDownloadMarkdown}
-                      className="p-1.5 rounded-md hover:bg-white/5 text-white/20 hover:text-neon-cyan/60 transition-colors"
-                      aria-label="Download as Markdown"
-                      title="Download .md"
-                    >
-                      <FileDown className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-
-                  {/* Download as Text */}
-                  {messages.length > 0 && (
-                    <button
-                      onClick={handleDownloadText}
-                      className="p-1.5 rounded-md hover:bg-white/5 text-white/20 hover:text-neon-cyan/60 transition-colors"
-                      aria-label="Download as Text"
-                      title="Download .txt"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-
                   {/* Clear chat */}
                   {messages.length > 0 && (
                     <button
@@ -1209,7 +1081,7 @@ export function VoiceChatOverlay({ open, onClose }: VoiceChatOverlayProps) {
 
                 {/* Message list */}
                 {messages.map((msg) => (
-                  <OverlayMessage key={msg.id} message={msg} onDownload={handleDownloadMessage} />
+                  <OverlayMessage key={msg.id} message={msg} />
                 ))}
 
                 {/* Streaming text with cursor */}

@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware'
 export type AIStatus = 'idle' | 'listening' | 'thinking' | 'speaking'
 export type PersonalityMode = 'professional' | 'funny' | 'boss'
 export type ActivePanel = 'chat' | 'settings' | 'history' | 'diagnostics'
-export type ColorTheme = 'cyan' | 'purple' | 'green' | 'red'
+export type ColorTheme = 'cyan' | 'red' | 'green' | 'purple' | 'orange' | 'arctic'
 export type AmbientSound = 'none' | 'rain' | 'cyberpunk' | 'space' | 'ocean' | 'fire'
 
 export interface Message {

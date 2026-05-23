@@ -2605,3 +2605,120 @@
   border-right: 2px solid rgba(0, 240, 255, 0.3);
   border-bottom: 2px solid rgba(0, 240, 255, 0.3);
 }
+
+/* ===== Color Theme Data Attributes ===== */
+/* These override --color-neon-cyan which drives the entire accent color system */
+
+[data-theme="cyan"] {
+  --color-neon-cyan: #00f0ff;
+  --color-jarvis-border: rgba(0, 240, 255, 0.15);
+}
+
+[data-theme="red"] {
+  --color-neon-cyan: #ff3366;
+  --color-jarvis-border: rgba(255, 51, 102, 0.15);
+}
+
+[data-theme="red"] .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(255, 51, 102, 0.6), 0 0 20px rgba(255, 51, 102, 0.3), 0 0 40px rgba(255, 51, 102, 0.1);
+}
+
+[data-theme="red"] .neon-glow-cyan {
+  box-shadow: 0 0 5px rgba(255, 51, 102, 0.3), 0 0 10px rgba(255, 51, 102, 0.2), 0 0 20px rgba(255, 51, 102, 0.1), inset 0 0 5px rgba(255, 51, 102, 0.1);
+}
+
+[data-theme="red"] .hud-grid-bg {
+  background-image: linear-gradient(rgba(255, 51, 102, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 51, 102, 0.03) 1px, transparent 1px);
+}
+
+[data-theme="red"] .glass-panel {
+  border-color: rgba(255, 51, 102, 0.12);
+}
+
+[data-theme="green"] {
+  --color-neon-cyan: #00ff88;
+  --color-jarvis-border: rgba(0, 255, 136, 0.15);
+}
+
+[data-theme="green"] .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(0, 255, 136, 0.6), 0 0 20px rgba(0, 255, 136, 0.3), 0 0 40px rgba(0, 255, 136, 0.1);
+}
+
+[data-theme="green"] .neon-glow-cyan {
+  box-shadow: 0 0 5px rgba(0, 255, 136, 0.3), 0 0 10px rgba(0, 255, 136, 0.2), 0 0 20px rgba(0, 255, 136, 0.1), inset 0 0 5px rgba(0, 255, 136, 0.1);
+}
+
+[data-theme="green"] .hud-grid-bg {
+  background-image: linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+}
+
+[data-theme="green"] .glass-panel {
+  border-color: rgba(0, 255, 136, 0.12);
+}
+
+[data-theme="purple"] {
+  --color-neon-cyan: #8b5cf6;
+  --color-jarvis-border: rgba(139, 92, 246, 0.15);
+}
+
+[data-theme="purple"] .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(139, 92, 246, 0.6), 0 0 20px rgba(139, 92, 246, 0.3), 0 0 40px rgba(139, 92, 246, 0.1);
+}
+
+[data-theme="purple"] .neon-glow-cyan {
+  box-shadow: 0 0 5px rgba(139, 92, 246, 0.3), 0 0 10px rgba(139, 92, 246, 0.2), 0 0 20px rgba(139, 92, 246, 0.1), inset 0 0 5px rgba(139, 92, 246, 0.1);
+}
+
+[data-theme="purple"] .hud-grid-bg {
+  background-image: linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
+}
+
+[data-theme="purple"] .glass-panel {
+  border-color: rgba(139, 92, 246, 0.12);
+}
+
+[data-theme="orange"] {
+  --color-neon-cyan: #ff6a00;
+  --color-jarvis-border: rgba(255, 106, 0, 0.15);
+}
+
+[data-theme="orange"] .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(255, 106, 0, 0.6), 0 0 20px rgba(255, 106, 0, 0.3), 0 0 40px rgba(255, 106, 0, 0.1);
+}
+
+[data-theme="orange"] .neon-glow-cyan {
+  box-shadow: 0 0 5px rgba(255, 106, 0, 0.3), 0 0 10px rgba(255, 106, 0, 0.2), 0 0 20px rgba(255, 106, 0, 0.1), inset 0 0 5px rgba(255, 106, 0, 0.1);
+}
+
+[data-theme="orange"] .hud-grid-bg {
+  background-image: linear-gradient(rgba(255, 106, 0, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 106, 0, 0.03) 1px, transparent 1px);
+}
+
+[data-theme="orange"] .glass-panel {
+  border-color: rgba(255, 106, 0, 0.12);
+}
+
+[data-theme="arctic"] {
+  --color-neon-cyan: #60a5fa;
+  --color-jarvis-border: rgba(96, 165, 250, 0.15);
+}
+
+[data-theme="arctic"] .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(96, 165, 250, 0.6), 0 0 20px rgba(96, 165, 250, 0.3), 0 0 40px rgba(96, 165, 250, 0.1);
+}
+
+[data-theme="arctic"] .neon-glow-cyan {
+  box-shadow: 0 0 5px rgba(96, 165, 250, 0.3), 0 0 10px rgba(96, 165, 250, 0.2), 0 0 20px rgba(96, 165, 250, 0.1), inset 0 0 5px rgba(96, 165, 250, 0.1);
+}
+
+[data-theme="arctic"] .hud-grid-bg {
+  background-image: linear-gradient(rgba(96, 165, 250, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.03) 1px, transparent 1px);
+}
+
+[data-theme="arctic"] .glass-panel {
+  border-color: rgba(96, 165, 250, 0.12);
+}
+
+[data-theme="arctic"] .glass-panel-strong {
+  border-color: rgba(96, 165, 250, 0.2);
+}
