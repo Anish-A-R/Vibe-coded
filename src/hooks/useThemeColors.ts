@@ -10,6 +10,11 @@ const themeRGBMap: Record<string, string> = {
   purple: '139, 92, 246',
   orange: '255, 106, 0',
   arctic: '96, 165, 250',
+  gold: '255, 215, 0',
+  pink: '244, 114, 182',
+  teal: '45, 212, 191',
+  crimson: '220, 38, 38',
+  lime: '132, 204, 22',
 }
 
 const themeHexMap: Record<string, string> = {
@@ -19,6 +24,11 @@ const themeHexMap: Record<string, string> = {
   purple: '#8b5cf6',
   orange: '#ff6a00',
   arctic: '#60a5fa',
+  gold: '#ffd700',
+  pink: '#f472b6',
+  teal: '#2dd4bf',
+  crimson: '#dc2626',
+  lime: '#84cc16',
 }
 
 /**

@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Clock, Search, Play, Smile, ScanLine, Activity, HelpCircle, Trash2, type LucideIcon } from 'lucide-react'
+import { Clock, Search, Play, Smile, ScanLine, Activity, HelpCircle, Palette, Image, Globe, type LucideIcon } from 'lucide-react'
 import { getSampleCommands } from '@/lib/commands'
 
 interface QuickCommandsProps {
@@ -15,7 +15,7 @@ const COMMAND_ICONS: Record<string, LucideIcon> = {
   'Tell me a joke': Smile,
   'Scan systems': ScanLine,
   'Show diagnostics': Activity,
-  'Clear chat': Trash2,
+  'Change color': Palette,
   'Help': HelpCircle,
 }
 

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare, Bot, Globe, Languages, Loader2, ExternalLink, RotateCcw } from 'lucide-react'
-import { useJarvisStore } from '@/hooks/useJarvisStore'
+import { useJarvisStore, type ColorTheme } from '@/hooks/useJarvisStore'
 import { useTTS } from '@/hooks/useTTS'
 import { parseCommand } from '@/lib/commands'
 import { playMessageSound, playThinkingSound, playActivationSound, playDeactivationSound } from '@/lib/sounds'
@@ -215,6 +215,57 @@ export function ChatPanel() {
           }
           if (commandResult.action === 'scan') {
             addToast('success', 'System Scan', 'All systems operational.')
+          }
+          if (commandResult.action === 'nexttheme') {
+            // Cycle to next theme
+            const allThemes: ColorTheme[] = ['cyan', 'red', 'green', 'purple', 'orange', 'arctic', 'gold', 'pink', 'teal', 'crimson', 'lime']
+            const { colorTheme: current, setColorTheme } = useJarvisStore.getState()
+            const currentIndex = allThemes.indexOf(current)
+            const nextIndex = (currentIndex + 1) % allThemes.length
+            const nextTheme = allThemes[nextIndex]
+            setColorTheme(nextTheme)
+            if (soundEnabled) playMessageSound()
+            addToast('info', 'Theme Changed', `Switched to ${nextTheme} mode`)
+            addMessage({ role: 'assistant', content: `Switched to ${nextTheme} mode, sir.` })
+            isLoadingRef.current = false
+            return
+          }
+          if (commandResult.action === 'changecolor') {
+            // Try to find a specific color in the text
+            const colorThemeMap: Record<string, ColorTheme> = {
+              'cyan': 'cyan', 'blue': 'arctic', 'arctic': 'arctic', 'ice': 'arctic',
+              'red': 'red', 'alert': 'red', 'boss': 'red',
+              'green': 'green', 'matrix': 'green', 'hacker': 'green',
+              'purple': 'purple', 'nebula': 'purple', 'violet': 'purple',
+              'orange': 'orange', 'flame': 'orange', 'fire': 'orange',
+              'gold': 'gold', 'stark': 'gold', 'yellow': 'gold',
+              'pink': 'pink', 'pulse': 'pink',
+              'teal': 'teal', 'sonar': 'teal', 'turquoise': 'teal',
+              'crimson': 'crimson', 'emergency': 'crimson', 'scarlet': 'crimson',
+              'lime': 'lime', 'toxic': 'lime',
+            }
+            const messageText = (text || input).trim().toLowerCase()
+            const themeMatch = Object.entries(colorThemeMap).find(([keyword]) => messageText.includes(keyword))
+            if (themeMatch) {
+              const { setColorTheme } = useJarvisStore.getState()
+              setColorTheme(themeMatch[1])
+              if (soundEnabled) playMessageSound()
+              addToast('info', 'Theme Changed', `Switched to ${themeMatch[1]} mode`)
+              addMessage({ role: 'assistant', content: `Theme changed to ${themeMatch[1]}, sir.` })
+            } else {
+              // No specific color - cycle to next
+              const allThemes: ColorTheme[] = ['cyan', 'red', 'green', 'purple', 'orange', 'arctic', 'gold', 'pink', 'teal', 'crimson', 'lime']
+              const { colorTheme: current, setColorTheme } = useJarvisStore.getState()
+              const currentIndex = allThemes.indexOf(current)
+              const nextIndex = (currentIndex + 1) % allThemes.length
+              const nextTheme = allThemes[nextIndex]
+              setColorTheme(nextTheme)
+              if (soundEnabled) playMessageSound()
+              addToast('info', 'Theme Changed', `Switched to ${nextTheme} mode`)
+              addMessage({ role: 'assistant', content: `Switched to ${nextTheme} mode, sir. Say "change color to [name]" for a specific theme.` })
+            }
+            isLoadingRef.current = false
+            return
           }
           if (commandResult.message) {
             addMessage({ role: 'assistant', content: commandResult.message })

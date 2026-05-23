@@ -116,7 +116,44 @@ export default function Home() {
       'green': 'green', 'matrix': 'green', 'hacker': 'green',
       'purple': 'purple', 'nebula': 'purple', 'violet': 'purple',
       'orange': 'orange', 'flame': 'orange', 'fire': 'orange',
+      'gold': 'gold', 'stark': 'gold', 'yellow': 'gold',
+      'pink': 'pink', 'pulse': 'pink',
+      'teal': 'teal', 'sonar': 'teal', 'turquoise': 'teal',
+      'crimson': 'crimson', 'emergency': 'crimson', 'scarlet': 'crimson',
+      'lime': 'lime', 'toxic': 'lime', 'neon green': 'lime',
     }
+
+    // All available themes in order for cycling
+    const allThemes: ColorTheme[] = ['cyan', 'red', 'green', 'purple', 'orange', 'arctic', 'gold', 'pink', 'teal', 'crimson', 'lime']
+
+    // Helper: cycle to next theme
+    const cycleToNextTheme = () => {
+      const { colorTheme: current, setColorTheme } = useJarvisStore.getState()
+      const currentIndex = allThemes.indexOf(current)
+      const nextIndex = (currentIndex + 1) % allThemes.length
+      const nextTheme = allThemes[nextIndex]
+      setColorTheme(nextTheme)
+      if (soundEnabled) speak(`Switching to ${nextTheme} mode, sir.`)
+    }
+
+    // "change color" without specifying a color -> cycle to next
+    if (
+      (lowerText === 'change color' || lowerText === 'change colour' || lowerText === 'change mode' ||
+       lowerText === 'switch color' || lowerText === 'switch colour' || lowerText === 'switch mode' ||
+       lowerText === 'next color' || lowerText === 'next theme' || lowerText === 'next colour' ||
+       lowerText === 'cycle color' || lowerText === 'cycle theme') &&
+      !Object.entries(colorThemeMap).find(([keyword]) => {
+        // Check if there's a specific color mentioned after "change color"
+        const parts = lowerText.replace(/change|switch|set|color|colour|mode|theme|to/gi, '').trim()
+        return parts.length > 0 && keyword !== 'red' // avoid false positive on 'red'
+          ? lowerText.includes(keyword)
+          : false
+      })
+    ) {
+      cycleToNextTheme()
+      return
+    }
+
     const themeMatch = Object.entries(colorThemeMap).find(([keyword]) => lowerText.includes(keyword))
     if (lowerText.includes('theme') || lowerText.includes('color') || lowerText.includes('colour') || lowerText.includes('mode')) {
       if (themeMatch) {

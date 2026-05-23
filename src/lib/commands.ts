@@ -39,6 +39,12 @@ const COMMAND_MAP: Record<string, { action: string; description: string }> = {
   'websearch': { action: 'websearch', description: 'Search the web for information' },
   'look up': { action: 'websearch', description: 'Search the web for information' },
   'find': { action: 'websearch', description: 'Search the web for information' },
+  'change color': { action: 'changecolor', description: 'Change the UI color theme' },
+  'change colour': { action: 'changecolor', description: 'Change the UI color theme' },
+  'change theme': { action: 'changecolor', description: 'Change the UI color theme' },
+  'switch color': { action: 'changecolor', description: 'Switch the UI color theme' },
+  'next theme': { action: 'nexttheme', description: 'Cycle to the next color theme' },
+  'next color': { action: 'nexttheme', description: 'Cycle to the next color theme' },
 }
 
 const JOKES = [
@@ -217,6 +223,14 @@ export function parseCommand(input: string): CommandResult {
           }
         }
 
+        case 'changecolor': {
+          return { type: 'system', action: 'changecolor', message: `Changing color theme... Available themes: cyan, red, green, purple, orange, arctic, gold, pink, teal, crimson, lime. Say "change color to [name]" or "next color" to cycle.` }
+        }
+
+        case 'nexttheme': {
+          return { type: 'system', action: 'nexttheme', message: 'Cycling to next theme...' }
+        }
+
         case 'ironman':
         case 'tony': {
           return {
@@ -249,7 +263,7 @@ export function getSampleCommands(): string[] {
     'Find latest AI research papers',
     'Scan systems',
     'Show diagnostics',
-    'Clear chat',
+    'Change color',
     'Help',
   ]
 }
