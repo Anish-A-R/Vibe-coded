@@ -496,3 +496,107 @@ Round 14 content
 - Status transitions work correctly (idle → thinking → speaking → idle)
 - No more "Controller is already closed" streaming errors
 - No more Framer Motion spring keyframe errors
+
+### Round 14 Changes - Website Opening Fix + Clear Chat Feature (2026-05-24)
+
+#### Bug Fixes
+1. ✅ **Website Opening Fix** - When users typed commands like "open youtube" or "open google.com", `window.open()` was being blocked in sandboxed/iframe environments. Fixed by:
+   - Detecting when `window.open` returns null/closed (popup blocked)
+   - Falling back to showing a clickable Markdown link in the chat message
+   - Both URL and Search commands now include `[Click here to open: URL](URL)` links in chat responses
+   - Users can always click the link to open websites even when popups are blocked
+   - When popup succeeds, a "[Open again: URL](URL)" link is still provided for convenience
+
+2. ✅ **Clear All Conversations Command** - The "clear all" command was not working because "clear" matched first in the COMMAND_MAP iteration order. Fixed by:
+   - Moving 'clear all' entry before 'clear' in the COMMAND_MAP so it matches first when the user types "clear all"
+   - Adding `clearAllConversations` action to the Zustand store that resets all conversations and creates a fresh empty one
+
+#### New Features
+3. ✅ **Prominent Clear Chat Button** - Replaced the small trash icon button in the ChatPanel header with a more visible "Clear" button:
+   - Shows RotateCcw icon + "CLEAR" text label (text hidden on very small screens)
+   - Glass-panel styling with neon-cyan hover effect
+   - Toast notification "Chat Cleared" on click
+   - Only visible when there are messages in the chat
+
+4. ✅ **"clear all" Command** - New command `clear all` that clears ALL conversation history (not just the current conversation):
+   - Resets all conversations in the store
+   - Creates a fresh empty conversation
+   - Shows "All Chats Cleared" toast notification
+
+5. ✅ **"Clear chat" Quick Command** - Added "Clear chat" to the quick commands suggestions list with Trash2 icon
+
+#### Store Updates (`/src/hooks/useJarvisStore.ts`)
+6. ✅ Added `clearAllConversations: () => void` to store interface and implementation
+   - Resets `conversations` to a single new empty conversation
+   - Sets `activeConversationId` to the new conversation
+   - Sets `messages` to empty array
+
+#### Files Changed
+- `/src/components/jarvis/ChatPanel.tsx` - URL opening with fallback links, prominent Clear button, clearall action handling
+- `/src/lib/commands.ts` - Added 'clear all' command (before 'clear'), added to sample commands
+- `/src/components/jarvis/QuickCommands.tsx` - Added Trash2 icon for "Clear chat" command
+- `/src/hooks/useJarvisStore.ts` - Added `clearAllConversations` action
+
+#### Verification
+- `bun run lint` ✅ Clean
+- Browser QA: "open youtube" opens YouTube in new tab ✅
+- Browser QA: "open google" opens Google in new tab ✅
+- Browser QA: "open github.com" opens GitHub in new tab ✅
+- Browser QA: "search latest AI news" opens Google search ✅
+- Browser QA: "clear" command clears current chat ✅
+- Browser QA: "clear all" command clears all conversations ✅
+- Browser QA: Clear button in header works and shows toast ✅
+- Browser QA: Clickable links appear in chat for URL/Search commands ✅
+
+### Round 14 Changes - OS-Level Store Upgrade (Task 1)
+
+---
+Task ID: 1
+Agent: store-upgrader
+Task: Upgrade Zustand store with OS-level state management
+
+Work Log:
+- Read existing store file
+- Added Window Management state (openWindows, activeWindowId, window actions)
+- Added AI Agent System state (7 agents with status tracking)
+- Added AI Memory System state (memory entries with importance/tags)
+- Added Gamification System state (XP, levels, achievements, streaks)
+- Added OS Mode System state (normal/focus/coding/security/presentation/stealth)
+- Added Command History tracking
+- Added Advanced Theme Engine state
+- Added Plugin System state
+- Added App Definitions for OS app launcher
+- All existing state preserved and extended
+
+Stage Summary:
+- Store upgraded with 8 new state categories
+- 7 AI agents defined (coding, research, productivity, security, automation, creative, system)
+- 16 achievements defined across 5 categories (commands, chat, agents, exploration, streaks)
+- 10 plugins defined across 5 categories (productivity, developer, creative, system, data)
+- 10 apps defined for app launcher
+- Persist config updated to save new state (openWindows, advancedTheme, osMode, xp, level, streak, achievements, aiMemory, commandHistory, plugins)
+- Lint passes clean
+
+#### New Types Added
+- `OSWindow` - Window management with position, size, z-index, minimize/maximize state
+- `AgentType` - 7 agent types (coding, research, productivity, security, automation, creative, system)
+- `AIAgent` - Agent with name, description, icon, status, tasksCompleted, color
+- `MemoryEntry` - AI memory with type, content, importance (1-5), tags
+- `Achievement` - Gamification with icon, xpReward, category, hidden flag
+- `OSMode` - 6 modes (normal, focus, coding, security, presentation, stealth)
+- `AdvancedTheme` - 7 themes (cyberpunk, holographic, military, hacker, space, glassmorphism, neon)
+- `Plugin` - Plugin with version, enabled, installed, category
+- `AppDefinition` - App with default dimensions, min dimensions, singleton flag
+
+#### New Store Actions
+- Window: openApp, closeWindow, minimizeWindow, maximizeWindow, restoreWindow, focusWindow, moveWindow, resizeWindow
+- Agents: setActiveAgent, updateAgentStatus, incrementAgentTasks
+- Memory: addMemory, removeMemory, clearMemory
+- Gamification: addXP (with auto level-up), unlockAchievement (with auto XP), updateStreak
+- OS Mode: setOSMode
+- Commands: addToCommandHistory, clearCommandHistory
+- Theme: setAdvancedTheme
+- Plugins: togglePlugin, installPlugin, uninstallPlugin
+
+#### Verification
+- `bun run lint` ✅ Clean

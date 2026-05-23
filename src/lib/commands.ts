@@ -22,6 +22,7 @@ const COMMAND_MAP: Record<string, { action: string; description: string }> = {
   'date': { action: 'date', description: 'Get current date' },
   'scan': { action: 'scan', description: 'Run system scan' },
   'diagnostics': { action: 'diagnostics', description: 'Show diagnostics' },
+  'clear all': { action: 'clearall', description: 'Clear all conversations' },
   'clear': { action: 'clear', description: 'Clear chat history' },
   'help': { action: 'help', description: 'Show available commands' },
   'summarize': { action: 'summarize', description: 'Summarize text' },
@@ -168,6 +169,10 @@ export function parseCommand(input: string): CommandResult {
           return { type: 'system', action: 'clear', message: 'Chat history cleared.' }
         }
 
+        case 'clearall': {
+          return { type: 'system', action: 'clearall', message: 'All conversation history cleared.' }
+        }
+
         case 'help': {
           return {
             type: 'command',
@@ -244,6 +249,7 @@ export function getSampleCommands(): string[] {
     'Find latest AI research papers',
     'Scan systems',
     'Show diagnostics',
+    'Clear chat',
     'Help',
   ]
 }
