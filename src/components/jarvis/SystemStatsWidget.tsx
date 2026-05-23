@@ -43,6 +43,7 @@ function CircularGauge({
             fill="none"
             strokeLinecap="round"
             strokeDasharray={circumference}
+            strokeDashoffset={circumference}
             animate={{ strokeDashoffset }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
             style={{ filter: `drop-shadow(0 0 6px ${color}66)` }}

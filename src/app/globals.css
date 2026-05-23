@@ -355,3 +355,17 @@
     background-position: 0% 100%;
   }
 }
+
+/* Hex data scroll animation for boot sequence */
+@keyframes data-scroll {
+  0% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(0%);
+  }
+}
+
+.animate-data-scroll {
+  animation: data-scroll var(--duration, 10s) linear infinite;
+}

@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Mic, Trash2 } from 'lucide-react'
+import { Send, Mic, Trash2, Volume2, VolumeX } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
+import { useTTS } from '@/hooks/useTTS'
 import { parseCommand } from '@/lib/commands'
 import { playMessageSound, playThinkingSound } from '@/lib/sounds'
+import { useJarvisToast } from '@/hooks/useJarvisToast'
 import { MessageBubble } from './MessageBubble'
 import { TypingIndicator } from './TypingIndicator'
 import { QuickCommands } from './QuickCommands'
@@ -24,6 +26,8 @@ export function ChatPanel() {
   } = useJarvisStore()
 
   const { transcript, isListening: voiceIsListening } = useVoiceRecognition()
+  const { addToast } = useJarvisToast()
+  const { speak, stop, isSpeaking } = useTTS()
 
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -67,6 +71,7 @@ export function ChatPanel() {
         setTypingText('')
         setAIStatus('idle')
         if (soundEnabled) playMessageSound()
+        if (soundEnabled) speak(text)
       }
     }, 20)
 
@@ -75,7 +80,7 @@ export function ChatPanel() {
         clearInterval(typingIntervalRef.current)
       }
     }
-  }, [addMessage, setAIStatus, soundEnabled])
+  }, [addMessage, setAIStatus, soundEnabled, speak])
 
   // Handle sending a message
   const handleSend = useCallback(async (text?: string) => {
@@ -97,6 +102,7 @@ export function ChatPanel() {
         case 'url': {
           if (commandResult.url) {
             window.open(commandResult.url, '_blank', 'noopener,noreferrer')
+            addToast('info', 'Opening URL', commandResult.message || `Opening ${commandResult.url}`)
           }
           if (commandResult.message) {
             addMessage({ role: 'assistant', content: commandResult.message })
@@ -107,8 +113,15 @@ export function ChatPanel() {
         case 'system': {
           if (commandResult.action === 'clear') {
             clearMessages()
+            addToast('info', 'Chat Cleared', 'Conversation history has been cleared.')
             if (soundEnabled) playMessageSound()
             return
+          }
+          if (commandResult.action === 'diagnostics') {
+            addToast('info', 'Diagnostics', 'Opening diagnostics panel...')
+          }
+          if (commandResult.action === 'scan') {
+            addToast('success', 'System Scan', 'All systems operational.')
           }
           if (commandResult.message) {
             addMessage({ role: 'assistant', content: commandResult.message })
@@ -119,6 +132,7 @@ export function ChatPanel() {
         case 'search': {
           if (commandResult.url) {
             window.open(commandResult.url, '_blank', 'noopener,noreferrer')
+            addToast('info', 'Search Initiated', commandResult.message || `Searching for: ${commandResult.query}`)
           }
           if (commandResult.message) {
             addMessage({ role: 'assistant', content: commandResult.message })
@@ -175,6 +189,7 @@ export function ChatPanel() {
       }
     } catch (error) {
       console.error('Chat error:', error)
+      addToast('error', 'Connection Error', 'Unable to reach AI systems. Please try again.')
       addMessage({
         role: 'assistant',
         content: 'I seem to be experiencing a connectivity issue, sir. My systems are working to restore the connection. Please try again in a moment.',
@@ -183,7 +198,7 @@ export function ChatPanel() {
     } finally {
       setIsLoading(false)
     }
-  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, typeResponse])
+  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, typeResponse, stop, addToast])
 
   // Handle quick command
   const handleQuickCommand = useCallback((cmd: string) => {
@@ -237,10 +252,20 @@ export function ChatPanel() {
               {aiStatus}
             </motion.span>
           )}
+          {isSpeaking() && (
+            <button
+              onClick={stop}
+              className="p-1.5 rounded-md hover:bg-white/5 text-neon-orange/60 hover:text-neon-orange transition-colors"
+              aria-label="Stop speaking"
+            >
+              <VolumeX className="w-3.5 h-3.5" />
+            </button>
+          )}
           {messages.length > 0 && (
             <button
               onClick={() => {
                 clearMessages()
+                stop()
                 if (soundEnabled) playMessageSound()
               }}
               className="p-1.5 rounded-md hover:bg-white/5 text-white/30 hover:text-white/60 transition-colors"

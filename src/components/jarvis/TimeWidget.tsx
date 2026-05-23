@@ -67,6 +67,7 @@ export default function TimeWidget() {
               fill="none"
               strokeLinecap="round"
               strokeDasharray={circumference}
+              strokeDashoffset={circumference}
               animate={{ strokeDashoffset }}
               transition={{ duration: 0.5, ease: 'linear' }}
               style={{ filter: 'drop-shadow(0 0 4px rgba(0, 240, 255, 0.5))' }}

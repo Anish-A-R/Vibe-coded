@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Mic, Cpu } from 'lucide-react'
+import { Mic, Cpu, Volume2 } from 'lucide-react'
 import type { Message } from '@/hooks/useJarvisStore'
+import { useTTS } from '@/hooks/useTTS'
 
 interface MessageBubbleProps {
   message: Message
@@ -12,6 +13,7 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const [showTimestamp, setShowTimestamp] = useState(false)
+  const { speak } = useTTS()
   const isUser = message.role === 'user'
   const isSystem = message.role === 'system'
 
@@ -133,6 +135,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             </div>
           )}
         </div>
+
+        {/* Speak button for assistant messages */}
+        {!isUser && (
+          <button
+            onClick={() => speak(message.content)}
+            className="absolute -top-1 -right-1 p-1 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan/40 hover:text-neon-cyan hover:bg-neon-cyan/20 transition-all opacity-0 group-hover:opacity-100"
+            aria-label="Speak message"
+          >
+            <Volume2 className="w-3 h-3" />
+          </button>
+        )}
 
         {/* Timestamp on hover */}
         <motion.div
