@@ -104,6 +104,10 @@ interface JarvisState {
   setIsListening: (listening: boolean) => void
   wakeWordEnabled: boolean
   setWakeWordEnabled: (enabled: boolean) => void
+  pendingVoiceInput: string | null
+  setPendingVoiceInput: (text: string | null) => void
+  voiceTranscript: string
+  setVoiceTranscript: (text: string) => void
 
   // UI
   activePanel: ActivePanel
@@ -387,6 +391,10 @@ export const useJarvisStore = create<JarvisState>()(
       setIsListening: (listening) => set({ isListening: listening }),
       wakeWordEnabled: true,
       setWakeWordEnabled: (enabled) => set({ wakeWordEnabled: enabled }),
+      pendingVoiceInput: null,
+      setPendingVoiceInput: (text) => set({ pendingVoiceInput: text }),
+      voiceTranscript: '',
+      setVoiceTranscript: (text) => set({ voiceTranscript: text }),
 
       // UI
       activePanel: 'chat',

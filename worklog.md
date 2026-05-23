@@ -454,3 +454,20 @@
 4. **MEDIUM**: Improve right column layout with better scroll/categorization
 5. **LOW**: Add Three.js holographic globe or arc reactor visualization
 6. **LOW**: Add more easter eggs and JARVIS personality interactions
+Round 14 content
+
+### Round 14 Changes - Voice-to-Chat Text Fix + Voice Architecture (2026-05-24)
+
+#### Critical Bug Fixes
+1. ✅ **Voice input text not appearing in chat** - Fixed the primary bug where the AI agent was talking (TTS worked) but response text was not printed in the chat panel. Root cause: VoiceInput's onFinalTranscript callback was never registered because the prop was not passed from page.tsx. The guard `if (onFinalTranscript)` evaluated to false, so voice transcripts were silently lost.
+2. ✅ **Dual voice recognition instance conflict** - Both VoiceInput and ChatPanel created separate useVoiceRecognition() instances causing browser-level conflicts. Fixed by removing useVoiceRecognition from ChatPanel entirely.
+
+#### Architecture Changes
+3. ✅ **Store-based voice bridge** (useJarvisStore.ts) - Added pendingVoiceInput (session-only), setPendingVoiceInput, voiceTranscript (session-only), setVoiceTranscript
+4. ✅ **VoiceInput always registers callback** - Removed the `if (onFinalTranscript)` guard. Always sets pendingVoiceInput in store, calls onWakeWord to open chat, syncs interim transcript to store
+5. ✅ **ChatPanel uses store for voice** - Removed useVoiceRecognition() entirely. Watches pendingVoiceInput and processes via handleSend. Mic button toggles via store's setIsListening. Added sound effects to mic button. Added isLoading guard to prevent race conditions.
+
+#### Verification
+- `bun run lint` ✅ Clean
+- Browser QA: Chat panel opens, text messages send and receive correctly, AI response displays with full markdown rendering
+- Single voice recognition instance (VoiceInput only), ChatPanel communicates via store

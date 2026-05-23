@@ -4,10 +4,9 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare, Bot, Globe, Languages, Loader2 } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
-import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
 import { useTTS } from '@/hooks/useTTS'
 import { parseCommand } from '@/lib/commands'
-import { playMessageSound, playThinkingSound } from '@/lib/sounds'
+import { playMessageSound, playThinkingSound, playActivationSound, playDeactivationSound } from '@/lib/sounds'
 import { useJarvisToast } from '@/hooks/useJarvisToast'
 import { MessageBubble } from './MessageBubble'
 import { QuickCommands } from './QuickCommands'
@@ -59,9 +58,12 @@ export function ChatPanel() {
     deleteConversation,
     addNotification,
     voiceLanguage,
+    isListening: voiceIsListening,
+    setIsListening: setVoiceIsListening,
+    pendingVoiceInput,
+    setPendingVoiceInput,
+    voiceTranscript,
   } = useJarvisStore()
-
-  const { transcript, isListening: voiceIsListening, onFinalTranscript, toggleListening: toggleVoiceListening } = useVoiceRecognition()
   const { addToast } = useJarvisToast()
   const { speak, stop, isSpeaking } = useTTS()
 
@@ -522,21 +524,21 @@ export function ChatPanel() {
     }
   }, [handleSend])
 
-  // Register callback for when final voice transcript is ready (auto-send with translation)
+  // Watch for pending voice input from VoiceInput component (via store)
+  // When a voice transcript arrives, auto-send it and clear the pending state
   useEffect(() => {
-    onFinalTranscript(async (text) => {
-      // Auto-send the voice message with translation support
-      // The handleSend function will handle translation internally
-      handleSend(text)
-    })
-  }, [onFinalTranscript, handleSend])
-
-  // Show interim transcript in input while speaking
-  useEffect(() => {
-    if (voiceIsListening && transcript) {
-      setInput(transcript)
+    if (pendingVoiceInput && !isLoading) {
+      handleSend(pendingVoiceInput)
+      setPendingVoiceInput(null)
     }
-  }, [voiceIsListening, transcript])
+  }, [pendingVoiceInput, handleSend, setPendingVoiceInput, isLoading])
+
+  // Show interim transcript in input while speaking (using store's voiceTranscript)
+  useEffect(() => {
+    if (voiceIsListening && voiceTranscript) {
+      setInput(voiceTranscript)
+    }
+  }, [voiceIsListening, voiceTranscript])
 
   const showQuickCommands = messages.length <= 1
 
@@ -1002,7 +1004,14 @@ export function ChatPanel() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
-              toggleVoiceListening()
+              if (soundEnabled) {
+                if (!voiceIsListening) {
+                  playActivationSound()
+                } else {
+                  playDeactivationSound()
+                }
+              }
+              setVoiceIsListening(!voiceIsListening)
             }}
             className={`
               p-3 rounded-lg

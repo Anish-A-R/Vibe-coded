@@ -14,7 +14,7 @@ interface VoiceInputProps {
 }
 
 export function VoiceInput({ className = '', onFinalTranscript, onWakeWord }: VoiceInputProps) {
-  const { soundEnabled, voiceLanguage } = useJarvisStore()
+  const { soundEnabled, voiceLanguage, setPendingVoiceInput, setVoiceTranscript } = useJarvisStore()
   const { isSupported, isListening, transcript, toggleListening, wakeWordDetected, onFinalTranscript: registerOnFinalTranscript } = useVoiceRecognition()
   const [lastSentText, setLastSentText] = useState('')
   const [isTranslating, setIsTranslating] = useState(false)
@@ -32,21 +32,34 @@ export function VoiceInput({ className = '', onFinalTranscript, onWakeWord }: Vo
     prevWakeWordRef.current = wakeWordDetected
   }, [wakeWordDetected, onWakeWord])
 
-  // Register the final transcript callback - this sends the voice text to ChatPanel
+  // Sync interim transcript to store so ChatPanel can display it
   useEffect(() => {
-    if (onFinalTranscript) {
-      registerOnFinalTranscript((text) => {
-        setLastSentText(text)
-        setTranslatedText(null)
+    setVoiceTranscript(transcript)
+  }, [transcript, setVoiceTranscript])
+
+  // ALWAYS register the final transcript callback - this sends the voice text to ChatPanel
+  // via the store's pendingVoiceInput, regardless of whether onFinalTranscript prop is provided
+  useEffect(() => {
+    registerOnFinalTranscript((text) => {
+      setLastSentText(text)
+      setTranslatedText(null)
+      // Set pending voice input in the store so ChatPanel can process it
+      setPendingVoiceInput(text)
+      // Also call the prop callback if provided
+      if (onFinalTranscript) {
         onFinalTranscript(text)
-        // Clear after 3 seconds
-        setTimeout(() => {
-          setLastSentText('')
-          setTranslatedText(null)
-        }, 3000)
-      })
-    }
-  }, [onFinalTranscript, registerOnFinalTranscript])
+      }
+      // Trigger onWakeWord to open the chat panel
+      if (onWakeWord) {
+        onWakeWord()
+      }
+      // Clear after 3 seconds
+      setTimeout(() => {
+        setLastSentText('')
+        setTranslatedText(null)
+      }, 3000)
+    })
+  }, [registerOnFinalTranscript, onFinalTranscript, onWakeWord, setPendingVoiceInput])
 
   // Keyboard shortcut: Ctrl+Space
   useEffect(() => {
