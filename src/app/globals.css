@@ -895,3 +895,260 @@
 .boss-ambient-pulse {
   animation: boss-pulse 3s ease-in-out infinite;
 }
+
+/* ===== Holographic Border Sweep ===== */
+/* Uses a rotating conic-gradient on a pseudo-element to create a light tracing the border */
+
+@keyframes border-sweep {
+  0% {
+    --sweep-angle: 0deg;
+  }
+  100% {
+    --sweep-angle: 360deg;
+  }
+}
+
+/* Conic gradient border sweep - uses @property for animating custom property */
+@property --sweep-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.holo-border-cyan {
+  position: relative;
+  overflow: hidden;
+}
+
+.holo-border-cyan::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--sweep-angle),
+    transparent 0%,
+    transparent 60%,
+    rgba(0, 240, 255, 0.6) 75%,
+    rgba(0, 240, 255, 0.8) 80%,
+    rgba(0, 240, 255, 0.6) 85%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: border-sweep 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.holo-border-orange {
+  position: relative;
+  overflow: hidden;
+}
+
+.holo-border-orange::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--sweep-angle),
+    transparent 0%,
+    transparent 60%,
+    rgba(255, 106, 0, 0.6) 75%,
+    rgba(255, 106, 0, 0.8) 80%,
+    rgba(255, 106, 0, 0.6) 85%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: border-sweep 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.holo-border-green {
+  position: relative;
+  overflow: hidden;
+}
+
+.holo-border-green::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--sweep-angle),
+    transparent 0%,
+    transparent 60%,
+    rgba(0, 255, 136, 0.6) 75%,
+    rgba(0, 255, 136, 0.8) 80%,
+    rgba(0, 255, 136, 0.6) 85%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: border-sweep 4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Inner glow pulse effect */
+@keyframes inner-glow-pulse {
+  0%, 100% {
+    box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.03);
+  }
+  50% {
+    box-shadow: inset 0 0 25px rgba(0, 240, 255, 0.08);
+  }
+}
+
+.inner-glow-cyan {
+  animation: inner-glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes inner-glow-pulse-orange {
+  0%, 100% {
+    box-shadow: inset 0 0 15px rgba(255, 106, 0, 0.03);
+  }
+  50% {
+    box-shadow: inset 0 0 25px rgba(255, 106, 0, 0.08);
+  }
+}
+
+.inner-glow-orange {
+  animation: inner-glow-pulse-orange 3s ease-in-out infinite;
+}
+
+/* Power-on scale effect */
+@keyframes power-on-scale {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-power-on {
+  animation: power-on-scale 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Status bar flowing gradient */
+@keyframes status-flow {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.status-bar-flow {
+  background-size: 200% 100%;
+  animation: status-flow 8s linear infinite;
+}
+
+/* Signal wave animation for InternetWidget header */
+@keyframes signal-wave {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Data flow dots animation */
+@keyframes data-flow-dot {
+  0% {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+}
+
+.data-flow-dot {
+  animation: data-flow-dot 1.5s ease-in-out infinite;
+}
+
+/* Breathing scale effect for gauges */
+@keyframes gauge-breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.gauge-breathe {
+  animation: gauge-breathe 3s ease-in-out infinite;
+}
+
+/* Refresh spin */
+@keyframes refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-refresh-spin {
+  animation: refresh-spin 0.6s ease-in-out;
+}
+
+/* Tooltip for latency bars */
+.latency-bar-tooltip {
+  position: relative;
+}
+
+.latency-bar-tooltip::after {
+  content: attr(data-ms);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 4px;
+  font-size: 9px;
+  font-family: monospace;
+  color: rgba(0, 240, 255, 0.8);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.latency-bar-tooltip:hover::after {
+  opacity: 1;
+}

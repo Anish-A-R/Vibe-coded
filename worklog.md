@@ -39,20 +39,19 @@
 - Mobile responsive: All panels work on 390px width
 
 ## Unresolved Issues / Risks
-- Weather data is simulated - could integrate real API
+- Weather real data fetch can be slow (4-60s) on first request — mitigated by 10-min cache
 - No real database conversations yet (only localStorage via Zustand persist) - Prisma schema exists but not fully utilized
 - Streaming fallback simulates chunking when SDK doesn't support true streaming
 - Could add Three.js holographic effects for extra visual depth
 - Could add speech recognition language switching
 
 ## Priority Recommendations for Next Phase
-1. **MEDIUM**: Integrate real weather API (using web-search or finance skill)
-2. **MEDIUM**: Add conversation export to PDF
-3. **MEDIUM**: Add widget customization (drag to reorder)
-4. **MEDIUM**: Add Prisma-based conversation persistence (sync localStorage → DB)
-5. **LOW**: Add Three.js holographic globe or arc reactor visualization
-6. **LOW**: Add multi-language support for voice recognition
-7. **LOW**: Add more easter eggs ("I am Iron Man" voice trigger, Arc Reactor minigame)
+1. **MEDIUM**: Add conversation export to PDF
+2. **MEDIUM**: Add widget customization (drag to reorder)
+3. **MEDIUM**: Add Prisma-based conversation persistence (sync localStorage → DB)
+4. **LOW**: Add Three.js holographic globe or arc reactor visualization
+5. **LOW**: Add multi-language support for voice recognition
+6. **LOW**: Add more easter eggs ("I am Iron Man" voice trigger, Arc Reactor minigame)
 
 ### Round 4 Changes - Styling Enhancement (Task 4-abcd)
 1. ✅ **Enhanced CircularOrb** - 6 rotating rings (2 new), energy arcs, data text ring (hex chars), arc reactor core (hexagonal pattern + triangular spokes), pulse waves (expanding sonar-like circles), particle trails (faint lines behind orbital dots), 60 tick marks on outer ring. All new elements respect `status` prop with speed/intensity adjustments. ViewBox expanded to -90 -90 180 180.
@@ -80,3 +79,29 @@
 1. ✅ **Streaming API Bug Fix** - Fixed `ERR_INVALID_STATE` error in `/api/chat/route.ts`. The original streaming implementation had a race condition where `controller.enqueue` was called after `controller.close()`. Simplified the streaming logic: get full response first via SDK, then stream it in word chunks with 12ms delay. This avoids the SDK streaming compatibility issues while still providing smooth word-by-word rendering. Error handling wrapped in try/catch to prevent controller double-close.
 2. ✅ **Full Browser QA** - Tested all features via agent-browser: boot sequence, main dashboard, chat panel with streaming, conversation selector, keyboard shortcuts (?), event log, command palette (Ctrl+P), settings, history, diagnostics. No console errors, no page errors. Streaming chat confirmed working with proper word-by-word display and blinking cursor.
 3. ✅ **Component Count** - 27 custom JARVIS components: BootSequence, CircularOrb, ChatPanel, ParticleField, SystemWidgets, VoiceInput, StatusBar, VoiceEqualizer, RadarScanner, HUDDecorations, SettingsPanel, ConversationHistory, SystemDiagnostics, CommandPalette, QuickCommands, WeatherWidget, TimeWidget, SystemStatsWidget, InternetWidget, MessageBubble, TypingIndicator, JarvisToast, KeyboardShortcutsOverlay, KonamiEffect, EventLog
+
+### Round 8 Changes - Real Weather API + Notification Center (Task 5-ac)
+1. ✅ **Real Weather API Integration** (`/src/app/api/weather/route.ts`) - Replaced simulated weather endpoint with real data fetching using `z-ai-web-dev-sdk`. Uses `web_search` function to find current weather, then AI chat completion to parse temperature, condition, humidity, wind from search results. Falls back to simulated data if real fetch fails. 10-minute in-memory cache with location-aware key. Accepts `?location=City&refresh=true` query params. Response includes `source: 'live' | 'simulated'` field.
+2. ✅ **Weather Location Setting** - Added `weatherLocation` (default: "New York") and `setWeatherLocation` to Zustand store, persisted. WeatherWidget passes location to API. SettingsPanel now has a "Weather Location" input under Display section with MapPin icon, Save button with check animation, and current location display.
+3. ✅ **Enhanced WeatherWidget** - Shows "LIVE" badge with pulsing green dot when using real data, "SIM" badge for simulated fallback. "Updated 2m ago" relative timestamp shown at bottom. Refresh button (RefreshCw icon, spins while loading) for manual weather fetch. Relative time auto-updates every 30s.
+4. ✅ **Notification Center** (`/src/components/jarvis/NotificationCenter.tsx`) - Bell icon in header nav bar (between Settings and Chat). Red badge with unread count (max 99+), bounces on new notifications. Dropdown panel with notification list. Each notification shows: type-colored icon, title, message, relative timestamp, unread indicator. Actions: Mark all read, Clear all, individual dismiss (X). Animations: slide-in for new items, spring bounce for badge. Optional notification sound (ascending two-tone beep). Empty state with bell icon.
+5. ✅ **Notification Store** (`/src/hooks/useJarvisStore.ts`) - Added `AppNotification` type (id, type, title, message, timestamp, read, icon). Added: `notifications[]`, `addNotification()`, `markNotificationRead()`, `markAllNotificationsRead()`, `clearNotifications()`. Keeps last 30. Session-only (not persisted). `WeatherData` now includes optional `source` and `updated` fields.
+6. ✅ **Notification Triggers** (`/src/app/page.tsx`, `/src/components/jarvis/ChatPanel.tsx`):
+   - Chat response received → "JARVIS Responded" info notification with message preview
+   - CPU > 80% → "High CPU Usage" warning notification (60s cooldown)
+   - Personality mode changes → "Personality Mode Changed" info notification
+   - New conversation created → "New Conversation" info notification
+   - Konami code activated → "Easter Egg Found!" success notification
+   - Weather temp > 35°C → "Heat Alert" warning, temp < 0°C → "Freeze Alert" warning (5min cooldown)
+7. ✅ **SystemStatsWidget Lint Fix** - Fixed pre-existing lint errors in `SystemStatsWidget.tsx`: removed ref access during render for trend calculation, now derives CPU trend from `cpuHistory` state array. Removed unused `prevCpuRef`/`prevRamRef` refs.
+8. ✅ **Lint** - `bun run lint` clean, no errors
+
+### Round 9 Changes - Styling Enhancement Round 2 (Task 4-ab)
+1. ✅ **Holographic Animated Border Sweep** - Added CSS `@property --sweep-angle` + `@keyframes border-sweep` + 3 utility classes (`.holo-border-cyan`, `.holo-border-orange`, `.holo-border-green`) using conic-gradient with mask-composite technique. Creates a light tracing around the card perimeter. Also added: `.inner-glow-cyan`, `.inner-glow-orange` (pulsing inset glow), `.gauge-breathe` (subtle scale pulse for gauges), `.animate-refresh-spin` (icon rotation), `.latency-bar-tooltip` (CSS-only hover tooltip via `attr(data-ms)`), `.data-flow-dot` (animated dot flow), `.animate-power-on` (scale bounce keyframe), `.status-bar-flow` (gradient background animation), `@keyframes signal-wave`.
+2. ✅ **Enhanced TimeWidget** - Added `holo-border-cyan` + `inner-glow-cyan` classes for holographic border sweep and pulsing inner glow. Added "LIVE" indicator with pulsing cyan dot next to seconds display. Made seconds arc gradient more vibrant (3-stop linear gradient: #00f0ff → #00d4ff → #0088ff) with stronger drop-shadow. Added day progress bar at bottom showing percentage through the day with gradient fill.
+3. ✅ **Enhanced WeatherWidget** - Added `holo-border-orange` + `inner-glow-orange` for orange border sweep and inner glow. Added `AnimatedWeatherIcon` component with animated rain drops (falling motion, opacity cycle) for rain and animated sun rays (opacity pulse, staggered delays) for sunny conditions. Added "Feels Like" temperature with mini thermometer bar (blue→orange→red gradient fill based on temperature). Made forecast cards glassmorphic with hover scale effect, semi-transparent background, and border. Added `RefreshCw` button with `animate-refresh-spin` class during refresh.
+4. ✅ **Enhanced SystemStatsWidget** - Added `holo-border-cyan` + `inner-glow-cyan`. Made CPU history bars use gradient fills from bottom to top: low CPU (cyan gradient), medium (cyan→yellow), high (orange→red). Added `.gauge-breathe` class to CircularGauge for subtle 3s breathing scale pulse. Added trend sparkline indicator (TrendingUp/TrendingDown/Minus icons) at bottom-right of each gauge. Color-coded temperature value: green (#00ff88) < 50°C, yellow (#ffcc00) 50-70°C, red (#ff3366) > 70°C, with matching text-shadow glow.
+5. ✅ **Enhanced InternetWidget** - Added `holo-border-cyan` + `inner-glow-cyan`. Added `SignalWave` component: 12 animated bars in header with staggered `scaleY`/opacity animation showing "signal strength". Made latency chart bars use gradient fill (green→yellow from bottom to top). Added hover tooltips on latency bars (React state-based, showing exact ms value on hover). Added "PEAK" label showing highest latency value in chart with ▲ indicator on the peak bar.
+6. ✅ **Animated Dashboard Section Transitions** (page.tsx) - Left column: `SystemWidgets` now accepts `staggerDirection` prop; with `staggerDirection="left"`, each widget slides in from the left with 0.15s stagger delay. Center column: "power on" sequence — decorative rings appear first (0.3s, 0.45s delay, scale from 0.5), then orb scales up from 0 with spring bounce (0.5s delay, stiffness:150, damping:12), then status label fades in (1.0s delay). Quick action hints appear one by one with 0.1s stagger (starting at 1.2s). Right column: each panel slides in from right with 0.15s stagger (0.35s, 0.5s, 0.65s, 0.8s delays).
+7. ✅ **Enhanced StatusBar** - Animated gradient line at top uses `status-bar-flow` class (flowing 200% background animation, 8s cycle). Time display has cyan glow effect (text-shadow: 8px + 16px). Added `DataFlowDots` component between status sections: 3 tiny dots with staggered opacity/translateX animation simulating data flowing between sections. Added `AnimatedSignalBars` component next to network status: 4 tiny bars with staggered `scaleY` pulse animation, color-coded by network status.
+8. ✅ **Lint** - `bun run lint` clean, no errors

@@ -9,6 +9,7 @@ import InternetWidget from './InternetWidget'
 
 interface SystemWidgetsProps {
   className?: string
+  staggerDirection?: 'left' | 'right' | 'none'
 }
 
 const containerVariants = {
@@ -16,22 +17,48 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.15,
     },
   },
 }
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.5, ease: 'easeOut' },
-  },
+function getItemVariants(direction: 'left' | 'right' | 'none') {
+  if (direction === 'left') {
+    return {
+      hidden: { opacity: 0, x: -30, scale: 0.95 },
+      visible: {
+        opacity: 1,
+        x: 0,
+        scale: 1,
+        transition: { duration: 0.5, ease: 'easeOut' },
+      },
+    }
+  }
+  if (direction === 'right') {
+    return {
+      hidden: { opacity: 0, x: 30, scale: 0.95 },
+      visible: {
+        opacity: 1,
+        x: 0,
+        scale: 1,
+        transition: { duration: 0.5, ease: 'easeOut' },
+      },
+    }
+  }
+  return {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { duration: 0.5, ease: 'easeOut' },
+    },
+  }
 }
 
-export default function SystemWidgets({ className }: SystemWidgetsProps) {
+export default function SystemWidgets({ className, staggerDirection = 'none' }: SystemWidgetsProps) {
+  const itemVariants = getItemVariants(staggerDirection)
+
   return (
     <motion.div
       variants={containerVariants}

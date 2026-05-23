@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X,
@@ -14,7 +15,10 @@ import {
   Mic,
   Eye,
   Palette,
+  MapPin,
+  Check,
 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
@@ -109,7 +113,12 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     easterEggActivated,
     setEasterEggActivated,
     commandCount,
+    weatherLocation,
+    setWeatherLocation,
   } = useJarvisStore()
+
+  const [locationInput, setLocationInput] = useState(weatherLocation)
+  const [locationSaved, setLocationSaved] = useState(false)
 
   const handleExportConversations = () => {
     const { messages } = useJarvisStore.getState()
@@ -255,6 +264,52 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                       <span className="text-xs font-mono text-cyan-400/50 px-2 py-1 rounded border border-cyan-500/10">
                         Dark (Cinematic)
                       </span>
+                    </div>
+                    {/* Location */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="size-4 text-cyan-400/60" />
+                        <span className="text-sm font-mono text-white/70">Weather Location</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={locationInput}
+                          onChange={(e) => {
+                            setLocationInput(e.target.value)
+                            setLocationSaved(false)
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              setWeatherLocation(locationInput)
+                              setLocationSaved(true)
+                              setTimeout(() => setLocationSaved(false), 2000)
+                            }
+                          }}
+                          placeholder="Enter city name..."
+                          className="
+                            flex-1 h-8 text-sm font-mono
+                            bg-white/5 border-cyan-500/20
+                            text-white/80 placeholder:text-white/20
+                            focus:border-cyan-500/50
+                          "
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            setWeatherLocation(locationInput)
+                            setLocationSaved(true)
+                            setTimeout(() => setLocationSaved(false), 2000)
+                          }}
+                          className="flex-shrink-0 h-8 px-3 rounded-md border text-xs font-mono transition-colors
+                            border-cyan-500/30 text-cyan-400/70 hover:bg-cyan-500/10 hover:text-cyan-400"
+                        >
+                          {locationSaved ? <Check className="size-3.5" /> : 'Save'}
+                        </motion.button>
+                      </div>
+                      <div className="text-[10px] font-mono text-white/25">
+                        Current: {weatherLocation}
+                      </div>
                     </div>
                   </div>
                 </section>

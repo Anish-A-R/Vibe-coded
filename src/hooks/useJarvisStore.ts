@@ -37,6 +37,19 @@ export interface WeatherData {
   humidity: number
   wind: number
   location: string
+  source?: 'live' | 'simulated'
+  updated?: string
+}
+
+// ===== Notification Types =====
+export interface AppNotification {
+  id: string
+  type: 'info' | 'warning' | 'success' | 'error'
+  title: string
+  message: string
+  timestamp: number
+  read: boolean
+  icon?: string
 }
 
 // ===== Event Log Types =====
@@ -108,6 +121,17 @@ interface JarvisState {
   setSystemStats: (stats: SystemStats) => void
   weather: WeatherData | null
   setWeather: (weather: WeatherData | null) => void
+
+  // Weather Location
+  weatherLocation: string
+  setWeatherLocation: (loc: string) => void
+
+  // Notifications (session-only, not persisted)
+  notifications: AppNotification[]
+  addNotification: (n: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => void
+  markNotificationRead: (id: string) => void
+  markAllNotificationsRead: () => void
+  clearNotifications: () => void
 
   // Easter eggs
   easterEggActivated: boolean
@@ -365,6 +389,36 @@ export const useJarvisStore = create<JarvisState>()(
       weather: null,
       setWeather: (weather) => set({ weather }),
 
+      // Weather Location
+      weatherLocation: 'New York',
+      setWeatherLocation: (loc) => set({ weatherLocation: loc }),
+
+      // Notifications (session-only, not persisted)
+      notifications: [],
+      addNotification: (n) =>
+        set((state) => {
+          const newNotification: AppNotification = {
+            ...n,
+            id: `notif-${generateId()}`,
+            timestamp: Date.now(),
+            read: false,
+          }
+          // Keep last 30 notifications
+          const updated = [newNotification, ...state.notifications].slice(0, 30)
+          return { notifications: updated }
+        }),
+      markNotificationRead: (id) =>
+        set((state) => ({
+          notifications: state.notifications.map((n) =>
+            n.id === id ? { ...n, read: true } : n
+          ),
+        })),
+      markAllNotificationsRead: () =>
+        set((state) => ({
+          notifications: state.notifications.map((n) => ({ ...n, read: true })),
+        })),
+      clearNotifications: () => set({ notifications: [] }),
+
       // Easter eggs
       easterEggActivated: false,
       setEasterEggActivated: (activated) => set({ easterEggActivated: activated }),
@@ -397,7 +451,9 @@ export const useJarvisStore = create<JarvisState>()(
         wakeWordEnabled: state.wakeWordEnabled,
         commandCount: state.commandCount,
         easterEggActivated: state.easterEggActivated,
+        weatherLocation: state.weatherLocation,
         // events are NOT persisted (session-only)
+        // notifications are NOT persisted (session-only)
         // Persist conversations (keep last 10, last 50 messages each)
         conversations: state.conversations.slice(0, 10).map((conv) => ({
           ...conv,

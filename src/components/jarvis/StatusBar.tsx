@@ -25,6 +25,58 @@ const networkDisplay: Record<string, { label: string; color: string }> = {
   weak: { label: 'NET: WEAK', color: 'text-neon-orange' },
 }
 
+/* Animated signal bars for network status */
+function AnimatedSignalBars({ status }: { status: string }) {
+  const barHeights = status === 'online' ? [4, 7, 10, 13] : status === 'weak' ? [4, 7, 0, 0] : [0, 0, 0, 0]
+  const color = status === 'online' ? '#00ff88' : status === 'weak' ? '#ff6a00' : '#ff3366'
+
+  return (
+    <div className="flex items-end gap-[2px]">
+      {barHeights.map((h, i) => (
+        <motion.div
+          key={i}
+          className="w-[3px] rounded-sm"
+          style={{
+            height: h || 3,
+            backgroundColor: h ? color : 'rgba(255,255,255,0.1)',
+          }}
+          animate={h ? { scaleY: [1, 0.6, 1] } : {}}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            delay: i * 0.15,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* Data flow dots between sections */
+function DataFlowDots() {
+  return (
+    <div className="flex items-center gap-[3px] mx-2">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="w-[3px] h-[3px] rounded-full bg-neon-cyan/30"
+          animate={{
+            opacity: [0, 1, 0],
+            x: [-2, 2, -2],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            delay: i * 0.4,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export default function StatusBar({
   status = 'idle',
   networkStatus = 'online',
@@ -61,11 +113,12 @@ export default function StatusBar({
         className
       )}
     >
-      {/* Cyan accent line at top */}
+      {/* Animated gradient line at top */}
       <div
-        className="h-[1px] w-full"
+        className="h-[1px] w-full status-bar-flow"
         style={{
-          background: 'linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.4), rgba(0, 240, 255, 0.6), rgba(0, 240, 255, 0.4), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.2), rgba(0, 240, 255, 0.5), rgba(0, 136, 255, 0.3), rgba(0, 240, 255, 0.5), rgba(0, 240, 255, 0.2), transparent)',
+          backgroundSize: '200% 100%',
         }}
       />
 
@@ -98,15 +151,35 @@ export default function StatusBar({
           <span className="text-neon-cyan/80 sm:hidden">{statusInfo.label.slice(0, 4)}</span>
         </div>
 
-        {/* Center: Time */}
-        <div className="text-neon-cyan/60 tabular-nums">{time}</div>
+        {/* Data flow dots */}
+        <div className="hidden sm:flex">
+          <DataFlowDots />
+        </div>
 
-        {/* Right: Network & Commands */}
+        {/* Center: Time with glow */}
+        <div
+          className="tabular-nums text-neon-cyan/70"
+          style={{
+            textShadow: '0 0 8px rgba(0, 240, 255, 0.4), 0 0 16px rgba(0, 240, 255, 0.2)',
+          }}
+        >
+          {time}
+        </div>
+
+        {/* Data flow dots */}
+        <div className="hidden sm:flex">
+          <DataFlowDots />
+        </div>
+
+        {/* Right: Network with signal bars + Commands */}
         <div className="flex items-center gap-3 sm:gap-5">
-          <span className={cn('hidden sm:inline', netInfo.color)}>{netInfo.label}</span>
-          <span className={cn('sm:hidden', netInfo.color)}>
-            {networkStatus === 'online' ? '●' : networkStatus === 'offline' ? '○' : '◑'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <AnimatedSignalBars status={networkStatus} />
+            <span className={cn('hidden sm:inline', netInfo.color)}>{netInfo.label}</span>
+            <span className={cn('sm:hidden', netInfo.color)}>
+              {networkStatus === 'online' ? '●' : networkStatus === 'offline' ? '○' : '◑'}
+            </span>
+          </div>
 
           <span className="text-neon-cyan/50">
             CMD: <span className="text-neon-cyan/80">{commandCount}</span>

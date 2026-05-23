@@ -27,6 +27,7 @@ export function ChatPanel() {
     addConversation,
     switchConversation,
     deleteConversation,
+    addNotification,
   } = useJarvisStore()
 
   const { transcript, isListening: voiceIsListening } = useVoiceRecognition()
@@ -264,6 +265,13 @@ export function ChatPanel() {
           addMessage({ role: 'assistant', content: fullText })
           if (soundEnabled) playMessageSound()
           if (soundEnabled) speak(fullText)
+          // Notification: JARVIS responded
+          addNotification({
+            type: 'info',
+            title: 'JARVIS Responded',
+            message: fullText.slice(0, 80) + (fullText.length > 80 ? '...' : ''),
+            icon: 'message-circle',
+          })
         }
       } else {
         // Non-streaming JSON response (fallback)
@@ -283,6 +291,13 @@ export function ChatPanel() {
           addMessage({ role: 'assistant', content: data.response })
           if (soundEnabled) playMessageSound()
           if (soundEnabled) speak(data.response)
+          // Notification: JARVIS responded
+          addNotification({
+            type: 'info',
+            title: 'JARVIS Responded',
+            message: data.response.slice(0, 80) + (data.response.length > 80 ? '...' : ''),
+            icon: 'message-circle',
+          })
         }
       }
     } catch (error) {
@@ -304,7 +319,7 @@ export function ChatPanel() {
       setIsStreaming(false)
       abortControllerRef.current = null
     }
-  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, stop, addToast, speak])
+  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, stop, addToast, speak, addNotification])
 
   // Handle quick command
   const handleQuickCommand = useCallback((cmd: string) => {
@@ -414,6 +429,12 @@ export function ChatPanel() {
             onClick={() => {
               addConversation()
               if (soundEnabled) playMessageSound()
+              addNotification({
+                type: 'info',
+                title: 'New Conversation',
+                message: 'Started a new chat session',
+                icon: 'plus',
+              })
             }}
             className="flex-shrink-0 p-1.5 rounded-md text-white/30 hover:text-neon-cyan/70 bg-white/[0.02] border border-white/5 hover:border-neon-cyan/20 transition-all"
             aria-label="New conversation"

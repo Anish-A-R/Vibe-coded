@@ -37,6 +37,7 @@ import type { AIStatus, EventType } from '@/hooks/useJarvisStore'
 import KeyboardShortcutsOverlay from '@/components/jarvis/KeyboardShortcutsOverlay'
 import KonamiEffect from '@/components/jarvis/KonamiEffect'
 import EventLog from '@/components/jarvis/EventLog'
+import NotificationCenter from '@/components/jarvis/NotificationCenter'
 
 export default function Home() {
   const {
@@ -59,6 +60,7 @@ export default function Home() {
     addEvent,
     easterEggActivated,
     setEasterEggActivated,
+    addNotification,
   } = useJarvisStore()
 
   const [showBoot, setShowBoot] = useState(!booted)
@@ -134,6 +136,7 @@ export default function Home() {
           setOrbGlow(true)
           addToast('success', 'KONAMI CODE ACTIVATED!', 'Tony Stark would be proud.')
           addEvent({ type: 'system', severity: 'success', message: 'Konami code activated', details: '↑↑↓↓←→←→BA — I am Iron Man' })
+          addNotification({ type: 'success', title: 'Easter Egg Found!', message: 'Konami code activated — I am Iron Man', icon: 'sparkles' })
           // Remove orb glow after 5 seconds
           setTimeout(() => setOrbGlow(false), 5000)
           // Play special sound
@@ -219,12 +222,66 @@ export default function Home() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setShowSettings, setShowHistory, setShowDiagnostics, showCommandPalette, addEvent, setEasterEggActivated, addToast, soundEnabled])
+  }, [setShowSettings, setShowHistory, setShowDiagnostics, showCommandPalette, addEvent, setEasterEggActivated, addToast, soundEnabled, addNotification])
 
   // Konami code complete handler
   const handleKonamiComplete = useCallback(() => {
     setKonamiActive(false)
   }, [])
+
+  // ===== Notification Triggers =====
+  // Track previous personality mode to detect changes
+  const prevPersonalityRef = useRef(personalityMode)
+  useEffect(() => {
+    if (prevPersonalityRef.current !== personalityMode && booted) {
+      addNotification({
+        type: 'info',
+        title: 'Personality Mode Changed',
+        message: `Switched to ${personalityMode} mode`,
+        icon: 'brain',
+      })
+      prevPersonalityRef.current = personalityMode
+    }
+  }, [personalityMode, booted, addNotification])
+
+  // Monitor CPU for high usage warnings
+  const lastCpuWarningRef = useRef(0)
+  useEffect(() => {
+    if (stats.cpu > 80 && Date.now() - lastCpuWarningRef.current > 60000) {
+      lastCpuWarningRef.current = Date.now()
+      addNotification({
+        type: 'warning',
+        title: 'High CPU Usage',
+        message: `CPU at ${stats.cpu}% — consider closing unused processes`,
+        icon: 'cpu',
+      })
+    }
+  }, [stats.cpu, addNotification])
+
+  // Weather alerts for extreme temperatures
+  const lastWeatherAlertRef = useRef(0)
+  const weather = useJarvisStore((s) => s.weather)
+  useEffect(() => {
+    if (weather && Date.now() - lastWeatherAlertRef.current > 300000) {
+      if (weather.temp > 35) {
+        lastWeatherAlertRef.current = Date.now()
+        addNotification({
+          type: 'warning',
+          title: 'Heat Alert',
+          message: `Temperature in ${weather.location} is ${weather.temp}°C — stay hydrated`,
+          icon: 'thermometer-sun',
+        })
+      } else if (weather.temp < 0) {
+        lastWeatherAlertRef.current = Date.now()
+        addNotification({
+          type: 'warning',
+          title: 'Freeze Alert',
+          message: `Temperature in ${weather.location} is ${weather.temp}°C — freezing conditions`,
+          icon: 'snowflake',
+        })
+      }
+    }
+  }, [weather, addNotification])
 
   // ===== BOOT SEQUENCE =====
   if (showBoot) {
@@ -348,6 +405,9 @@ export default function Home() {
               <Settings className="w-4 h-4" />
             </button>
 
+            {/* Notification Center */}
+            <NotificationCenter />
+
             {/* Divider */}
             <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
 
@@ -376,11 +436,11 @@ export default function Home() {
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6">
           <div className="w-full max-w-7xl flex flex-col lg:flex-row items-center lg:items-start gap-6 lg:gap-8">
 
-            {/* ===== LEFT COLUMN: System Widgets ===== */}
+            {/* ===== LEFT COLUMN: System Widgets (staggered slide-in from left) ===== */}
             <motion.div
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
               className="hidden lg:block w-72 flex-shrink-0 order-1"
             >
               <HUDFrame
@@ -390,11 +450,11 @@ export default function Home() {
                   { label: 'PROCESSES', value: String(Math.floor(120 + stats.cpu * 0.5)) },
                 ]}
               >
-                <SystemWidgets className="space-y-3" />
+                <SystemWidgets className="space-y-3" staggerDirection="left" />
               </HUDFrame>
             </motion.div>
 
-            {/* ===== CENTER: HUD Orb ===== */}
+            {/* ===== CENTER: HUD Orb (power-on sequence) ===== */}
             <div className="flex flex-col items-center gap-4 sm:gap-6 order-1 lg:order-2 flex-1 min-w-0">
               {/* Greeting text */}
               <AnimatePresence>
@@ -413,23 +473,40 @@ export default function Home() {
 
               {/* Central Orb with HUD frame on desktop */}
               <div className="relative">
-                {/* Decorative ring behind orb */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                {/* Decorative ring behind orb - appears first in power-on */}
+                <motion.div
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
                   <motion.div
                     className="w-[320px] h-[320px] sm:w-[380px] sm:h-[380px] rounded-full border border-neon-cyan/[0.06]"
                     animate={{ rotate: 360 }}
                     transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
                   />
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                </motion.div>
+                <motion.div
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.45 }}
+                >
                   <motion.div
                     className="w-[360px] h-[360px] sm:w-[420px] sm:h-[420px] rounded-full border border-dashed border-neon-cyan/[0.04]"
                     animate={{ rotate: -360 }}
                     transition={{ duration: 90, repeat: Infinity, ease: 'linear' }}
                   />
-                </div>
+                </motion.div>
 
-                <CircularOrb status={aiStatus} />
+                {/* Orb scales up with bounce */}
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.5, type: 'spring', stiffness: 150, damping: 12 }}
+                >
+                  <CircularOrb status={aiStatus} />
+                </motion.div>
 
                 {/* Konami orb glow effect */}
                 {orbGlow && (
@@ -453,8 +530,13 @@ export default function Home() {
               {/* Voice Equalizer */}
               <VoiceEqualizer status={aiStatus} />
 
-              {/* Status label with animated dots */}
-              <div className="flex items-center gap-3">
+              {/* Status label with animated dots - fades in after orb */}
+              <motion.div
+                className="flex items-center gap-3"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 1.0 }}
+              >
                 {aiStatus !== 'idle' && (
                   <motion.div
                     className="flex gap-1"
@@ -515,13 +597,13 @@ export default function Home() {
                     ))}
                   </motion.div>
                 )}
-              </div>
+              </motion.div>
 
               {/* Voice Input + Quick Actions */}
               <div className="flex flex-col items-center gap-4">
                 <VoiceInput />
 
-                {/* Quick action hints */}
+                {/* Quick action hints - appear one by one */}
                 <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
                   {[
                     { key: 'Ctrl+K', label: 'Chat' },
@@ -529,16 +611,19 @@ export default function Home() {
                     { key: 'Ctrl+Space', label: 'Voice' },
                     { key: 'Ctrl+D', label: 'Diag' },
                     { key: '?', label: 'Shortcuts' },
-                  ].map((hint) => (
-                    <button
+                  ].map((hint, index) => (
+                    <motion.button
                       key={hint.key}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 1.2 + index * 0.1 }}
                       onClick={() => {
                         if (hint.key === '?') setShowShortcuts(true)
                       }}
                       className="text-[9px] font-mono text-white/15 px-2 py-1 rounded border border-white/5 hover:border-neon-cyan/20 hover:text-neon-cyan/30 transition-colors"
                     >
                       {hint.key} {hint.label}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
@@ -557,20 +642,31 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ===== RIGHT COLUMN: Radar + Mini widgets ===== */}
+            {/* ===== RIGHT COLUMN: Radar + Mini widgets (staggered from right) ===== */}
             <motion.div
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
               className="hidden lg:flex flex-col items-center gap-4 w-72 flex-shrink-0 order-3"
             >
               {/* Radar Scanner with HUD frame */}
-              <HUDFrame title="Scanner">
-                <RadarScanner />
-              </HUDFrame>
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.35 }}
+              >
+                <HUDFrame title="Scanner">
+                  <RadarScanner />
+                </HUDFrame>
+              </motion.div>
 
               {/* Mini system status panel */}
-              <div className="w-full glass-panel p-3 space-y-2 relative">
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+                className="w-full glass-panel p-3 space-y-2 relative"
+              >
                 <CornerBrackets size={10} color="cyan" />
                 <div className="flex items-center gap-2">
                   <div
@@ -598,10 +694,15 @@ export default function Home() {
                     TEMP: {stats.temperature}°C | CMD: {commandCount}
                   </span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* AI Intelligence panel */}
-              <div className="w-full glass-panel p-3 relative">
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.65 }}
+                className="w-full glass-panel p-3 relative"
+              >
                 <CornerBrackets size={10} color="orange" />
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="w-3 h-3 text-neon-orange/60" />
@@ -612,23 +713,27 @@ export default function Home() {
                 <DataReadout label="MODE" value={personalityMode.toUpperCase()} />
                 <DataReadout label="MSGS" value={String(messages.length)} />
                 <DataReadout label="STATUS" value="ONLINE" />
-              </div>
+              </motion.div>
 
               {/* Open Chat prompt */}
               {!showChat && (
-                <motion.button
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1 }}
-                  onClick={() => setShowChat(true)}
-                  className="w-full glass-panel p-3 flex items-center justify-between group hover:border-neon-cyan/30 transition-colors cursor-pointer relative"
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.8 }}
+                  className="w-full"
                 >
-                  <CornerBrackets size={10} color="cyan" />
-                  <span className="text-[10px] font-mono text-white/30 group-hover:text-neon-cyan/60 transition-colors">
-                    OPEN COMMUNICATION
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-white/20 group-hover:text-neon-cyan/60 transition-colors" />
-                </motion.button>
+                  <button
+                    onClick={() => setShowChat(true)}
+                    className="w-full glass-panel p-3 flex items-center justify-between group hover:border-neon-cyan/30 transition-colors cursor-pointer relative"
+                  >
+                    <CornerBrackets size={10} color="cyan" />
+                    <span className="text-[10px] font-mono text-white/30 group-hover:text-neon-cyan/60 transition-colors">
+                      OPEN COMMUNICATION
+                    </span>
+                    <ChevronRight className="w-3 h-3 text-white/20 group-hover:text-neon-cyan/60 transition-colors" />
+                  </button>
+                </motion.div>
               )}
             </motion.div>
           </div>
