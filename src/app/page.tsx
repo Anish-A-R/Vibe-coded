@@ -38,6 +38,9 @@ import KeyboardShortcutsOverlay from '@/components/jarvis/KeyboardShortcutsOverl
 import KonamiEffect from '@/components/jarvis/KonamiEffect'
 import EventLog from '@/components/jarvis/EventLog'
 import NotificationCenter from '@/components/jarvis/NotificationCenter'
+import WorldClockWidget from '@/components/jarvis/WorldClockWidget'
+import FocusTimerWidget from '@/components/jarvis/FocusTimerWidget'
+import QuickNotesWidget from '@/components/jarvis/QuickNotesWidget'
 
 export default function Home() {
   const {
@@ -61,6 +64,7 @@ export default function Home() {
     easterEggActivated,
     setEasterEggActivated,
     addNotification,
+    colorTheme,
   } = useJarvisStore()
 
   const [showBoot, setShowBoot] = useState(!booted)
@@ -294,8 +298,9 @@ export default function Home() {
   }
 
   // ===== MAIN DASHBOARD =====
-  // Personality-based theme class
+  // Personality-based theme class + color theme
   const personalityClass = personalityMode === 'boss' ? 'personality-boss' : personalityMode === 'funny' ? 'personality-funny' : ''
+  const colorThemeClass = colorTheme !== 'cyan' ? `theme-${colorTheme}` : ''
 
   // Ambient glow color based on personality
   const ambientColor = personalityMode === 'boss'
@@ -305,7 +310,9 @@ export default function Home() {
     : { r: 0, g: 240, b: 255 }
 
   return (
-    <div className={`relative min-h-screen bg-jarvis-darker overflow-hidden hud-grid-bg theme-transition ${personalityClass}`}>
+    <div className={`relative min-h-screen bg-jarvis-darker overflow-hidden hud-grid-bg theme-transition ${personalityClass} ${colorThemeClass}`}>
+      {/* CRT Scanline Overlay */}
+      <div className="crt-overlay pointer-events-none" />
       {/* Toast Notification Container */}
       <JarvisToastContainer soundEnabled={soundEnabled} />
       {/* Particle background */}
@@ -715,12 +722,42 @@ export default function Home() {
                 <DataReadout label="STATUS" value="ONLINE" />
               </motion.div>
 
+              {/* World Clock Widget */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.75 }}
+                className="w-full"
+              >
+                <WorldClockWidget />
+              </motion.div>
+
+              {/* Focus Timer Widget */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.85 }}
+                className="w-full"
+              >
+                <FocusTimerWidget />
+              </motion.div>
+
+              {/* Quick Notes Widget */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.95 }}
+                className="w-full"
+              >
+                <QuickNotesWidget />
+              </motion.div>
+
               {/* Open Chat prompt */}
               {!showChat && (
                 <motion.div
                   initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.8 }}
+                  transition={{ duration: 0.5, delay: 1.05 }}
                   className="w-full"
                 >
                   <button

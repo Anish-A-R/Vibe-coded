@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware'
 export type AIStatus = 'idle' | 'listening' | 'thinking' | 'speaking'
 export type PersonalityMode = 'professional' | 'funny' | 'boss'
 export type ActivePanel = 'chat' | 'settings' | 'history' | 'diagnostics'
+export type ColorTheme = 'cyan' | 'purple' | 'green' | 'red'
 
 export interface Message {
   id: string
@@ -50,6 +51,13 @@ export interface AppNotification {
   timestamp: number
   read: boolean
   icon?: string
+}
+
+// ===== Note Types =====
+export interface QuickNote {
+  id: string
+  text: string
+  timestamp: number
 }
 
 // ===== Event Log Types =====
@@ -143,6 +151,23 @@ interface JarvisState {
   events: SystemEvent[]
   addEvent: (event: Omit<SystemEvent, 'id' | 'timestamp'>) => void
   clearEvents: () => void
+
+  // Focus Timer
+  focusTimerMinutes: number
+  focusTimerBreakMinutes: number
+  focusTimerSessions: number
+  setFocusTimerMinutes: (m: number) => void
+  setFocusTimerBreakMinutes: (m: number) => void
+  setFocusTimerSessions: (s: number) => void
+
+  // Quick Notes
+  notes: QuickNote[]
+  addNote: (text: string) => void
+  removeNote: (id: string) => void
+
+  // Color Theme
+  colorTheme: ColorTheme
+  setColorTheme: (theme: ColorTheme) => void
 }
 
 function generateId(): string {
@@ -440,6 +465,36 @@ export const useJarvisStore = create<JarvisState>()(
           return { events: updated }
         }),
       clearEvents: () => set({ events: [] }),
+
+      // Focus Timer
+      focusTimerMinutes: 25,
+      focusTimerBreakMinutes: 5,
+      focusTimerSessions: 0,
+      setFocusTimerMinutes: (m) => set({ focusTimerMinutes: m }),
+      setFocusTimerBreakMinutes: (m) => set({ focusTimerBreakMinutes: m }),
+      setFocusTimerSessions: (s) => set({ focusTimerSessions: s }),
+
+      // Quick Notes
+      notes: [],
+      addNote: (text) =>
+        set((state) => {
+          const newNote: QuickNote = {
+            id: `note-${generateId()}`,
+            text,
+            timestamp: Date.now(),
+          }
+          // Keep last 20 notes, newest first
+          const updated = [newNote, ...state.notes].slice(0, 20)
+          return { notes: updated }
+        }),
+      removeNote: (id) =>
+        set((state) => ({
+          notes: state.notes.filter((n) => n.id !== id),
+        })),
+
+      // Color Theme
+      colorTheme: 'cyan',
+      setColorTheme: (theme) => set({ colorTheme: theme }),
     }),
     {
       name: 'jarvis-store',
@@ -452,6 +507,14 @@ export const useJarvisStore = create<JarvisState>()(
         commandCount: state.commandCount,
         easterEggActivated: state.easterEggActivated,
         weatherLocation: state.weatherLocation,
+        // Focus Timer
+        focusTimerMinutes: state.focusTimerMinutes,
+        focusTimerBreakMinutes: state.focusTimerBreakMinutes,
+        focusTimerSessions: state.focusTimerSessions,
+        // Quick Notes (keep last 20)
+        notes: state.notes.slice(0, 20),
+        // Color Theme
+        colorTheme: state.colorTheme,
         // events are NOT persisted (session-only)
         // notifications are NOT persisted (session-only)
         // Persist conversations (keep last 10, last 50 messages each)

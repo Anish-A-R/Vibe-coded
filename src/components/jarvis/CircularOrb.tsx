@@ -18,9 +18,11 @@ const statusConfig: Record<AIStatus, {
   coreScale: number
   outerScale: number
   colorShift: string
+  colorHex: string
   arcCount: number
   pulseWaveInterval: number
   dataRingSpeed: number
+  particleDirection: 'orbit' | 'outward'
 }> = {
   idle: {
     ringSpeed: [20, 30, 40, 25, 35, 18],
@@ -30,9 +32,11 @@ const statusConfig: Record<AIStatus, {
     coreScale: 1,
     outerScale: 1,
     colorShift: 'rgba(0, 240, 255, 1)',
+    colorHex: '#00f0ff',
     arcCount: 3,
     pulseWaveInterval: 4,
     dataRingSpeed: 60,
+    particleDirection: 'orbit',
   },
   listening: {
     ringSpeed: [8, 12, 15, 10, 14, 9],
@@ -42,9 +46,11 @@ const statusConfig: Record<AIStatus, {
     coreScale: 1.05,
     outerScale: 1.08,
     colorShift: 'rgba(0, 240, 255, 1)',
+    colorHex: '#00f0ff',
     arcCount: 6,
     pulseWaveInterval: 1.5,
     dataRingSpeed: 25,
+    particleDirection: 'orbit',
   },
   thinking: {
     ringSpeed: [3, 5, 7, 4, 6, 3],
@@ -53,10 +59,12 @@ const statusConfig: Record<AIStatus, {
     glowIntensity: 1,
     coreScale: 1.02,
     outerScale: 1,
-    colorShift: 'rgba(100, 200, 255, 1)',
+    colorShift: 'rgba(255, 140, 50, 1)',
+    colorHex: '#ff8c32',
     arcCount: 8,
     pulseWaveInterval: 0.8,
     dataRingSpeed: 12,
+    particleDirection: 'orbit',
   },
   speaking: {
     ringSpeed: [10, 16, 12, 14, 11, 13],
@@ -65,117 +73,78 @@ const statusConfig: Record<AIStatus, {
     glowIntensity: 0.7,
     coreScale: 1.03,
     outerScale: 1.04,
-    colorShift: 'rgba(0, 180, 255, 1)',
+    colorShift: 'rgba(60, 160, 255, 1)',
+    colorHex: '#3ca0ff',
     arcCount: 5,
     pulseWaveInterval: 2,
     dataRingSpeed: 20,
+    particleDirection: 'outward',
   },
 }
 
-// Energy arcs between rings
-function EnergyArcs({ status }: { status: AIStatus }) {
+// Hexagonal grid core pattern
+function HexagonalGridCore({ status }: { status: AIStatus }) {
   const config = statusConfig[status]
-  const arcs = useMemo(() => {
-    return Array.from({ length: config.arcCount }, (_, i) => {
-      const startAngle = (i / config.arcCount) * 360 + Math.random() * 30
-      const sweep = 15 + Math.random() * 25
-      const innerR = 30 + Math.random() * 15
-      const outerR = innerR + 10 + Math.random() * 20
-      const duration = 0.4 + Math.random() * 0.6
-      const delay = Math.random() * 2
-      return { id: i, startAngle, sweep, innerR, outerR, duration, delay }
-    })
-  }, [config.arcCount])
+  const hexagons = useMemo(() => {
+    const hexes: { id: number; cx: number; cy: number; size: number; points: string }[] = []
+    const hexSize = 4
+    const hGap = hexSize * 1.75
+    const vGap = hexSize * 1.5
+
+    // Generate a small grid of hexagons centered at 0,0
+    const rows = 3
+    const cols = 3
+    for (let row = -Math.floor(rows / 2); row <= Math.floor(rows / 2); row++) {
+      for (let col = -Math.floor(cols / 2); col <= Math.floor(cols / 2); col++) {
+        const cx = col * hGap + (row % 2 !== 0 ? hGap / 2 : 0)
+        const cy = row * vGap
+        const dist = Math.sqrt(cx * cx + cy * cy)
+        if (dist > 16) continue // Stay within inner area
+
+        const points = Array.from({ length: 6 }, (_, i) => {
+          const angle = (Math.PI / 3) * i - Math.PI / 6
+          return `${cx + hexSize * Math.cos(angle)},${cy + hexSize * Math.sin(angle)}`
+        }).join(' ')
+
+        hexes.push({
+          id: hexes.length,
+          cx,
+          cy,
+          size: hexSize,
+          points,
+        })
+      }
+    }
+    return hexes
+  }, [])
 
   return (
     <g>
-      {arcs.map((arc) => {
-        const startRad = (arc.startAngle * Math.PI) / 180
-        const sweepRad = (arc.sweep * Math.PI) / 180
-        const endRad = startRad + sweepRad
-        const midR = (arc.innerR + arc.outerR) / 2
-        const sx = Math.cos(startRad) * midR
-        const sy = Math.sin(startRad) * midR
-        const ex = Math.cos(endRad) * midR
-        const ey = Math.sin(endRad) * midR
-        const cpx = Math.cos(startRad + sweepRad / 2) * arc.outerR
-        const cpy = Math.sin(startRad + sweepRad / 2) * arc.outerR
-        const pathD = `M ${sx} ${sy} Q ${cpx} ${cpy} ${ex} ${ey}`
-
-        return (
-          <motion.path
-            key={arc.id}
-            d={pathD}
-            fill="none"
-            stroke="rgba(0, 240, 255, 0.7)"
-            strokeWidth={0.8}
-            strokeLinecap="round"
-            style={{ filter: 'url(#orbGlow)' }}
-            initial={{ opacity: 0, pathLength: 0 }}
-            animate={{
-              opacity: [0, 0.8, 0.8, 0],
-              pathLength: [0, 1, 1, 0],
-            }}
-            transition={{
-              duration: arc.duration * (config.ringSpeed[0] / 20),
-              delay: arc.delay,
-              repeat: Infinity,
-              repeatDelay: 1 + Math.random() * 3,
-              ease: 'easeInOut',
-            }}
-          />
-        )
-      })}
+      {hexagons.map((hex, i) => (
+        <motion.polygon
+          key={hex.id}
+          points={hex.points}
+          fill="none"
+          stroke={config.colorShift}
+          strokeWidth={0.3}
+          strokeOpacity={0.3}
+          animate={{
+            fillOpacity: [0, 0.12, 0],
+            strokeOpacity: [0.2, 0.5, 0.2],
+          }}
+          transition={{
+            duration: config.pulseDuration * (0.8 + i * 0.15),
+            repeat: Infinity,
+            ease: 'easeInOut',
+            delay: i * 0.2,
+          }}
+        />
+      ))}
     </g>
   )
 }
 
-// Data text ring with hex characters
-function DataTextRing({ status }: { status: AIStatus }) {
-  const config = statusConfig[status]
-  const chars = useMemo(() => {
-    const hexChars = '0123456789ABCDEF.:-|<>{}[]'
-    return Array.from({ length: 36 }, (_, i) => ({
-      id: i,
-      angle: (i / 36) * 360,
-      char: hexChars[Math.floor(Math.random() * hexChars.length)],
-    }))
-  }, [])
-
-  return (
-    <motion.g
-      animate={{ rotate: [0, 360] }}
-      transition={{
-        duration: config.dataRingSpeed,
-        repeat: Infinity,
-        ease: 'linear',
-      }}
-    >
-      {chars.map((c) => {
-        const rad = (c.angle * Math.PI) / 180
-        const r = 72
-        const x = Math.cos(rad) * r
-        const y = Math.sin(rad) * r
-        return (
-          <text
-            key={c.id}
-            x={x}
-            y={y}
-            fill="rgba(0, 240, 255, 0.25)"
-            fontSize="3.5"
-            fontFamily="monospace"
-            textAnchor="middle"
-            dominantBaseline="central"
-          >
-            {c.char}
-          </text>
-        )
-      })}
-    </motion.g>
-  )
-}
-
-// Arc reactor core - hexagonal/triangular pattern
+// Arc reactor core - hexagonal/triangular pattern with inner hex grid
 function ArcReactorCore({ status }: { status: AIStatus }) {
   const config = statusConfig[status]
 
@@ -200,13 +169,15 @@ function ArcReactorCore({ status }: { status: AIStatus }) {
       paths.push({ id: i + 1, d: `M ${ix} ${iy} L ${ox} ${oy}` })
     }
 
-    // Inner circle
     paths.push({ id: 7, d: '' })
     return paths
   }, [])
 
   return (
     <g>
+      {/* Hexagonal grid core */}
+      <HexagonalGridCore status={status} />
+
       {/* Hexagonal outline */}
       <motion.path
         d={hexPaths[0].d}
@@ -266,6 +237,120 @@ function ArcReactorCore({ status }: { status: AIStatus }) {
   )
 }
 
+// Data text ring with hex characters that fade in and out
+function DataTextRing({ status }: { status: AIStatus }) {
+  const config = statusConfig[status]
+  const chars = useMemo(() => {
+    const hexChars = '0123456789ABCDEF.:-|<>{}[]'
+    return Array.from({ length: 36 }, (_, i) => ({
+      id: i,
+      angle: (i / 36) * 360,
+      char: hexChars[Math.floor(Math.random() * hexChars.length)],
+      fadeDelay: Math.random() * 4,
+      fadeDuration: 2 + Math.random() * 3,
+    }))
+  }, [])
+
+  return (
+    <motion.g
+      animate={{ rotate: [0, 360] }}
+      transition={{
+        duration: config.dataRingSpeed,
+        repeat: Infinity,
+        ease: 'linear',
+      }}
+    >
+      {chars.map((c) => {
+        const rad = (c.angle * Math.PI) / 180
+        const r = 72
+        const x = Math.cos(rad) * r
+        const y = Math.sin(rad) * r
+        return (
+          <motion.text
+            key={c.id}
+            x={x}
+            y={y}
+            fill={config.colorShift}
+            fontSize="3.5"
+            fontFamily="monospace"
+            textAnchor="middle"
+            dominantBaseline="central"
+            animate={{
+              opacity: [0.05, 0.4, 0.05],
+            }}
+            transition={{
+              duration: c.fadeDuration,
+              delay: c.fadeDelay,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          >
+            {c.char}
+          </motion.text>
+        )
+      })}
+    </motion.g>
+  )
+}
+
+// Energy arcs between rings
+function EnergyArcs({ status }: { status: AIStatus }) {
+  const config = statusConfig[status]
+  const arcs = useMemo(() => {
+    return Array.from({ length: config.arcCount }, (_, i) => {
+      const startAngle = (i / config.arcCount) * 360 + Math.random() * 30
+      const sweep = 15 + Math.random() * 25
+      const innerR = 30 + Math.random() * 15
+      const outerR = innerR + 10 + Math.random() * 20
+      const duration = 0.4 + Math.random() * 0.6
+      const delay = Math.random() * 2
+      return { id: i, startAngle, sweep, innerR, outerR, duration, delay }
+    })
+  }, [config.arcCount])
+
+  return (
+    <g>
+      {arcs.map((arc) => {
+        const startRad = (arc.startAngle * Math.PI) / 180
+        const sweepRad = (arc.sweep * Math.PI) / 180
+        const endRad = startRad + sweepRad
+        const midR = (arc.innerR + arc.outerR) / 2
+        const sx = Math.cos(startRad) * midR
+        const sy = Math.sin(startRad) * midR
+        const ex = Math.cos(endRad) * midR
+        const ey = Math.sin(endRad) * midR
+        const cpx = Math.cos(startRad + sweepRad / 2) * arc.outerR
+        const cpy = Math.sin(startRad + sweepRad / 2) * arc.outerR
+        const pathD = `M ${sx} ${sy} Q ${cpx} ${cpy} ${ex} ${ey}`
+
+        return (
+          <motion.path
+            key={arc.id}
+            d={pathD}
+            fill="none"
+            stroke={config.colorShift}
+            strokeWidth={0.8}
+            strokeLinecap="round"
+            style={{ filter: 'url(#orbGlow)' }}
+            initial={{ opacity: 0, pathLength: 0 }}
+            animate={{
+              opacity: [0, 0.8, 0.8, 0],
+              pathLength: [0, 1, 1, 0],
+            }}
+            transition={{
+              duration: arc.duration * (config.ringSpeed[0] / 20),
+              delay: arc.delay,
+              repeat: Infinity,
+              repeatDelay: 1 + Math.random() * 3,
+              ease: 'easeInOut',
+            }}
+          />
+        )
+      })}
+    </g>
+  )
+}
+
 // Pulse waves expanding from core
 function PulseWaves({ status }: { status: AIStatus }) {
   const config = statusConfig[status]
@@ -300,7 +385,7 @@ function PulseWaves({ status }: { status: AIStatus }) {
   )
 }
 
-// Orbital particles with trail lines
+// Orbital particles with gradient trail lines
 function OrbParticles({ status }: { status: AIStatus }) {
   const config = statusConfig[status]
   const particles = useMemo(() => {
@@ -316,46 +401,63 @@ function OrbParticles({ status }: { status: AIStatus }) {
 
   return (
     <g>
-      {particles.map((p) => (
-        <g key={p.id}>
-          {/* Trail line */}
-          <motion.line
-            x1={0}
-            y1={-p.radius}
-            x2={0}
-            y2={-p.radius + 6}
-            stroke="rgba(0, 240, 255, 0.15)"
-            strokeWidth={p.size * 0.6}
-            strokeLinecap="round"
-            animate={{
-              rotate: [p.angle - 8, p.angle + 352],
-            }}
-            transition={{
-              duration: p.speed * (config.ringSpeed[0] / 20),
-              repeat: Infinity,
-              ease: 'linear',
-            }}
-          />
-          {/* Particle dot */}
-          <motion.circle
-            cx={0}
-            cy={-p.radius}
-            r={p.size}
-            fill={`rgba(0, 240, 255, ${p.opacity})`}
-            style={{
-              filter: `drop-shadow(0 0 ${p.size * 2}px rgba(0, 240, 255, ${p.opacity * 0.5}))`,
-            }}
-            animate={{
-              rotate: [p.angle, p.angle + 360],
-            }}
-            transition={{
-              duration: p.speed * (config.ringSpeed[0] / 20),
-              repeat: Infinity,
-              ease: 'linear',
-            }}
-          />
-        </g>
-      ))}
+      {particles.map((p) => {
+        const isOutward = config.particleDirection === 'outward'
+        return (
+          <g key={p.id}>
+            {/* Gradient trail line */}
+            <motion.line
+              x1={0}
+              y1={-p.radius}
+              x2={0}
+              y2={-p.radius + (isOutward ? -8 : 8)}
+              stroke={`url(#trailGradient${p.id})`}
+              strokeWidth={p.size * 0.8}
+              strokeLinecap="round"
+              animate={{
+                rotate: [p.angle - 8, p.angle + 352],
+              }}
+              transition={{
+                duration: p.speed * (config.ringSpeed[0] / 20),
+                repeat: Infinity,
+                ease: 'linear',
+              }}
+            />
+            {/* Particle dot */}
+            <motion.circle
+              cx={0}
+              cy={-p.radius}
+              r={p.size}
+              fill={config.colorShift}
+              style={{
+                filter: `drop-shadow(0 0 ${p.size * 2}px ${config.colorShift})`,
+              }}
+              animate={{
+                rotate: [p.angle, p.angle + 360],
+                ...(isOutward
+                  ? { r: [p.size, p.size * 2.5, p.size] }
+                  : {}),
+              }}
+              transition={{
+                rotate: {
+                  duration: p.speed * (config.ringSpeed[0] / 20),
+                  repeat: Infinity,
+                  ease: 'linear',
+                },
+                ...(isOutward
+                  ? {
+                      r: {
+                        duration: config.pulseDuration,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      },
+                    }
+                  : {}),
+              }}
+            />
+          </g>
+        )
+      })}
     </g>
   )
 }
@@ -405,12 +507,18 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
       { radius: 55, dashArray: '4 8 12 8', strokeWidth: 0.8, direction: -1, speedIdx: 1 },
       { radius: 45, dashArray: '2 6 8 6', strokeWidth: 1.0, direction: 1, speedIdx: 2 },
       { radius: 35, dashArray: '15 5 5 5', strokeWidth: 0.6, direction: -1, speedIdx: 3 },
-      // Two new rings
       { radius: 75, dashArray: '1 4 2 4 6 4', strokeWidth: 0.5, direction: -1, speedIdx: 4 },
       { radius: 25, dashArray: '6 3 2 3', strokeWidth: 0.7, direction: 1, speedIdx: 5 },
     ],
     []
   )
+
+  // Generate gradient definitions for particle trails
+  const trailGradients = useMemo(() => {
+    return Array.from({ length: 8 }, (_, i) => ({
+      id: `trailGradient${i}`,
+    }))
+  }, [])
 
   return (
     <div className={cn('relative flex items-center justify-center', className)}>
@@ -420,7 +528,7 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
         style={{
           width: '120%',
           height: '120%',
-          background: `radial-gradient(circle, rgba(0, 240, 255, ${config.glowIntensity * 0.15}) 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${config.colorShift.replace('1)', `${config.glowIntensity * 0.15})`)} 0%, transparent 70%)`,
         }}
         animate={{
           scale: config.pulseScale,
@@ -451,6 +559,13 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          {/* Trail gradients for each particle */}
+          {trailGradients.map((g) => (
+            <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={config.colorHex} stopOpacity="0.4" />
+              <stop offset="100%" stopColor={config.colorHex} stopOpacity="0" />
+            </linearGradient>
+          ))}
         </defs>
 
         {/* Pulse waves */}
@@ -472,7 +587,7 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
           }}
         />
 
-        {/* Arc reactor core */}
+        {/* Arc reactor core with hexagonal grid */}
         <ArcReactorCore status={status} />
 
         {/* Rotating rings - 6 total */}
@@ -503,13 +618,13 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
         {/* Energy arcs */}
         <EnergyArcs status={status} />
 
-        {/* Data text ring */}
+        {/* Data text ring with animated fading */}
         <DataTextRing status={status} />
 
         {/* Tick marks around outermost ring */}
         <TickMarks />
 
-        {/* Orbital particles with trails */}
+        {/* Orbital particles with gradient trails */}
         <OrbParticles status={status} />
       </motion.svg>
     </div>

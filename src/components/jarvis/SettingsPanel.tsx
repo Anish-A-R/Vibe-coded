@@ -17,6 +17,7 @@ import {
   Palette,
   MapPin,
   Check,
+  CheckCircle,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -26,7 +27,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { PERSONALITIES } from '@/lib/personalities'
-import type { PersonalityMode } from '@/hooks/useJarvisStore'
+import type { PersonalityMode, ColorTheme } from '@/hooks/useJarvisStore'
 
 interface SettingsPanelProps {
   open: boolean
@@ -115,6 +116,8 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     commandCount,
     weatherLocation,
     setWeatherLocation,
+    colorTheme,
+    setColorTheme,
   } = useJarvisStore()
 
   const [locationInput, setLocationInput] = useState(weatherLocation)
@@ -256,14 +259,58 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                         className="data-[state=checked]:bg-cyan-500"
                       />
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Palette className="size-4 text-cyan-400/60" />
-                        <span className="text-sm font-mono text-white/70">Theme</span>
+                        <span className="text-sm font-mono text-white/70">Color Theme</span>
                       </div>
-                      <span className="text-xs font-mono text-cyan-400/50 px-2 py-1 rounded border border-cyan-500/10">
-                        Dark (Cinematic)
-                      </span>
+                      <div className="flex items-center gap-3 justify-center">
+                        {([
+                          { key: 'cyan' as ColorTheme, color: '#00f0ff', label: 'Cyan' },
+                          { key: 'purple' as ColorTheme, color: '#8b5cf6', label: 'Purple' },
+                          { key: 'green' as ColorTheme, color: '#00ff88', label: 'Green' },
+                          { key: 'red' as ColorTheme, color: '#ff3366', label: 'Red' },
+                        ]).map(({ key, color, label }) => (
+                          <motion.button
+                            key={key}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setColorTheme(key)}
+                            className="flex flex-col items-center gap-1 group"
+                            aria-label={`Set ${label} theme`}
+                          >
+                            <div
+                              className={`size-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                                colorTheme === key
+                                  ? 'ring-2 ring-offset-2 ring-offset-black'
+                                  : 'ring-1 ring-white/10 group-hover:ring-white/25'
+                              }`}
+                              style={{
+                                backgroundColor: color,
+                                boxShadow: colorTheme === key ? `0 0 12px ${color}66, 0 0 24px ${color}33` : 'none',
+                                ringColor: colorTheme === key ? color : undefined,
+                              }}
+                            >
+                              {colorTheme === key && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                >
+                                  <CheckCircle className="size-4 text-white" />
+                                </motion.div>
+                              )}
+                            </div>
+                            <span
+                              className={`text-[9px] font-mono transition-colors duration-200 ${
+                                colorTheme === key ? 'text-white/70' : 'text-white/25 group-hover:text-white/40'
+                              }`}
+                            >
+                              {label}
+                            </span>
+                          </motion.button>
+                        ))}
+                      </div>
                     </div>
                     {/* Location */}
                     <div className="space-y-2">

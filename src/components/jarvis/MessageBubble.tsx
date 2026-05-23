@@ -3,7 +3,9 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Mic, Cpu, Copy, Volume2, Trash2, Check } from 'lucide-react'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { Bot, User, Copy, Volume2, Trash2, Check, ThumbsUp, ThumbsDown, Clipboard } from 'lucide-react'
 import type { Message } from '@/hooks/useJarvisStore'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useTTS } from '@/hooks/useTTS'
@@ -30,6 +32,71 @@ function CopyCodeButton({ code }: { code: string }) {
     >
       {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
     </button>
+  )
+}
+
+// Message reactions component for AI messages
+function MessageReactions({ content }: { content: string }) {
+  const [activeReaction, setActiveReaction] = useState<'up' | 'down' | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const handleThumbsUp = useCallback(() => {
+    setActiveReaction(activeReaction === 'up' ? null : 'up')
+  }, [activeReaction])
+
+  const handleThumbsDown = useCallback(() => {
+    setActiveReaction(activeReaction === 'down' ? null : 'down')
+  }, [activeReaction])
+
+  const handleCopyMessage = useCallback(() => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }, [content])
+
+  return (
+    <div className="flex items-center gap-1 mt-1.5 ml-1">
+      <motion.button
+        whileHover={{ scale: 1.2 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={handleThumbsUp}
+        className={`p-1 rounded transition-all ${
+          activeReaction === 'up'
+            ? 'text-neon-green bg-neon-green/10 shadow-[0_0_8px_rgba(0,255,136,0.3)]'
+            : 'text-white/20 hover:text-neon-green/60 hover:bg-white/5'
+        }`}
+        aria-label="Thumbs up"
+      >
+        <ThumbsUp className="w-3 h-3" />
+      </motion.button>
+      <motion.button
+        whileHover={{ scale: 1.2 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={handleThumbsDown}
+        className={`p-1 rounded transition-all ${
+          activeReaction === 'down'
+            ? 'text-neon-orange bg-neon-orange/10 shadow-[0_0_8px_rgba(255,106,0,0.3)]'
+            : 'text-white/20 hover:text-neon-orange/60 hover:bg-white/5'
+        }`}
+        aria-label="Thumbs down"
+      >
+        <ThumbsDown className="w-3 h-3" />
+      </motion.button>
+      <motion.button
+        whileHover={{ scale: 1.2 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={handleCopyMessage}
+        className={`p-1 rounded transition-all ${
+          copied
+            ? 'text-neon-cyan bg-neon-cyan/10 shadow-[0_0_8px_rgba(0,240,255,0.3)]'
+            : 'text-white/20 hover:text-neon-cyan/60 hover:bg-white/5'
+        }`}
+        aria-label="Copy message"
+      >
+        {copied ? <Check className="w-3 h-3" /> : <Clipboard className="w-3 h-3" />}
+      </motion.button>
+    </div>
   )
 }
 
@@ -85,12 +152,20 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={`flex gap-3 px-4 py-2 group ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
-      {/* Avatar */}
-      {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center mt-1">
-          <Cpu className="w-4 h-4 text-neon-cyan" />
-        </div>
-      )}
+      {/* Avatar with role icon */}
+      <div
+        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 ${
+          isUser
+            ? 'bg-neon-orange/10 border border-neon-orange/30'
+            : 'bg-neon-cyan/10 border border-neon-cyan/30'
+        }`}
+      >
+        {isUser ? (
+          <User className="w-4 h-4 text-neon-orange" />
+        ) : (
+          <Bot className="w-4 h-4 text-neon-cyan" />
+        )}
+      </div>
 
       {/* Message content */}
       <div className={`relative max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
@@ -142,16 +217,45 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         </AnimatePresence>
 
         <div
-          className={`px-4 py-3 rounded-xl text-sm leading-relaxed ${
+          className={`relative px-4 py-3 rounded-xl text-sm leading-relaxed overflow-hidden ${
             isUser
-              ? 'bg-neon-orange/10 border border-neon-orange/25 text-white/90 rounded-tr-sm'
-              : 'bg-neon-cyan/5 border border-neon-cyan/15 text-white/90 rounded-tl-sm'
+              ? 'bg-neon-orange/8 border border-neon-orange/25 text-white/90 rounded-tr-sm'
+              : 'bg-neon-cyan/5 border border-neon-cyan/15 text-white/90 rounded-tl-sm hud-scanline-h'
           }`}
         >
+          {/* Holographic left border for AI messages */}
+          {!isUser && (
+            <div
+              className="absolute top-0 left-0 w-[2px] h-full"
+              style={{
+                background: 'linear-gradient(to bottom, transparent, rgba(0,240,255,0.4), rgba(0,240,255,0.15), transparent)',
+              }}
+            />
+          )}
+          {/* Holographic right border for user messages */}
+          {isUser && (
+            <div
+              className="absolute top-0 right-0 w-[2px] h-full"
+              style={{
+                background: 'linear-gradient(to bottom, transparent, rgba(255,106,0,0.4), rgba(255,106,0,0.15), transparent)',
+              }}
+            />
+          )}
+
+          {/* Subtle dark bg glow for AI messages */}
+          {!isUser && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                boxShadow: 'inset 0 0 20px rgba(0,240,255,0.03)',
+              }}
+            />
+          )}
+
           {/* Voice indicator */}
           {message.isVoice && (
             <div className="flex items-center gap-1 mb-1">
-              <Mic className={`w-3 h-3 ${isUser ? 'text-neon-orange/60' : 'text-neon-cyan/60'}`} />
+              <User className={`w-3 h-3 ${isUser ? 'text-neon-orange/60' : 'text-neon-cyan/60'}`} />
               <span className={`text-[10px] font-mono ${isUser ? 'text-neon-orange/60' : 'text-neon-cyan/60'}`}>
                 Voice input
               </span>
@@ -165,57 +269,116 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <div className="markdown-content prose prose-invert prose-sm max-w-none">
               <ReactMarkdown
                 components={{
+                  // Headings with neon glow
+                  h1: ({ children }) => (
+                    <h1 className="text-lg font-bold neon-text-cyan mt-3 mb-2 first:mt-0">{children}</h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-base font-bold neon-text-cyan mt-2.5 mb-1.5 first:mt-0">{children}</h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-sm font-bold neon-text-cyan mt-2 mb-1 first:mt-0">{children}</h3>
+                  ),
+                  h4: ({ children }) => (
+                    <h4 className="text-sm font-semibold neon-text-cyan mt-1.5 mb-1 first:mt-0">{children}</h4>
+                  ),
                   // Bold text
                   strong: ({ children }) => (
                     <strong className="text-neon-cyan font-semibold">{children}</strong>
                   ),
-                  // Inline code
+                  // Inline code with cyan highlight
                   code: ({ className, children, ...props }) => {
                     const isBlock = className?.includes('language-')
                     if (isBlock) {
                       return (
-                        <code className={`${className || ''} block text-xs font-mono overflow-x-auto`} {...props}>
+                        <code className={`${className || ''} text-xs font-mono`} {...props}>
                           {children}
                         </code>
                       )
                     }
                     return (
-                      <code className="bg-neon-cyan/10 text-neon-cyan px-1.5 py-0.5 rounded text-xs font-mono" {...props}>
+                      <code
+                        className="bg-neon-cyan/10 text-neon-cyan px-1.5 py-0.5 rounded text-xs font-mono border border-neon-cyan/10"
+                        {...props}
+                      >
                         {children}
                       </code>
                     )
                   },
-                  // Code blocks
+                  // Code blocks with SyntaxHighlighter
                   pre: ({ children }) => {
-                    // Extract code text for copy button
+                    // Extract code text and language for SyntaxHighlighter
                     let codeText = ''
+                    let language = ''
                     if (children && typeof children === 'object' && 'props' in children) {
                       const childProps = (children as React.ReactElement).props
                       if (childProps?.children) {
-                        codeText = String(childProps.children)
+                        codeText = String(childProps.children).replace(/\n$/, '')
+                      }
+                      if (childProps?.className) {
+                        const match = childProps.className.match(/language-(\w+)/)
+                        if (match) language = match[1]
                       }
                     }
+
                     return (
-                      <pre className="relative bg-black/60 rounded-lg p-3 my-2 overflow-x-auto border border-neon-cyan/20">
+                      <div className="relative my-2 rounded-lg overflow-hidden border border-neon-cyan/20">
                         <CopyCodeButton code={codeText} />
-                        {children}
-                      </pre>
+                        {language && (
+                          <div className="absolute top-0 left-0 px-2 py-0.5 text-[9px] font-mono text-neon-cyan/40 bg-neon-cyan/5 border-b border-neon-cyan/10 rounded-br">
+                            {language}
+                          </div>
+                        )}
+                        <SyntaxHighlighter
+                          language={language || 'text'}
+                          style={oneDark}
+                          customStyle={{
+                            margin: 0,
+                            padding: '12px',
+                            paddingTop: language ? '24px' : '12px',
+                            background: 'rgba(0, 0, 0, 0.6)',
+                            fontSize: '12px',
+                            borderRadius: '8px',
+                            border: 'none',
+                          }}
+                          codeTagProps={{
+                            style: {
+                              fontFamily: 'monospace',
+                              fontSize: '12px',
+                            },
+                          }}
+                        >
+                          {codeText}
+                        </SyntaxHighlighter>
+                      </div>
                     )
                   },
-                  // Lists
+                  // Lists with cyan bullet points
                   ul: ({ children }) => (
-                    <ul className="list-disc list-inside space-y-1 my-1">{children}</ul>
+                    <ul className="list-none space-y-1 my-1 pl-4">
+                      {children}
+                    </ul>
                   ),
                   ol: ({ children }) => (
-                    <ol className="list-decimal list-inside space-y-1 my-1">{children}</ol>
+                    <ol className="list-none space-y-1 my-1 pl-4 counter-reset-list">
+                      {children}
+                    </ol>
                   ),
-                  // Links
+                  li: ({ children, ordered, index }) => (
+                    <li className="relative pl-4">
+                      <span className="absolute left-0 text-neon-cyan/50 font-mono text-xs">
+                        {ordered ? `${(index ?? 0) + 1}.` : '▸'}
+                      </span>
+                      {children}
+                    </li>
+                  ),
+                  // Links with cyan color and hover glow
                   a: ({ href, children }) => (
                     <a
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-neon-cyan hover:text-neon-cyan/80 underline underline-offset-2"
+                      className="text-neon-cyan hover:text-neon-cyan/80 underline underline-offset-2 transition-all hover:shadow-[0_0_8px_rgba(0,240,255,0.3)]"
                     >
                       {children}
                     </a>
@@ -224,6 +387,49 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   p: ({ children }) => (
                     <p className="mb-2 last:mb-0">{children}</p>
                   ),
+                  // Tables with glass-panel styling
+                  table: ({ children }) => (
+                    <div className="my-2 overflow-x-auto rounded-lg border border-neon-cyan/15">
+                      <table className="min-w-full text-xs">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  thead: ({ children }) => (
+                    <thead className="bg-neon-cyan/5 border-b border-neon-cyan/15">
+                      {children}
+                    </thead>
+                  ),
+                  tbody: ({ children }) => (
+                    <tbody className="divide-y divide-neon-cyan/10">
+                      {children}
+                    </tbody>
+                  ),
+                  tr: ({ children }) => (
+                    <tr className="hover:bg-neon-cyan/5 transition-colors">
+                      {children}
+                    </tr>
+                  ),
+                  th: ({ children }) => (
+                    <th className="px-3 py-1.5 text-left text-neon-cyan/70 font-mono font-medium uppercase tracking-wider">
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="px-3 py-1.5 text-white/70">
+                      {children}
+                    </td>
+                  ),
+                  // Blockquotes
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-2 border-neon-cyan/30 pl-3 my-2 text-white/60 italic">
+                      {children}
+                    </blockquote>
+                  ),
+                  // Horizontal rule
+                  hr: () => (
+                    <hr className="my-3 border-neon-cyan/10" />
+                  ),
                 }}
               >
                 {message.content}
@@ -231,6 +437,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             </div>
           )}
         </div>
+
+        {/* Message reactions for AI messages */}
+        {!isUser && <MessageReactions content={message.content} />}
 
         {/* Timestamp - always visible */}
         <div

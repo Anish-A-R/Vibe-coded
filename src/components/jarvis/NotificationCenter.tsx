@@ -51,7 +51,6 @@ function getNotificationIcon(notification: AppNotification) {
     return iconMap[notification.icon]
   }
 
-  // Default icons by type
   switch (notification.type) {
     case 'info':
       return <Info className="size-3.5" />
@@ -99,7 +98,7 @@ export default function NotificationCenter() {
   const unreadCount = notifications.filter((n) => !n.read).length
   const displayCount = unreadCount > 99 ? '99+' : String(unreadCount)
 
-  // Play notification sound on new notification (no state updates)
+  // Play notification sound on new notification
   useEffect(() => {
     const prev = prevCountRef.current
     prevCountRef.current = unreadCount
@@ -180,7 +179,6 @@ export default function NotificationCenter() {
         ref={buttonRef}
         onClick={() => {
           setIsOpen(!isOpen)
-          // Mark all as read when opening
           if (!isOpen && unreadCount > 0) {
             setTimeout(() => markAllNotificationsRead(), 2000)
           }
@@ -225,133 +223,134 @@ export default function NotificationCenter() {
                 border border-neon-cyan/15 bg-black/95 backdrop-blur-xl rounded-xl
                 shadow-2xl shadow-black/60 overflow-hidden"
             >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-neon-cyan/10">
-              <div className="flex items-center gap-2">
-                <Bell className="size-4 text-neon-cyan/60" />
-                <span className="text-xs font-mono text-neon-cyan/80 uppercase tracking-wider font-semibold">
-                  Notifications
-                </span>
-                {unreadCount > 0 && (
-                  <span className="text-[9px] font-mono text-neon-cyan/40 bg-neon-cyan/10 px-1.5 py-0.5 rounded">
-                    {unreadCount} new
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-neon-cyan/10">
+                <div className="flex items-center gap-2">
+                  <Bell className="size-4 text-neon-cyan/60" />
+                  <span className="text-xs font-mono text-neon-cyan/80 uppercase tracking-wider font-semibold">
+                    Notifications
                   </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllNotificationsRead}
-                    className="p-1 rounded text-neon-cyan/40 hover:text-neon-cyan/70 hover:bg-neon-cyan/10 transition-colors"
-                    aria-label="Mark all read"
-                    title="Mark all as read"
-                  >
-                    <CheckCheck className="size-3.5" />
-                  </button>
-                )}
-                {notifications.length > 0 && (
-                  <button
-                    onClick={clearNotifications}
-                    className="p-1 rounded text-white/20 hover:text-red-400/70 hover:bg-red-500/10 transition-colors"
-                    aria-label="Clear all"
-                    title="Clear all notifications"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 rounded text-white/20 hover:text-white/50 hover:bg-white/5 transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Notification list */}
-            <div className="max-h-96 overflow-y-auto jarvis-scrollbar">
-              {notifications.length === 0 ? (
-                <div className="py-8 text-center">
-                  <Bell className="size-8 text-white/10 mx-auto mb-2" />
-                  <p className="text-xs font-mono text-white/20">No notifications yet</p>
-                  <p className="text-[10px] font-mono text-white/10 mt-1">Important events will appear here</p>
+                  {unreadCount > 0 && (
+                    <span className="text-[9px] font-mono text-neon-cyan/40 bg-neon-cyan/10 px-1.5 py-0.5 rounded">
+                      {unreadCount} new
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <AnimatePresence initial={false}>
-                  {notifications.map((notification) => (
-                    <motion.div
-                      key={notification.id}
-                      initial={{ opacity: 0, x: 20, height: 0 }}
-                      animate={{ opacity: 1, x: 0, height: 'auto' }}
-                      exit={{ opacity: 0, x: -20, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className={`
-                        relative group px-4 py-3 border-b border-white/5 last:border-b-0
-                        hover:bg-white/[0.02] transition-colors cursor-pointer
-                        ${!notification.read ? 'bg-neon-cyan/[0.02]' : ''}
-                      `}
-                      onClick={() => markNotificationRead(notification.id)}
+                <div className="flex items-center gap-1">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllNotificationsRead}
+                      className="p-1 rounded text-neon-cyan/40 hover:text-neon-cyan/70 hover:bg-neon-cyan/10 transition-colors"
+                      aria-label="Mark all read"
+                      title="Mark all as read"
                     >
-                      {/* Unread indicator */}
-                      {!notification.read && (
-                        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-[0_0_4px_rgba(0,240,255,0.5)]" />
-                      )}
+                      <CheckCheck className="size-3.5" />
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={clearNotifications}
+                      className="p-1 rounded text-white/20 hover:text-red-400/70 hover:bg-red-500/10 transition-colors"
+                      aria-label="Clear all"
+                      title="Clear all notifications"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1 rounded text-white/20 hover:text-white/50 hover:bg-white/5 transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              </div>
 
-                      <div className="flex items-start gap-3">
-                        {/* Icon */}
-                        <div className={`flex-shrink-0 mt-0.5 p-1.5 rounded border ${getTypeBg(notification.type)} ${getTypeColor(notification.type)}`}>
-                          {getNotificationIcon(notification)}
-                        </div>
+              {/* Notification list */}
+              <div className="max-h-96 overflow-y-auto jarvis-scrollbar">
+                {notifications.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <Bell className="size-8 text-white/10 mx-auto mb-2" />
+                    <p className="text-xs font-mono text-white/20">No notifications yet</p>
+                    <p className="text-[10px] font-mono text-white/10 mt-1">Important events will appear here</p>
+                  </div>
+                ) : (
+                  <AnimatePresence initial={false}>
+                    {notifications.map((notification) => (
+                      <motion.div
+                        key={notification.id}
+                        initial={{ opacity: 0, x: 20, height: 0 }}
+                        animate={{ opacity: 1, x: 0, height: 'auto' }}
+                        exit={{ opacity: 0, x: -20, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className={`
+                          relative group px-4 py-3 border-b border-white/5 last:border-b-0
+                          hover:bg-white/[0.02] transition-colors cursor-pointer
+                          ${!notification.read ? 'bg-neon-cyan/[0.02]' : ''}
+                        `}
+                        onClick={() => markNotificationRead(notification.id)}
+                      >
+                        {/* Unread indicator */}
+                        {!notification.read && (
+                          <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-[0_0_4px_rgba(0,240,255,0.5)]" />
+                        )}
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs font-mono font-semibold ${getTypeColor(notification.type)}`}>
-                              {notification.title}
+                        <div className="flex items-start gap-3">
+                          {/* Icon */}
+                          <div className={`flex-shrink-0 mt-0.5 p-1.5 rounded border ${getTypeBg(notification.type)} ${getTypeColor(notification.type)}`}>
+                            {getNotificationIcon(notification)}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-mono font-semibold ${getTypeColor(notification.type)}`}>
+                                {notification.title}
+                              </span>
+                            </div>
+                            <p className="text-[11px] font-mono text-white/40 mt-0.5 line-clamp-2">
+                              {notification.message}
+                            </p>
+                            <span className="text-[9px] font-mono text-white/15 mt-1 block">
+                              {getRelativeTime(notification.timestamp)}
                             </span>
                           </div>
-                          <p className="text-[11px] font-mono text-white/40 mt-0.5 line-clamp-2">
-                            {notification.message}
-                          </p>
-                          <span className="text-[9px] font-mono text-white/15 mt-1 block">
-                            {getRelativeTime(notification.timestamp)}
-                          </span>
+
+                          {/* Dismiss button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const store = useJarvisStore.getState()
+                              const updated = store.notifications.filter((n) => n.id !== notification.id)
+                              useJarvisStore.setState({ notifications: updated })
+                            }}
+                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded
+                              text-white/15 hover:text-white/40 hover:bg-white/5 transition-all"
+                            aria-label="Dismiss notification"
+                          >
+                            <X className="size-3" />
+                          </button>
                         </div>
-
-                        {/* Dismiss button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            // Remove this notification from the list
-                            const store = useJarvisStore.getState()
-                            const updated = store.notifications.filter((n) => n.id !== notification.id)
-                            useJarvisStore.setState({ notifications: updated })
-                          }}
-                          className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded
-                            text-white/15 hover:text-white/40 hover:bg-white/5 transition-all"
-                          aria-label="Dismiss notification"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              )}
-            </div>
-
-            {/* Footer */}
-            {notifications.length > 0 && (
-              <div className="px-4 py-2 border-t border-white/5 bg-white/[0.01]">
-                <p className="text-[9px] font-mono text-white/15 text-center">
-                  {notifications.length} notification{notifications.length !== 1 ? 's' : ''} • {unreadCount} unread
-                </p>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                )}
               </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              {/* Footer */}
+              {notifications.length > 0 && (
+                <div className="px-4 py-2 border-t border-white/5 bg-white/[0.01]">
+                  <p className="text-[9px] font-mono text-white/15 text-center">
+                    {notifications.length} notification{notifications.length !== 1 ? 's' : ''} &bull; {unreadCount} unread
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }

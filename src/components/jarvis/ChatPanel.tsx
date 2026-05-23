@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare } from 'lucide-react'
+import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare, Bot } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
 import { useTTS } from '@/hooks/useTTS'
@@ -540,16 +540,65 @@ export function ChatPanel() {
           ))}
         </AnimatePresence>
 
-        {/* Streaming text with blinking cursor */}
+        {/* Streaming text with dramatic cursor */}
         {isStreaming && streamingText && (
           <div className="px-4 py-2">
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center mt-1">
-                <div className="w-3 h-3 rounded-full bg-neon-cyan/60" />
+                <Bot className="w-4 h-4 text-neon-cyan/60" />
               </div>
-              <div className="px-4 py-3 rounded-xl rounded-tl-sm bg-neon-cyan/5 border border-neon-cyan/15 text-sm text-white/90">
+              <div className="relative px-4 py-3 rounded-xl rounded-tl-sm bg-neon-cyan/5 border border-neon-cyan/15 text-sm text-white/90 hud-scanline-h overflow-hidden">
+                {/* Holographic left border */}
+                <div
+                  className="absolute top-0 left-0 w-[2px] h-full"
+                  style={{
+                    background: 'linear-gradient(to bottom, transparent, rgba(0,240,255,0.4), rgba(0,240,255,0.15), transparent)',
+                  }}
+                />
                 <span>{streamingText}</span>
-                <span className="inline-block w-[2px] h-[14px] bg-neon-cyan/80 ml-0.5 align-middle animate-pulse" />
+                {/* Dramatic blinking cyan rectangle cursor */}
+                <motion.span
+                  className="inline-block w-[7px] h-[15px] bg-neon-cyan/90 ml-0.5 align-middle rounded-[1px]"
+                  animate={{
+                    opacity: [1, 1, 0, 0],
+                  }}
+                  transition={{
+                    duration: 0.8,
+                    repeat: Infinity,
+                    ease: 'steps(2)',
+                  }}
+                  style={{
+                    boxShadow: '0 0 6px rgba(0,240,255,0.6), 0 0 12px rgba(0,240,255,0.3)',
+                  }}
+                />
+                {/* Processing indicator below streaming text */}
+                <div className="flex items-center gap-2 mt-2 pt-1.5 border-t border-neon-cyan/10">
+                  <motion.div
+                    className="flex gap-[2px]"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    {[0, 1, 2].map((i) => (
+                      <motion.div
+                        key={i}
+                        className="w-[3px] h-[3px] rounded-full bg-neon-cyan/60"
+                        animate={{
+                          opacity: [0.2, 1, 0.2],
+                          scale: [0.8, 1.2, 0.8],
+                        }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          delay: i * 0.2,
+                          ease: 'easeInOut',
+                        }}
+                      />
+                    ))}
+                  </motion.div>
+                  <span className="text-[9px] font-mono text-neon-cyan/30 uppercase tracking-wider">
+                    Processing...
+                  </span>
+                </div>
               </div>
             </div>
           </div>

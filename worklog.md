@@ -105,3 +105,82 @@
 6. ✅ **Animated Dashboard Section Transitions** (page.tsx) - Left column: `SystemWidgets` now accepts `staggerDirection` prop; with `staggerDirection="left"`, each widget slides in from the left with 0.15s stagger delay. Center column: "power on" sequence — decorative rings appear first (0.3s, 0.45s delay, scale from 0.5), then orb scales up from 0 with spring bounce (0.5s delay, stiffness:150, damping:12), then status label fades in (1.0s delay). Quick action hints appear one by one with 0.1s stagger (starting at 1.2s). Right column: each panel slides in from right with 0.15s stagger (0.35s, 0.5s, 0.65s, 0.8s delays).
 7. ✅ **Enhanced StatusBar** - Animated gradient line at top uses `status-bar-flow` class (flowing 200% background animation, 8s cycle). Time display has cyan glow effect (text-shadow: 8px + 16px). Added `DataFlowDots` component between status sections: 3 tiny dots with staggered opacity/translateX animation simulating data flowing between sections. Added `AnimatedSignalBars` component next to network status: 4 tiny bars with staggered `scaleY` pulse animation, color-coded by network status.
 8. ✅ **Lint** - `bun run lint` clean, no errors
+
+### Round 10 Changes - ChatPanel Markdown + CircularOrb Enhancement (Task 3c)
+1. ✅ **Enhanced MessageBubble with SyntaxHighlighter** - Replaced basic code block rendering with `Prism as SyntaxHighlighter` from `react-syntax-highlighter` using `oneDark` theme. Code blocks now have proper syntax highlighting, dark bg, rounded corners, cyan border, language label badge, and copy button. Inline code gets subtle cyan background with cyan border. Links get cyan color with hover glow effect. Lists use custom cyan bullet points (▸ for unordered, numbered for ordered). Headings (h1-h4) get `neon-text-cyan` class for glowing text. Tables use glass-panel styling with cyan borders, hover row highlights, and cyan-tinted headers. Blockquotes have cyan left border. Horizontal rules are cyan-tinted.
+2. ✅ **Enhanced Message Bubble Styling** - AI messages: left-aligned with holographic left border (gradient from transparent to neon-cyan), dark bg with slight inset glow, `hud-scanline-h` class for horizontal scan line effect. User messages: right-aligned with holographic right border (gradient from transparent to neon-orange). Both have role indicator icons: `Bot` icon for AI messages (cyan), `User` icon for user messages (orange) replacing the generic dot/avatar.
+3. ✅ **Message Reactions** - Added `MessageReactions` component after AI messages: 👍 (ThumbsUp), 👎 (ThumbsDown), 📋 (Clipboard copy). Small subtle buttons that appear below AI messages. Click toggles with glow animation: green glow for thumbs up, orange glow for thumbs down, cyan glow for copy (with check confirmation).
+4. ✅ **Streaming Cursor Enhancement** - Replaced blinking pipe cursor with dramatic blinking cyan rectangle cursor (7x15px with glow box-shadow). Uses `motion.span` with step-based opacity animation. Added "Processing..." indicator below streaming text with 3 animated dots (staggered opacity/scale), separated by a cyan border. Streaming message bubble now has holographic left border and `hud-scanline-h` effect matching AI message styling.
+5. ✅ **Hexagonal Grid Core Pattern** - Added `HexagonalGridCore` component inside `ArcReactorCore`. Uses SVG polygon elements to render a grid of small hexagons (3x3, filtered by distance) inside the innermost circle. Each hexagon has animated fill opacity and stroke opacity with staggered delays, creating a subtle arc reactor pattern.
+6. ✅ **Enhanced Data Text Ring** - Hex characters now fade in and out randomly. Each character has individual `fadeDelay` and `fadeDuration` (2-5s), creating an organic data-stream effect. Uses `motion.text` with per-character opacity animation instead of static text. Fill color respects `colorShift` from status config.
+7. ✅ **Enhanced Particle Trails** - Added per-particle `linearGradient` SVG definitions with color→transparent gradient for trail lines. Trails now use `url(#trailGradientN)` instead of flat color. Gradient colors dynamically update based on `config.colorHex`.
+8. ✅ **Status-based Color Changes** - Added `colorHex` and `particleDirection` to statusConfig. Thinking status: orange tint (`rgba(255, 140, 50, 1)`, `#ff8c32`), rapid rotation, data ring scrolls faster. Speaking status: blue tint (`rgba(60, 160, 255, 1)`, `#3ca0ff`), moderate rotation, particles pulse outward (`particleDirection: 'outward'` causes particle radius to animate). All orb elements (rings, core glow, energy arcs, pulse waves, data text, particles) now shift color based on status.
+9. ✅ **Lint** - `bun run lint` clean, no errors. Page loads (200).
+
+### Round 10 Changes - New Widgets + Theme System (Task 3b)
+1. ✅ **WorldClockWidget** (`/src/components/jarvis/WorldClockWidget.tsx`) - Shows current time in 4 configurable cities (New York, London, Tokyo, Sydney). Each entry displays city name (small, white/40 with hover glow), time in HH:MM:SS format (larger, cyan with neon-text-cyan glow), and date below (tiny, white/20). Uses `glass-panel holo-border-cyan inner-glow-cyan` classes with JARVIS corner accents. "WORLD CLOCK" header with Globe icon. Gradient separators between entries. Seconds blink animation on colons. Compact ~280px width design. Updates every second via setInterval.
+2. ✅ **FocusTimerWidget** (`/src/components/jarvis/FocusTimerWidget.tsx`) - Pomodoro-style focus timer with JARVIS aesthetic. Circular SVG progress ring (~100px with gauge-breathe animation). Timer display in center: MM:SS format, large monospace font with neon-cyan color. Three modes: Focus (25min), Short Break (5min), Long Break (15min) selectable via small buttons. Start/Pause/Reset controls with Play, Pause, RotateCcw icon buttons. Session counter: "Session X of 4". On completion: ring turns green with glow animation, 3-second completion state, ascending tone sound via AudioContext. Uses glass-panel, holo-border-cyan, inner-glow-cyan styling. "FOCUS TIMER" header with Target icon.
+3. ✅ **QuickNotesWidget** (`/src/components/jarvis/QuickNotesWidget.tsx`) - Quick memo/notes pad with orange JARVIS styling (holo-border-orange, inner-glow-orange). Shows list of notes with text content, timestamp (HH:MM), delete button (X icon, visible on hover). Add new note via input field with Send button. Notes stored in Zustand (persisted, max 20, newest first). Each note is a compact row with glass-panel styling, subtle hover effect, AnimatePresence for add/remove. Auto-scroll to newest note. Input has placeholder "JARVIS, note this down...". Note counter shows current/max. Empty state with StickyNote icon. "QUICK NOTES" header with StickyNote icon.
+4. ✅ **Store Updates** (`/src/hooks/useJarvisStore.ts`):
+   - Added `ColorTheme` type: `'cyan' | 'purple' | 'green' | 'red'`
+   - Added `QuickNote` interface: `{ id, text, timestamp }`
+   - Focus Timer: `focusTimerMinutes` (default 25), `focusTimerBreakMinutes` (default 5), `focusTimerSessions` (default 0), setters for all three
+   - Quick Notes: `notes[]`, `addNote(text)`, `removeNote(id)` — keeps last 20, newest first
+   - Color Theme: `colorTheme` (default 'cyan'), `setColorTheme(theme)`
+   - All new state added to `partialize` config for persistence
+5. ✅ **SettingsPanel Theme Selector** (`/src/components/jarvis/SettingsPanel.tsx`) - Replaced static "Dark (Cinematic)" theme label in Display section with interactive color theme selector. Shows 4 color swatches (circles) for cyan (#00f0ff), purple (#8b5cf6), green (#00ff88), red (#ff3366) themes. Each swatch shows the color fill and a label below. Active theme has a glowing border (ring-2 + box-shadow), ring-offset-black, and animated CheckCircle icon (spring entrance). Inactive themes have subtle ring-1 ring-white/10 with hover effect. Clicking a swatch calls `setColorTheme()`.
+6. ✅ **Lint** - `bun run lint` clean, no errors
+
+### Round 11 Changes - Bug Fix + Major Styling & Feature Enhancement (2026-05-23)
+
+#### Bug Fixes
+1. ✅ **NotificationCenter.tsx Parsing Error (Critical)** - Fixed missing `createPortal` closing parenthesis and `document.body` second argument. The file had `createPortal(` without the closing `)` and portal target, causing `Unterminated regexp literal` parsing error that returned 500 on all pages. Rewrote the component with proper `createPortal(<JSX/>, document.body)` pattern. Also replaced `mounted` state (which triggered `react-hooks/set-state-in-effect` lint error) with direct `typeof window !== 'undefined'` check.
+
+#### Styling Enhancements (950+ lines of new CSS)
+2. ✅ **CRT Scanline Overlay** - `.crt-overlay` class with `repeating-linear-gradient` scanlines + radial-gradient vignette. `.crt-flicker` class for subtle opacity flicker. Applied to main page wrapper. Fixed z-index to use `position: fixed; z-index: 9999/9998; pointer-events: none` to avoid blocking interactions.
+3. ✅ **Typewriter Animation** - `@keyframes typewriter` + `@keyframes blink-caret` + `.typewriter-text` class with CSS variables for duration/steps.
+4. ✅ **Energy Wave/Ripple** - `@keyframes energy-wave` + `.energy-ripple` with dual pseudo-element expanding rings.
+5. ✅ **Arc Reactor Core Glow** - `@keyframes arc-reactor-pulse` (4-stage multi-layered cyan/blue box-shadow) + `.arc-reactor-glow`.
+6. ✅ **Holographic Shimmer Text** - `@keyframes holo-text-shimmer` + `.holo-text` (animated gradient with `background-clip: text`).
+7. ✅ **Data Stream Rain** - `@keyframes data-rain` + `.data-rain-bg` (dual-layer vertical scrolling columns).
+8. ✅ **Corner Bracket Animation** - `@keyframes bracket-draw` + `.animated-brackets` (animated border drawing + corner accents).
+9. ✅ **Hexagonal Grid Pattern** - `.hex-grid-bg` (SVG data URI hex pattern in cyan).
+10. ✅ **Neon Sign Flicker** - `@keyframes neon-flicker` (irregular flicker pattern) + `.neon-sign`.
+11. ✅ **Circuit Board Pattern** - `.circuit-bg` (multi-layer grid + radial-gradient solder points).
+12. ✅ **Personality Theme Variants** - `.personality-cyber` (purple/magenta) + `.personality-stealth` (dark green), each with 11 sub-selector overrides.
+13. ✅ **Message Bubble Styles** - `.jarvis-msg-user` (right-aligned, cyan left border) + `.jarvis-msg-ai` (left-aligned, holographic shimmer top border).
+14. ✅ **Pulse Concentric** - `@keyframes pulse-concentric` + `.pulse-concentric` (triple expanding rings).
+15. ✅ **Loading Bar Animation** - `@keyframes loading-bar` + `.loading-bar` / `.loading-bar-animated`.
+16. ✅ **Panel Active Indicator** - `.panel-active-indicator` with animated underline sweep.
+17. ✅ **Color Theme CSS** - `.theme-purple`, `.theme-green`, `.theme-red` classes that override all neon colors, glass-panel borders, scrollbar, scanlines, shimmer, and neon-border-animated. Works independently of personality mode.
+
+#### New Features
+18. ✅ **WorldClockWidget** - Shows 4 timezone cities (New York, London, Tokyo, Sydney) with live HH:MM:SS times. JARVIS glass-panel styling with corner accents, blinking colons, gradient separators. Updates every second.
+19. ✅ **FocusTimerWidget** - Pomodoro-style timer with SVG progress ring, 3 modes (Focus/Short/Long), start/pause/reset controls, session counter (X of 4), completion sound effect. Fixed `strokeDashoffset` animation warning.
+20. ✅ **QuickNotesWidget** - Note pad with input + Send button, AnimatePresence for add/remove, delete on hover, timestamp display, orange JARVIS styling. Persisted via Zustand (max 20 notes).
+21. ✅ **Color Theme System** - 4 color themes (cyan, purple, green, red) stored in Zustand and persisted. Theme selector in Settings panel with color swatches + animated checkmark.
+22. ✅ **Page Integration** - All 3 new widgets integrated into right column with staggered slide-in animations. Color theme class applied to root div. CRT scanline overlay added.
+
+#### Component Count
+- Now **30 custom JARVIS components** + 6 custom hooks + 4 lib modules + 2100+ lines of CSS
+
+## Current Project Status (Updated 2026-05-23)
+- **Phase**: Feature-rich cinematic AI assistant with streaming chat, multi-conversation, 3 new widgets, color theme system, and dramatic visual effects
+- **Health**: All pages load (200), Streaming Chat API works, Weather API works, no lint issues, no runtime errors
+- **Last QA**: 2026-05-23 18:45 UTC - Full browser QA passed: boot sequence, chat panel, all 3 new widgets visible and interactive, settings panel, notifications, no page errors
+- **Components**: 30 custom JARVIS components + 6 custom hooks
+
+## Unresolved Issues / Risks
+- CRT overlay scanline effect may slightly reduce readability on low-contrast displays — could be toggled via settings
+- Weather real data fetch can be slow (4-60s) on first request — mitigated by 10-min cache
+- No real database conversations yet (only localStorage via Zustand persist)
+- Right column may be crowded with 3 new widgets — could add scrollable container
+- FocusTimerWidget interval dependency array includes `timeLeft` which causes re-creation every second
+
+## Priority Recommendations for Next Phase
+1. **HIGH**: Add CRT overlay toggle in Settings
+2. **MEDIUM**: Make right column scrollable or add widget collapse/expand
+3. **MEDIUM**: Add conversation export to PDF/Markdown
+4. **MEDIUM**: Add Prisma-based conversation persistence
+5. **LOW**: Add Three.js holographic globe or arc reactor visualization
+6. **LOW**: Add multi-language support for voice recognition
