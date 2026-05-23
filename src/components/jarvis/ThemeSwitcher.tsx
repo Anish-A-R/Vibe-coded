@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, Palette, Volume2 } from 'lucide-react'
 import { useJarvisStore, type ColorTheme } from '@/hooks/useJarvisStore'
 import { useThemeColors } from '@/hooks/useThemeColors'
+import { VoicePicker } from '@/components/jarvis/VoicePicker'
 
 // ─── Theme definitions ────────────────────────────────────────────────
 const themes: { id: ColorTheme; label: string; subtitle: string; hex: string }[] = [
@@ -20,6 +21,9 @@ const themes: { id: ColorTheme; label: string; subtitle: string; hex: string }[]
   { id: 'crimson', label: 'Crimson', subtitle: 'Emergency', hex: '#dc2626' },
   { id: 'lime',    label: 'Lime',    subtitle: 'Toxic',     hex: '#84cc16' },
 ]
+
+// ─── Tab type ─────────────────────────────────────────────────────────
+type Tab = 'colors' | 'voice'
 
 // ─── Props ────────────────────────────────────────────────────────────
 interface ThemeSwitcherProps {
@@ -145,6 +149,7 @@ export function ThemeSwitcher({ open, onClose }: ThemeSwitcherProps) {
   const colorTheme = useJarvisStore((s) => s.colorTheme)
   const setColorTheme = useJarvisStore((s) => s.setColorTheme)
   const tc = useThemeColors()
+  const [activeTab, setActiveTab] = useState<Tab>('colors')
 
   // Sync data-theme attribute on change
   useEffect(() => {
@@ -163,6 +168,11 @@ export function ThemeSwitcher({ open, onClose }: ThemeSwitcherProps) {
     const nextTheme = themes[nextIndex].id
     handleSelect(nextTheme)
   }
+
+  const tabs: { id: Tab; label: string; icon: typeof Palette }[] = [
+    { id: 'colors', label: 'Color', icon: Palette },
+    { id: 'voice', label: 'Voice', icon: Volume2 },
+  ]
 
   return (
     <AnimatePresence>
@@ -226,62 +236,130 @@ export function ThemeSwitcher({ open, onClose }: ThemeSwitcherProps) {
               {/* Scanline overlay */}
               <div className="absolute inset-0 pointer-events-none z-[5] hud-scanline-h opacity-30" />
 
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-neon-cyan/10 relative z-10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: tc.hex }} />
-                  <h2 className="text-xs font-mono uppercase tracking-[0.2em]" style={{ color: tc.rgba(0.8) }}>
-                    Color Mode
-                  </h2>
+              {/* Header with tabs */}
+              <div className="relative z-10">
+                <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: tc.rgba(0.1) }}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: tc.hex }} />
+                    <h2 className="text-xs font-mono uppercase tracking-[0.2em]" style={{ color: tc.rgba(0.8) }}>
+                      Settings
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Cycle button (for colors tab) */}
+                    {activeTab === 'colors' && (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={cycleTheme}
+                        className="px-2.5 py-1 rounded-md text-[9px] font-mono uppercase tracking-wider transition-colors"
+                        style={{
+                          color: tc.rgba(0.6),
+                          border: `1px solid ${tc.rgba(0.15)}`,
+                          background: tc.rgba(0.05),
+                        }}
+                        aria-label="Cycle to next theme"
+                      >
+                        Next →
+                      </motion.button>
+                    )}
+                    <button
+                      onClick={onClose}
+                      className="p-1.5 rounded-md hover:bg-white/5 transition-colors"
+                      style={{ color: tc.rgba(0.3) }}
+                      aria-label="Close settings"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {/* Cycle button */}
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={cycleTheme}
-                    className="px-2.5 py-1 rounded-md text-[9px] font-mono uppercase tracking-wider transition-colors"
-                    style={{
-                      color: tc.rgba(0.6),
-                      border: `1px solid ${tc.rgba(0.15)}`,
-                      background: tc.rgba(0.05),
-                    }}
-                    aria-label="Cycle to next theme"
-                  >
-                    Next →
-                  </motion.button>
-                  <button
-                    onClick={onClose}
-                    className="p-1.5 rounded-md hover:bg-white/5 transition-colors"
-                    style={{ color: tc.rgba(0.3) }}
-                    aria-label="Close theme switcher"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+
+                {/* Tab bar */}
+                <div className="flex px-5 pt-2 gap-1 border-b" style={{ borderColor: tc.rgba(0.08) }}>
+                  {tabs.map((tab) => {
+                    const isActive = activeTab === tab.id
+                    const Icon = tab.icon
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-mono uppercase tracking-wider transition-colors relative"
+                        style={{ color: isActive ? tc.rgba(0.8) : tc.rgba(0.3) }}
+                      >
+                        <Icon className="w-3 h-3" />
+                        {tab.label}
+                        {isActive && (
+                          <motion.div
+                            layoutId="settings-tab-indicator"
+                            className="absolute bottom-0 left-0 right-0 h-[2px]"
+                            style={{ background: tc.hex, boxShadow: `0 0 8px ${tc.rgba(0.5)}` }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                          />
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
-              {/* Theme grid */}
-              <div className="px-5 py-4 relative z-10">
-                <div className="grid grid-cols-4 gap-3 sm:gap-4">
-                  {themes.map((theme) => (
-                    <HexSwatch
-                      key={theme.id}
-                      hex={theme.hex}
-                      label={theme.label}
-                      subtitle={theme.subtitle}
-                      isSelected={colorTheme === theme.id}
-                      onClick={() => handleSelect(theme.id)}
-                    />
-                  ))}
-                </div>
-              </div>
+              {/* Tab content */}
+              <div className="relative z-10">
+                <AnimatePresence mode="wait">
+                  {activeTab === 'colors' && (
+                    <motion.div
+                      key="colors-tab"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {/* Theme grid */}
+                      <div className="px-5 py-4">
+                        <div className="grid grid-cols-4 gap-3 sm:gap-4">
+                          {themes.map((theme) => (
+                            <HexSwatch
+                              key={theme.id}
+                              hex={theme.hex}
+                              label={theme.label}
+                              subtitle={theme.subtitle}
+                              isSelected={colorTheme === theme.id}
+                              onClick={() => handleSelect(theme.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
 
-              {/* Footer */}
-              <div className="px-5 pb-3 pt-1 relative z-10">
-                <p className="text-[9px] font-mono text-white/20 text-center tracking-wider">
-                  SAY &ldquo;CHANGE COLOR&rdquo; OR PICK A MODE ABOVE
-                </p>
+                      {/* Color tab footer */}
+                      <div className="px-5 pb-3 pt-1">
+                        <p className="text-[9px] font-mono text-white/20 text-center tracking-wider">
+                          SAY &ldquo;CHANGE COLOR&rdquo; OR PICK A MODE ABOVE
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'voice' && (
+                    <motion.div
+                      key="voice-tab"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {/* Voice picker */}
+                      <div className="px-5 py-4">
+                        <VoicePicker />
+                      </div>
+
+                      {/* Voice tab footer */}
+                      <div className="px-5 pb-3 pt-1">
+                        <p className="text-[9px] font-mono text-white/20 text-center tracking-wider">
+                          SAY &ldquo;CHANGE VOICE&rdquo; TO SELECT A VOICE
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </motion.div>

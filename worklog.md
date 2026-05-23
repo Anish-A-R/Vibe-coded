@@ -1,20 +1,39 @@
 ---
 Task ID: 1
-Agent: main
-Task: Fix broken color system - themes not applying to the orb
+Agent: Main Agent
+Task: Fix broken color system and add voice selection
 
 Work Log:
-- Identified root cause: JarvisOrb.tsx themeColors map only had 6 themes (cyan, red, green, purple, orange, arctic), missing gold, pink, teal, crimson, lime
-- Added 5 missing themes to JarvisOrb.tsx themeColors map
-- Enhanced useThemeColors.ts hook with secondary color support (secondaryRgb, secondaryHex, secondaryRgba, secondary)
-- Added global data-theme sync in page.tsx - previously only synced when ThemeSwitcher was open
-- Replaced hardcoded neon-cyan Tailwind classes in AmbientBar with theme-aware inline styles using useThemeColors hook
-- Replaced hardcoded neon-cyan in VoiceStatusBar with theme-aware inline styles for mic button, pulse rings, SVG circles, and equalizer bars
-- Replaced hardcoded background blur colors in main page with theme-aware rgba values
-- All 11 themes verified working correctly in the orb via browser testing
+- Read all existing files to understand the color/theme system architecture
+- Identified that globals.css had hardcoded `rgba(0, 102, 255, ...)` blue references in:
+  - jarvis-msg-ai box-shadow
+  - jarvis-msg-ai::before gradient
+  - jarvis-msg-ai::after gradient
+  - loading bar gradient
+- Fixed all hardcoded blue references to use `var(--theme-secondary-rgb)` instead
+- Fixed JarvisOrb.tsx: Previously thinking/speaking states did NOT apply theme colors. Now ALL states (idle, listening, thinking, speaking) properly use theme colors
+- Fixed CircularOrb.tsx: Added theme color map and wired it to useJarvisStore for dynamic theming
+- Added voice selection state to store: selectedVoice, voicePitch, voiceRate
+- Updated useTTS hook to use selected voice, pitch, and rate
+- Added getAvailableVoices() and getVoicesByLanguage() helper functions to useTTS
+- Created VoicePicker component with:
+  - Voice list grouped by language
+  - Voice preview button for each voice
+  - Pitch and rate sliders
+  - Reset to default button
+  - Timeout fallback for browsers without speech synthesis
+- Updated ThemeSwitcher to include tabs: Colors and Voice
+- Added voice commands: "change voice", "switch voice", "select voice", "voice settings" to open settings
+- Added "next voice" command to cycle through English voices
+- Added "reset voice"/"default voice" command to reset voice settings
+- Updated bottom hint bar to include voice command hints
+- Added CSS for range input styling (slider thumb, etc.)
+- All lint checks pass
+- Browser tested: themes apply correctly to orb, settings panel works with both tabs
 
 Stage Summary:
-- All 11 color themes (cyan, red, green, purple, orange, arctic, gold, pink, teal, crimson, lime) now work correctly in the orb
-- CSS variable system works properly - data-theme attribute syncs globally
-- Theme persistence works - closing theme switcher preserves selected theme
-- No visual bugs remaining
+- Color system now properly uses CSS custom properties throughout
+- All orb states (idle, listening, thinking, speaking) apply theme colors
+- Voice selection system fully implemented with UI and voice commands
+- Settings panel now has "Color" and "Voice" tabs
+- Voice commands: "change voice", "next voice", "reset voice" available

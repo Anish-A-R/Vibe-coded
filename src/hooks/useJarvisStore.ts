@@ -743,6 +743,14 @@ interface JarvisState {
   voiceLanguage: string
   setVoiceLanguage: (lang: string) => void
 
+  // Voice Selection (TTS voice name)
+  selectedVoice: string | null
+  setSelectedVoice: (voice: string | null) => void
+  voicePitch: number
+  setVoicePitch: (pitch: number) => void
+  voiceRate: number
+  setVoiceRate: (rate: number) => void
+
   // ===== NEW: Window Management (OS-level) =====
   openWindows: OSWindow[]
   activeWindowId: string | null
@@ -1183,6 +1191,14 @@ export const useJarvisStore = create<JarvisState>()(
       voiceLanguage: 'en-US',
       setVoiceLanguage: (lang) => set({ voiceLanguage: lang }),
 
+      // Voice Selection
+      selectedVoice: null,
+      setSelectedVoice: (voice) => set({ selectedVoice: voice }),
+      voicePitch: 0.9,
+      setVoicePitch: (pitch) => set({ voicePitch: pitch }),
+      voiceRate: 1.0,
+      setVoiceRate: (rate) => set({ voiceRate: rate }),
+
       // ===== NEW: Window Management (OS-level) =====
       openWindows: [],
       activeWindowId: null,
@@ -1510,6 +1526,10 @@ export const useJarvisStore = create<JarvisState>()(
         collapsedWidgets: state.collapsedWidgets,
         // Voice Language
         voiceLanguage: state.voiceLanguage,
+        // Voice Selection
+        selectedVoice: state.selectedVoice,
+        voicePitch: state.voicePitch,
+        voiceRate: state.voiceRate,
         // Persist conversations (keep last 10, last 50 messages each)
         conversations: state.conversations.slice(0, 10).map((conv) => ({
           ...conv,

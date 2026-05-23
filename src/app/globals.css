@@ -648,12 +648,12 @@
     box-shadow: 0 0 5px rgba(var(--theme-primary-rgb), 0.2), 0 0 15px rgba(var(--theme-primary-rgb), 0.1);
   }
   33% {
-    border-color: rgba(0, 102, 255, 0.4);
-    box-shadow: 0 0 5px rgba(0, 102, 255, 0.2), 0 0 15px rgba(0, 102, 255, 0.1);
+    border-color: rgba(var(--theme-secondary-rgb), 0.4);
+    box-shadow: 0 0 5px rgba(var(--theme-secondary-rgb), 0.2), 0 0 15px rgba(var(--theme-secondary-rgb), 0.1);
   }
   66% {
-    border-color: rgba(139, 92, 246, 0.4);
-    box-shadow: 0 0 5px rgba(139, 92, 246, 0.2), 0 0 15px rgba(139, 92, 246, 0.1);
+    border-color: rgba(var(--theme-primary-rgb), 0.6);
+    box-shadow: 0 0 5px rgba(var(--theme-primary-rgb), 0.3), 0 0 15px rgba(var(--theme-primary-rgb), 0.15);
   }
 }
 
@@ -1191,7 +1191,7 @@
     box-shadow:
       0 0 5px rgba(var(--theme-primary-rgb), 0.3),
       0 0 10px rgba(var(--theme-primary-rgb), 0.15),
-      0 0 20px rgba(0, 102, 255, 0.1),
+      0 0 20px rgba(var(--theme-secondary-rgb), 0.1),
       0 0 40px rgba(var(--theme-primary-rgb), 0.05),
       inset 0 0 8px rgba(var(--theme-primary-rgb), 0.1);
   }
@@ -1199,7 +1199,7 @@
     box-shadow:
       0 0 8px rgba(var(--theme-primary-rgb), 0.5),
       0 0 18px rgba(var(--theme-primary-rgb), 0.3),
-      0 0 35px rgba(0, 102, 255, 0.2),
+      0 0 35px rgba(var(--theme-secondary-rgb), 0.2),
       0 0 60px rgba(var(--theme-primary-rgb), 0.1),
       inset 0 0 12px rgba(var(--theme-primary-rgb), 0.15);
   }
@@ -1207,16 +1207,16 @@
     box-shadow:
       0 0 12px rgba(var(--theme-primary-rgb), 0.7),
       0 0 30px rgba(var(--theme-primary-rgb), 0.5),
-      0 0 55px rgba(0, 102, 255, 0.35),
+      0 0 55px rgba(var(--theme-secondary-rgb), 0.35),
       0 0 90px rgba(var(--theme-primary-rgb), 0.15),
-      0 0 120px rgba(0, 102, 255, 0.08),
+      0 0 120px rgba(var(--theme-secondary-rgb), 0.08),
       inset 0 0 20px rgba(var(--theme-primary-rgb), 0.25);
   }
   75% {
     box-shadow:
       0 0 8px rgba(var(--theme-primary-rgb), 0.5),
       0 0 18px rgba(var(--theme-primary-rgb), 0.3),
-      0 0 35px rgba(0, 102, 255, 0.2),
+      0 0 35px rgba(var(--theme-secondary-rgb), 0.2),
       0 0 60px rgba(var(--theme-primary-rgb), 0.1),
       inset 0 0 12px rgba(var(--theme-primary-rgb), 0.15);
   }
@@ -1504,7 +1504,7 @@
   -webkit-backdrop-filter: blur(12px);
   box-shadow:
     0 0 8px rgba(var(--theme-primary-rgb), 0.05),
-    0 0 20px rgba(0, 102, 255, 0.03);
+    0 0 20px rgba(var(--theme-secondary-rgb), 0.03);
 }
 
 .jarvis-msg-ai::before {
@@ -1520,7 +1520,7 @@
     rgba(var(--theme-primary-rgb), 0.08) 0%,
     transparent 30%,
     transparent 70%,
-    rgba(0, 102, 255, 0.06) 100%
+    rgba(var(--theme-secondary-rgb), 0.06) 100%
   );
   pointer-events: none;
 }
@@ -1535,7 +1535,7 @@
   background: linear-gradient(
     90deg,
     rgba(var(--theme-primary-rgb), 0.6),
-    rgba(0, 102, 255, 0.4),
+    rgba(var(--theme-secondary-rgb), 0.4),
     transparent
   );
   border-radius: 2px;
@@ -1665,7 +1665,7 @@
     90deg,
     rgba(var(--theme-primary-rgb), 0.2),
     rgba(var(--theme-primary-rgb), 0.9),
-    rgba(0, 102, 255, 0.6)
+    rgba(var(--theme-secondary-rgb), 0.6)
   );
   border-radius: 2px;
   animation: loading-bar var(--loading-duration, 2s) ease-in-out infinite;
@@ -2303,4 +2303,35 @@
 
 [data-theme="arctic"] .glass-panel-strong {
   border-color: rgba(96, 165, 250, 0.2);
+}
+
+/* ===== Range Input Styling (Voice Picker) ===== */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--theme-primary);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(var(--theme-primary-rgb), 0.4);
+  border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--theme-primary);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(var(--theme-primary-rgb), 0.4);
+  border: none;
 }

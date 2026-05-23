@@ -119,6 +119,47 @@ export default function Home() {
       return
     }
 
+    // Voice commands for voice selection
+    if (lowerText.includes('change voice') || lowerText.includes('switch voice') || lowerText.includes('select voice') || lowerText.includes('voice settings')) {
+      setShowThemeSwitcher(true)
+      if (soundEnabled) speak('Opening voice settings, sir.')
+      return
+    }
+
+    // "Next voice" command - cycle through available voices
+    if (lowerText === 'next voice' || lowerText === 'cycle voice') {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const voices = window.speechSynthesis.getVoices()
+        const currentVoice = useJarvisStore.getState().selectedVoice
+        const currentIndex = currentVoice ? voices.findIndex(v => v.name === currentVoice) : -1
+        // Filter to English voices for practical cycling
+        const enVoices = voices.filter(v => v.lang.startsWith('en'))
+        if (enVoices.length > 0) {
+          const enCurrentIndex = currentVoice ? enVoices.findIndex(v => v.name === currentVoice) : -1
+          const nextIndex = (enCurrentIndex + 1) % enVoices.length
+          const nextVoice = enVoices[nextIndex]
+          useJarvisStore.getState().setSelectedVoice(nextVoice.name)
+          const shortName = nextVoice.name.replace(/Microsoft |Google |Apple /g, '').split(/[-(]/)[0].trim()
+          if (soundEnabled) speak(`Voice changed to ${shortName}, sir.`)
+        } else if (voices.length > 0) {
+          const nextIndex = (currentIndex + 1) % voices.length
+          const nextVoice = voices[nextIndex]
+          useJarvisStore.getState().setSelectedVoice(nextVoice.name)
+          if (soundEnabled) speak(`Voice changed, sir.`)
+        }
+      }
+      return
+    }
+
+    // "Reset voice" command
+    if (lowerText === 'reset voice' || lowerText === 'default voice') {
+      useJarvisStore.getState().setSelectedVoice(null)
+      useJarvisStore.getState().setVoicePitch(0.9)
+      useJarvisStore.getState().setVoiceRate(1.0)
+      if (soundEnabled) speak('Voice reset to default, sir.')
+      return
+    }
+
     // Voice commands for theme switching
     const colorThemeMap: Record<string, ColorTheme> = {
       'cyan': 'cyan', 'blue': 'arctic', 'arctic': 'arctic', 'ice': 'arctic',
@@ -674,7 +715,7 @@ function VoiceStatusBar({
       {/* Bottom hint */}
       <div className="flex justify-center pb-2">
         <p className="font-mono text-[8px] text-white/10 tracking-wider">
-          CTRL+SPACE voice &bull; CTRL+K chat &bull; Say &ldquo;Jarvis&rdquo; to activate
+          CTRL+SPACE voice &bull; CTRL+K chat &bull; Say &ldquo;Jarvis&rdquo; to activate &bull; &ldquo;Change color&rdquo; &bull; &ldquo;Change voice&rdquo;
         </p>
       </div>
     </footer>

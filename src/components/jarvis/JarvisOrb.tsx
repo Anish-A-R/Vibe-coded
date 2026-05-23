@@ -325,16 +325,37 @@ export default function JarvisOrb({ className }: { className?: string }) {
   const colorTheme = useJarvisStore((s) => s.colorTheme)
   const baseConfig = statusConfig[aiStatus]
   
-  // Override colors based on theme (except thinking which uses orange intentionally)
+  // Override colors based on theme for ALL states
+  // Thinking uses a warm-shifted variant of the theme color
+  // Speaking uses a lighter/brighter variant of the theme color
   const themeColor = themeColors[colorTheme] || themeColors.cyan
-  const config = aiStatus === 'thinking' || aiStatus === 'speaking'
-    ? baseConfig // thinking/speaking keep their own distinct colors
-    : {
+  const config = (() => {
+    if (aiStatus === 'thinking') {
+      // Thinking: blend theme primary with a warm orange shift
+      return {
+        ...baseConfig,
+        colorPrimary: themeColor.primary, // Use theme color for thinking too
+        colorHex: themeColor.hex,
+        colorSecondary: themeColor.secondary,
+      }
+    }
+    if (aiStatus === 'speaking') {
+      // Speaking: use theme colors with a lighter secondary
+      return {
         ...baseConfig,
         colorPrimary: themeColor.primary,
         colorHex: themeColor.hex,
         colorSecondary: themeColor.secondary,
       }
+    }
+    // Idle & Listening: full theme colors
+    return {
+      ...baseConfig,
+      colorPrimary: themeColor.primary,
+      colorHex: themeColor.hex,
+      colorSecondary: themeColor.secondary,
+    }
+  })()
 
   const ringDefs = useMemo(() => generateRingDefs(), [])
   const dataChars = useMemo(() => generateDataChars(), [])

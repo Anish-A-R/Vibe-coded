@@ -14,7 +14,7 @@ import { useJarvisStore } from './useJarvisStore'
  * - Chrome utterance length limit workaround (splits long text into chunks)
  */
 export function useTTS() {
-  const { soundEnabled, volume, setAIStatus, voiceLanguage } = useJarvisStore()
+  const { soundEnabled, volume, setAIStatus, voiceLanguage, selectedVoice, voicePitch, voiceRate } = useJarvisStore()
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const voicesLoadedRef = useRef(false)
   const chromeResumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -85,14 +85,29 @@ export function useTTS() {
     const langPrefix = langCode.split('-')[0]
     const voices = window.speechSynthesis.getVoices()
 
-    // Try to find a voice matching the selected language
-    const preferred = voices.find(v =>
-      v.lang === langCode && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel') || v.name.includes('Google UK English Male'))
-    ) || voices.find(v => v.lang === langCode)
-      || voices.find(v => v.lang.startsWith(langPrefix) && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel')))
-      || voices.find(v => v.lang.startsWith(langPrefix))
-      || voices.find(v => v.default)
-      || voices[0]
+    // Voice selection priority:
+    // 1. User-selected voice (if set and still available)
+    // 2. Language-matching male voice
+    // 3. Language-matching voice
+    // 4. Default voice
+    let preferred: SpeechSynthesisVoice | null = null
+
+    if (selectedVoice) {
+      // Find the user-selected voice by name
+      preferred = voices.find(v => v.name === selectedVoice) || null
+    }
+
+    if (!preferred) {
+      // Fallback: auto-select based on language
+      preferred = voices.find(v =>
+        v.lang === langCode && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel') || v.name.includes('Google UK English Male'))
+      ) || voices.find(v => v.lang === langCode)
+        || voices.find(v => v.lang.startsWith(langPrefix) && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel')))
+        || voices.find(v => v.lang.startsWith(langPrefix))
+        || voices.find(v => v.default)
+        || voices[0]
+        || null
+    }
 
     let chunkIndex = 0
 
@@ -104,8 +119,8 @@ export function useTTS() {
 
       const chunk = chunks[chunkIndex]
       const utterance = new SpeechSynthesisUtterance(chunk)
-      utterance.rate = 1.0
-      utterance.pitch = 0.9
+      utterance.rate = voiceRate
+      utterance.pitch = voicePitch
       utterance.volume = volume
       utterance.lang = voiceLanguage || 'en-US'
 
@@ -151,7 +166,7 @@ export function useTTS() {
     }
 
     speakNextChunk()
-  }, [soundEnabled, volume, setAIStatus, voiceLanguage])
+  }, [soundEnabled, volume, setAIStatus, voiceLanguage, selectedVoice, voicePitch, voiceRate])
 
   const stop = useCallback(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -166,6 +181,28 @@ export function useTTS() {
   }, [])
 
   return { speak, stop, isSpeaking }
+}
+
+/**
+ * Get all available TTS voices (safe for server-side rendering)
+ */
+export function getAvailableVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return []
+  return window.speechSynthesis.getVoices()
+}
+
+/**
+ * Get voices grouped by language
+ */
+export function getVoicesByLanguage(): Record<string, SpeechSynthesisVoice[]> {
+  const voices = getAvailableVoices()
+  const grouped: Record<string, SpeechSynthesisVoice[]> = {}
+  for (const voice of voices) {
+    const lang = voice.lang.split('-')[0]
+    if (!grouped[lang]) grouped[lang] = []
+    grouped[lang].push(voice)
+  }
+  return grouped
 }
 
 /**
