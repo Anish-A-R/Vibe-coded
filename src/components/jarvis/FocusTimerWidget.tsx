@@ -47,16 +47,14 @@ export default function FocusTimerWidget() {
   }, [])
 
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
+    if (isRunning) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setIsRunning(false)
             setIsComplete(true)
             playCompleteSound()
-            if (mode === 'focus') {
-              setFocusTimerSessions(focusTimerSessions + 1)
-            }
+            setFocusTimerSessions((s: number) => mode === 'focus' ? s + 1 : s)
             return 0
           }
           return prev - 1
@@ -66,7 +64,7 @@ export default function FocusTimerWidget() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [isRunning, timeLeft, mode, focusTimerSessions, setFocusTimerSessions, playCompleteSound])
+  }, [isRunning, mode, playCompleteSound, setFocusTimerSessions])
 
   // Reset complete state after 3s
   useEffect(() => {

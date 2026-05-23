@@ -654,7 +654,7 @@ export default function Home() {
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="hidden lg:flex flex-col items-center gap-4 w-72 flex-shrink-0 order-3"
+              className="hidden lg:flex flex-col items-center gap-4 w-72 flex-shrink-0 order-3 max-h-[calc(100vh-5rem)] overflow-y-auto jarvis-scrollbar pr-1"
             >
               {/* Radar Scanner with HUD frame */}
               <motion.div
