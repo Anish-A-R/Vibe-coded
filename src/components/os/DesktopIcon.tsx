@@ -3,36 +3,32 @@
 import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
-  MessageCircle,
-  Mic,
-  StickyNote,
-  Timer,
-  CloudSun,
-  Clock,
+  MessageSquare,
   Terminal,
-  Activity,
-  Radar,
+  Brain,
+  LayoutDashboard,
+  Shield,
+  Database,
+  CheckSquare,
+  Code,
+  Puzzle,
   Settings,
-  ScrollText,
-  Music,
   type LucideIcon,
 } from 'lucide-react'
 import { useJarvisStore, type AppDefinition } from '@/hooks/useJarvisStore'
 
 // Map icon name string to actual Lucide component
 const ICON_MAP: Record<string, LucideIcon> = {
-  MessageCircle,
-  Mic,
-  StickyNote,
-  Timer,
-  CloudSun,
-  Clock,
+  MessageSquare,
   Terminal,
-  Activity,
-  Radar,
+  Brain,
+  LayoutDashboard,
+  Shield,
+  Database,
+  CheckSquare,
+  Code,
+  Puzzle,
   Settings,
-  ScrollText,
-  Music,
 }
 
 interface DesktopIconProps {

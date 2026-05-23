@@ -9,37 +9,31 @@ import {
   Battery,
   Bell,
   Settings,
-  MessageCircle,
-  Mic,
-  StickyNote,
-  Timer,
-  CloudSun,
-  Clock,
+  MessageSquare,
   Terminal,
-  Activity,
-  Radar,
-  ScrollText,
-  Music,
-  type LucideIcon,
+  Brain,
+  LayoutDashboard,
   Shield,
-  Zap,
+  Database,
+  CheckSquare,
+  Code,
+  Puzzle,
+  type LucideIcon,
 } from 'lucide-react'
-import { useJarvisStore, APP_REGISTRY, type AppDefinition } from '@/hooks/useJarvisStore'
+import { useJarvisStore, type AppDefinition } from '@/hooks/useJarvisStore'
 
 // Map icon name string to actual Lucide component for taskbar
 const ICON_MAP: Record<string, LucideIcon> = {
-  MessageCircle,
-  Mic,
-  StickyNote,
-  Timer,
-  CloudSun,
-  Clock,
+  MessageSquare,
   Terminal,
-  Activity,
-  Radar,
+  Brain,
+  LayoutDashboard,
+  Shield,
+  Database,
+  CheckSquare,
+  Code,
+  Puzzle,
   Settings,
-  ScrollText,
-  Music,
 }
 
 export default function Taskbar() {
@@ -49,7 +43,9 @@ export default function Taskbar() {
   const setShowAppLauncher = useJarvisStore((s) => s.setShowAppLauncher)
   const showAppLauncher = useJarvisStore((s) => s.showAppLauncher)
   const openApp = useJarvisStore((s) => s.openApp)
-  const commandCount = useJarvisStore((s) => s.commandCount)
+  const availableApps = useJarvisStore((s) => s.availableApps)
+  const xp = useJarvisStore((s) => s.xp)
+  const level = useJarvisStore((s) => s.level)
   const systemStats = useJarvisStore((s) => s.systemStats)
 
   // Current time with seconds
@@ -67,13 +63,16 @@ export default function Taskbar() {
     return () => clearInterval(interval)
   }, [])
 
-  // XP/Level calculation based on command count
-  const level = useMemo(() => Math.floor(commandCount / 10) + 1, [commandCount])
-  const xpProgress = useMemo(() => ((commandCount % 10) / 10) * 100, [commandCount])
+  // XP progress for current level (each level requires level * 100 XP)
+  const xpForCurrentLevel = useMemo(() => level * 100, [level])
+  const xpProgress = useMemo(() => {
+    if (xpForCurrentLevel === 0) return 0
+    return Math.min((xp / xpForCurrentLevel) * 100, 100)
+  }, [xp, xpForCurrentLevel])
 
   // Get app definition for a window
   const getAppDef = (appId: string): AppDefinition | undefined =>
-    APP_REGISTRY.find((a) => a.id === appId)
+    availableApps.find((a) => a.id === appId)
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[90] h-12">

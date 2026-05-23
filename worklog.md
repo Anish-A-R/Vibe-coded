@@ -600,3 +600,106 @@ Stage Summary:
 
 #### Verification
 - `bun run lint` ✅ Clean
+
+
+### Round 14 Changes - OS Window Management System Fix (2026-03-04)
+
+#### Store Updates (`/src/hooks/useJarvisStore.ts`)
+1. ✅ **Added `showAppLauncher` / `setShowAppLauncher`** to JarvisState interface and implementation. `showAppLauncher: false` default, `setShowAppLauncher` action, persisted in partialize.
+2. ✅ **Added `toggleWindowMinimize`** convenience action — if window is minimized, restore+focus; if active, minimize; if not active, focus. Uses existing `focusWindow` and `minimizeWindow` under the hood.
+3. ✅ **Added `APP_REGISTRY` export** — `export const APP_REGISTRY = defaultApps` for backward compatibility with components that import it directly.
+4. ✅ **Added `APP_CATEGORIES` export** — `export const APP_CATEGORIES` with all 6 app categories for AppLauncher grouping.
+
+#### Component Fixes
+5. ✅ **Desktop.tsx** — Removed `APP_REGISTRY` import. Now uses `useJarvisStore((s) => s.availableApps)` for desktop app list. Shows all available apps as desktop icons.
+6. ✅ **Taskbar.tsx** — Replaced `APP_REGISTRY` with `availableApps` from store. Uses `toggleWindowMinimize` from store for running app toggle. Uses `xp` and `level` from gamification system instead of computing from `commandCount`. Updated icon map to include all app icons (Brain, LayoutDashboard, Shield, Database, CheckSquare, Code, Puzzle, etc.).
+7. ✅ **AppLauncher.tsx** — Replaced `APP_REGISTRY` import with `availableApps` from store. Replaced `APP_CATEGORIES` import from store. Uses `effectiveSearch` derived variable instead of setState in effect (lint fix). Auto-closes launcher on app click.
+8. ✅ **DesktopIcon.tsx** — Updated icon map to include all new app icons (Brain, LayoutDashboard, Shield, Database, CheckSquare, Code, Puzzle). Uses `AppDefinition` type from store correctly. Double-click calls `openApp(app.id)`.
+
+#### New Components
+9. ✅ **WindowManager.tsx** (`/src/components/os/WindowManager.tsx`) — Full window management system with:
+   - Draggable windows with mouse and touch support (uses useRef for drag position, flushes to store on mouseup)
+   - Framer Motion entrance/exit animations (scale + opacity)
+   - Glass-panel window backgrounds with neon cyan border glow for active window
+   - Title bar (36px) with drag handle, app icon + title, minimize/maximize/close buttons
+   - Close button (X) with red hover, Minimize button (Minus) with yellow hover, Maximize (Maximize2/Minimize2) with green hover
+   - Window focus on click calls `focusWindow`
+   - Maximized windows fill screen with taskbar padding
+   - Mobile support: windows are full-width on screens < 640px
+   - Lazy-loaded app components via React.lazy + Suspense with loading fallback
+   - App component map for all 10 apps (chat, terminal, agents, dashboard, security, memory, productivity, developer, plugins, settings)
+   - AnimatePresence for smooth window transitions
+
+10. ✅ **MemoryApp.tsx** (`/src/components/apps/MemoryApp.tsx`) — AI Memory viewer with type-colored entries, importance stars, tags, and delete functionality. Shows memory entries from store with proper empty state.
+
+11. ✅ **ProductivityApp.tsx** (`/src/components/apps/ProductivityApp.tsx`) — Notes/tasks productivity app with add/remove notes, timestamp display, and input field.
+
+12. ✅ **DeveloperApp.tsx** (`/src/components/apps/DeveloperApp.tsx`) — Developer tools with 3 tabs: Console (command history), Snippets (code examples), Performance (CPU/RAM/Temp bars).
+
+13. ✅ **PluginStore.tsx** (`/src/components/apps/PluginStore.tsx`) — Plugin management with install/uninstall/toggle, category labels, version display, and active/disabled state indicators.
+
+#### Verification
+- `bun run lint` ✅ Clean (0 errors, 0 warnings)
+- `GET /` → 200 ✅
+- All OS components import correctly from the store with proper types
+- `APP_REGISTRY` and `APP_CATEGORIES` exported for backward compatibility
+
+
+### Round 14 Changes - JARVIS OS App Components (2026-05-24)
+
+Created 7 full-featured application components for the JARVIS AI Operating System, all using glass-panel styling with neon accent colors, framer-motion animations, and the useJarvisStore Zustand store.
+
+1. ✅ **AgentHub** (`/src/components/apps/AgentHub.tsx`) - AI Agent management hub with 7 specialized agent cards (coding, research, productivity, security, automation, creative, system). Each card shows agent icon, name, status badge with pulse animation, tasks completed counter, and description. ACTIVATE/DEACTIVATE buttons with processing animation. Active agents get pulsing glow border in agent's color. Status colors: idle=gray, active=cyan pulse, processing=orange pulse, error=red. Stats summary at top (total active, tasks completed). Uses useJarvisStore for agents, activeAgentId, setActiveAgent, updateAgentStatus.
+
+2. ✅ **DashboardApp** (`/src/components/apps/DashboardApp.tsx`) - Real-time data dashboard with 6 widget cards: Weather (from store, loading state fallback), News ticker (7 simulated headlines, scrollable), Crypto ticker (BTC/ETH/SOL with sparkline SVG, live price updates), System performance (CPU/RAM/Temp gauge bars from store), AI Analytics (commands/session, avg response time simulated), Productivity tracker (focus time, notes count). Each widget is a glass-panel card with holo-border. Responsive 2-column grid. Data updates simulated with 3s interval. Animated number transitions.
+
+3. ✅ **SecurityApp** (`/src/components/apps/SecurityApp.tsx`) - Security monitoring center with: Network status indicator (online/offline/weak), Threat level circular SVG gauge (4 levels: Secure/Low/Moderate/High with color coding), Firewall ON/OFF toggle switch, Activity log (scrollable, simulated events every 8s), Encryption status indicator (AES-256-GCM), Port scan simulation (animated scanning 7 ports), "Run Security Scan" button with 8-step scan animation and progress bar. All simulated - NO real security operations. Uses useJarvisStore for systemStats.
+
+4. ✅ **MemoryApp** (`/src/components/apps/MemoryApp.tsx`) - AI Memory browser with: Memory entries list from store's aiMemory, Filter by type (conversation/preference/workflow/project/context), Each entry shows type badge with icon+color, content preview, timestamp, importance stars (1-5), tags. Add new memory inline form (content, type selector, importance stars, tags input). Delete button per entry. Clear all memory with confirmation dialog. Search/filter input. Memory statistics (total count, per-type breakdown). Empty state with Database icon. Purple accent color.
+
+5. ✅ **ProductivityApp** (`/src/components/apps/ProductivityApp.tsx`) - Productivity hub with: Focus mode selector (Normal/Focus/Coding/Study) calling setOSMode, Pomodoro timer (reuses store's focusTimerMinutes) with SVG progress ring and play/pause/reset, Quick notes (reuses store's notes with addNote/removeNote), Task checklist (local state tasks with add/toggle/delete), Workflow templates (3 predefined: Morning Routine, Deep Work, Code Review with step indicators), Productivity stats (tasks completed today, session streak). Green accent color.
+
+6. ✅ **DeveloperApp** (`/src/components/apps/DeveloperApp.tsx`) - Developer tools hub with: Code snippets section (4 predefined templates with tabs and copy button), API testing section (URL input + method selector + body textarea + response preview), Architecture visualizer (SVG box diagram showing 5 system components with connection lines), GitHub integration status (simulated connected card), Database browser (3-table schema display with PK/FK indicators), Debug console (log output area with type coloring + command input). "Generate Code" button sends request to AI chat API. Cyan accent color.
+
+7. ✅ **PluginStore** (`/src/components/apps/PluginStore.tsx`) - Plugin marketplace with: Grid of plugin cards from store's plugins array, Each card shows icon, name, description, version, status (installed/enabled), category badge with color coding. Install/Uninstall buttons, Enable/Disable toggle, "Available" vs "Installed" vs "All" filter tabs, Plugin count summary, Search input. Uses useJarvisStore for plugins, togglePlugin, installPlugin, uninstallPlugin. Orange accent color.
+
+#### Component Count
+- Now **40+ custom components** (33 jarvis + 7 app components) + 6 custom hooks + 4 lib modules
+
+#### Technical Details
+- All components use `'use client'` directive
+- All accept `{ windowId?: string }` props for OS window integration
+- Consistent glass-panel styling with neon accent colors (cyan, purple, green, red, orange)
+- framer-motion for animations (entrance, hover, tap, pulse effects)
+- lucide-react icons throughout
+- Responsive design with grid layouts and scrollable areas
+- All data is browser-safe with no OS-level API calls
+- Sound effects via playActivationSound/playDeactivationSound from @/lib/sounds
+- Notification integration via addNotification from useJarvisStore
+
+---
+Task ID: main-upgrade
+Agent: main
+Task: Transform JARVIS dashboard into AI Operating System
+
+Work Log:
+- Read and analyzed existing codebase (33 components, 6 hooks, 4 libs, 2300+ lines CSS)
+- Upgraded Zustand store with 8 new state categories (Window Management, AI Agents, Memory, Gamification, OS Mode, Command History, Advanced Themes, Plugins)
+- Added 10 app definitions, 7 AI agents, 16 achievements, 10 plugins to store defaults
+- Built WindowManager component with draggable/resizable windows, minimize/maximize/close, focus management
+- Built Taskbar with app launcher, running app buttons, system tray, XP/level indicator
+- Built AppLauncher with spotlight-style search and category grid
+- Built Desktop with icon grid, JARVIS orb background, decorative rings
+- Built 9 app components: ChatApp, TerminalApp, AgentHub, DashboardApp, SecurityApp, MemoryApp, ProductivityApp, DeveloperApp, PluginStore
+- Rewrote page.tsx as AI OS desktop with header bar, OS mode indicator, XP badge
+- Added 200+ lines of new CSS for OS themes (holographic, military, hacker, space, glassmorphism, neon)
+- Added CSS for window styles, desktop icons, app launcher overlay, neural animations, OS mode effects
+- All lint checks pass clean
+
+Stage Summary:
+- Transformed from dashboard to AI OS with window management
+- 14 new files created (5 OS shell + 9 app components)
+- 2 files significantly modified (useJarvisStore.ts, page.tsx)
+- 200+ lines new CSS for advanced theme engine
+- All existing features preserved (boot sequence, chat, voice, notifications, etc.)
+- Project compiles and serves (GET / → 200)

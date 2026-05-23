@@ -3,56 +3,53 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  MessageCircle,
-  Mic,
-  StickyNote,
-  Timer,
-  CloudSun,
-  Clock,
+  MessageSquare,
   Terminal,
-  Activity,
-  Radar,
+  Brain,
+  LayoutDashboard,
+  Shield,
+  Database,
+  CheckSquare,
+  Code,
+  Puzzle,
   Settings,
-  ScrollText,
-  Music,
   Search,
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useJarvisStore, APP_REGISTRY, APP_CATEGORIES, type AppDefinition } from '@/hooks/useJarvisStore'
+import { useJarvisStore, APP_CATEGORIES, type AppDefinition } from '@/hooks/useJarvisStore'
 
 // Map icon name string to actual Lucide component
 const ICON_MAP: Record<string, LucideIcon> = {
-  MessageCircle,
-  Mic,
-  StickyNote,
-  Timer,
-  CloudSun,
-  Clock,
+  MessageSquare,
   Terminal,
-  Activity,
-  Radar,
+  Brain,
+  LayoutDashboard,
+  Shield,
+  Database,
+  CheckSquare,
+  Code,
+  Puzzle,
   Settings,
-  ScrollText,
-  Music,
 }
 
 export default function AppLauncher() {
   const showAppLauncher = useJarvisStore((s) => s.showAppLauncher)
   const setShowAppLauncher = useJarvisStore((s) => s.setShowAppLauncher)
   const openApp = useJarvisStore((s) => s.openApp)
+  const availableApps = useJarvisStore((s) => s.availableApps)
   const [search, setSearch] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Focus input when launcher opens
+  // Focus input when launcher opens + reset search on close
   useEffect(() => {
     if (showAppLauncher && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-    if (!showAppLauncher) {
-      setSearch('')
-    }
   }, [showAppLauncher])
+
+  // Reset search when launcher closes (derived, not in same effect)
+  const effectiveSearch = showAppLauncher ? search : ''
 
   // Escape to close
   useEffect(() => {
@@ -67,15 +64,15 @@ export default function AppLauncher() {
 
   // Filter apps by search
   const filteredApps = useMemo(() => {
-    if (!search.trim()) return APP_REGISTRY
-    const q = search.toLowerCase()
-    return APP_REGISTRY.filter(
+    if (!effectiveSearch.trim()) return availableApps
+    const q = effectiveSearch.toLowerCase()
+    return availableApps.filter(
       (app) =>
         app.name.toLowerCase().includes(q) ||
         app.description.toLowerCase().includes(q) ||
         app.category.toLowerCase().includes(q)
     )
-  }, [search])
+  }, [effectiveSearch, availableApps])
 
   // Group by category
   const groupedApps = useMemo(() => {
@@ -92,8 +89,9 @@ export default function AppLauncher() {
   const handleAppClick = useCallback(
     (appId: string) => {
       openApp(appId)
+      setShowAppLauncher(false)
     },
-    [openApp]
+    [openApp, setShowAppLauncher]
   )
 
   return (
@@ -138,7 +136,7 @@ export default function AppLauncher() {
               <input
                 ref={inputRef}
                 type="text"
-                value={search}
+                value={effectiveSearch}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search applications..."
                 className="flex-1 bg-transparent font-mono text-sm text-white/90 placeholder:text-white/20 outline-none"

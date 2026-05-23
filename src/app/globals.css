@@ -2330,3 +2330,278 @@
 .theme-red .hud-scanline-h::after { background: linear-gradient(90deg, transparent, rgba(255, 51, 102, 0.08), rgba(255, 51, 102, 0.15), rgba(255, 51, 102, 0.08), transparent); }
 .theme-red .shimmer-border::after { background: linear-gradient(90deg, transparent 0%, rgba(255, 51, 102, 0.1) 25%, rgba(255, 51, 102, 0.4) 50%, rgba(255, 51, 102, 0.1) 75%, transparent 100%); background-size: 200% 100%; }
 .theme-red .matrix-text { color: rgba(255, 51, 102, 0.7); text-shadow: 0 0 5px rgba(255, 51, 102, 0.5); }
+
+/* ===================================================================
+   AI OPERATING SYSTEM - Advanced Theme Engine
+   =================================================================== */
+
+/* --- OS Window Styles --- */
+.os-window {
+  position: absolute;
+  border-radius: 12px;
+  background: rgba(6, 10, 20, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 1px rgba(0, 240, 255, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.os-window-active {
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.08), 0 0 1px rgba(0, 240, 255, 0.2);
+}
+
+.os-window-titlebar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: rgba(0, 240, 255, 0.03);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.08);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.os-window-titlebar:active {
+  cursor: grabbing;
+}
+
+/* --- Advanced Theme: Holographic --- */
+.theme-advanced-holographic {
+  --color-neon-cyan: #00d4ff;
+}
+
+.theme-advanced-holographic .glass-panel {
+  border-color: rgba(0, 212, 255, 0.18);
+  background: rgba(6, 10, 20, 0.6);
+  backdrop-filter: blur(20px);
+}
+
+.theme-advanced-holographic .os-window {
+  background: rgba(6, 10, 20, 0.85);
+  border-color: rgba(0, 212, 255, 0.25);
+  backdrop-filter: blur(20px);
+}
+
+/* --- Advanced Theme: Military --- */
+.theme-advanced-military {
+  --color-neon-cyan: #4ade80;
+}
+
+.theme-advanced-military .glass-panel {
+  border-color: rgba(74, 222, 128, 0.15);
+}
+
+.theme-advanced-military .hud-grid-bg {
+  background-image: linear-gradient(rgba(74, 222, 128, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(74, 222, 128, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.theme-advanced-military .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(74, 222, 128, 0.6), 0 0 20px rgba(74, 222, 128, 0.3);
+}
+
+/* --- Advanced Theme: Hacker --- */
+.theme-advanced-hacker {
+  --color-neon-cyan: #22c55e;
+}
+
+.theme-advanced-hacker .glass-panel {
+  border-color: rgba(34, 197, 94, 0.15);
+  background: rgba(0, 5, 0, 0.8);
+}
+
+.theme-advanced-hacker .hud-grid-bg {
+  background-image: linear-gradient(rgba(34, 197, 94, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 197, 94, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.theme-advanced-hacker .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(34, 197, 94, 0.7), 0 0 20px rgba(34, 197, 94, 0.4);
+}
+
+.theme-advanced-hacker .os-window {
+  background: rgba(0, 5, 0, 0.9);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+/* --- Advanced Theme: Space --- */
+.theme-advanced-space {
+  --color-neon-cyan: #a78bfa;
+}
+
+.theme-advanced-space .glass-panel {
+  border-color: rgba(167, 139, 250, 0.15);
+  background: rgba(15, 5, 25, 0.8);
+}
+
+.theme-advanced-space .hud-grid-bg {
+  background-image: linear-gradient(rgba(167, 139, 250, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(167, 139, 250, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.theme-advanced-space .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(167, 139, 250, 0.6), 0 0 20px rgba(167, 139, 250, 0.3);
+}
+
+/* --- Advanced Theme: Glassmorphism --- */
+.theme-advanced-glassmorphism .glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+}
+
+.theme-advanced-glassmorphism .os-window {
+  background: rgba(10, 14, 26, 0.7);
+  border-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+}
+
+/* --- Advanced Theme: Neon --- */
+.theme-advanced-neon {
+  --color-neon-cyan: #ff3366;
+}
+
+.theme-advanced-neon .glass-panel {
+  border-color: rgba(255, 51, 102, 0.2);
+  box-shadow: 0 0 15px rgba(255, 51, 102, 0.05);
+}
+
+.theme-advanced-neon .neon-text-cyan {
+  text-shadow: 0 0 7px rgba(255, 51, 102, 0.7), 0 0 20px rgba(255, 51, 102, 0.4), 0 0 40px rgba(255, 51, 102, 0.2);
+}
+
+.theme-advanced-neon .hud-grid-bg {
+  background-image: linear-gradient(rgba(255, 51, 102, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 51, 102, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* --- OS Mode Visual Effects --- */
+/* Focus mode: dim background, highlight active window */
+.os-mode-focus .os-window:not(.os-window-active) {
+  opacity: 0.5;
+  filter: grayscale(0.3);
+}
+
+/* Coding mode: green tint, terminal feel */
+.os-mode-coding .os-window {
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+/* Security mode: red accents, alert borders */
+.os-mode-security .os-window {
+  border-color: rgba(255, 51, 102, 0.2);
+}
+
+/* Stealth mode: minimal UI, low contrast */
+.os-mode-stealth .glass-panel {
+  background: rgba(0, 0, 0, 0.9);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.os-mode-stealth .neon-text-cyan {
+  text-shadow: none;
+  opacity: 0.5;
+}
+
+/* --- Desktop Icon Grid --- */
+.desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 80px;
+  text-align: center;
+}
+
+.desktop-icon:hover {
+  background: rgba(0, 240, 255, 0.08);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.desktop-icon:active {
+  transform: scale(0.95);
+}
+
+/* --- App Launcher Overlay --- */
+.app-launcher-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+}
+
+/* --- Neural Network Thinking Animation --- */
+@keyframes neural-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
+
+@keyframes neural-connection {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  50% { opacity: 0.6; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* --- Holographic Panel Float Animation --- */
+@keyframes holo-float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(0.2deg); }
+  75% { transform: translateY(2px) rotate(-0.1deg); }
+}
+
+.holo-float {
+  animation: holo-float 6s ease-in-out infinite;
+}
+
+/* --- XP Bar Glow --- */
+.xp-bar-glow {
+  position: relative;
+}
+
+.xp-bar-glow::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: inherit;
+  filter: blur(4px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* --- Window Resize Handle --- */
+.window-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  z-index: 10;
+}
+
+.window-resize-handle::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(0, 240, 255, 0.3);
+  border-bottom: 2px solid rgba(0, 240, 255, 0.3);
+}

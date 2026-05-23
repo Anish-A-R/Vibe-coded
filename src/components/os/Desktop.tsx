@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { useJarvisStore, APP_REGISTRY } from '@/hooks/useJarvisStore'
+import { useJarvisStore } from '@/hooks/useJarvisStore'
 import ParticleField from '@/components/jarvis/ParticleField'
 import CircularOrb from '@/components/jarvis/CircularOrb'
 import RadarScanner from '@/components/jarvis/RadarScanner'
@@ -13,6 +13,7 @@ export default function Desktop() {
   const aiStatus = useJarvisStore((s) => s.aiStatus)
   const particlesEnabled = useJarvisStore((s) => s.particlesEnabled)
   const personalityMode = useJarvisStore((s) => s.personalityMode)
+  const availableApps = useJarvisStore((s) => s.availableApps)
 
   const ambientColor = useMemo(() =>
     personalityMode === 'boss' ? { r: 255, g: 51, b: 102 }
@@ -21,13 +22,8 @@ export default function Desktop() {
     [personalityMode]
   )
 
-  // Desktop apps (exclude some system-level ones from desktop)
-  const desktopApps = useMemo(() =>
-    APP_REGISTRY.filter((app) =>
-      ['chat', 'voice', 'notes', 'timer', 'weather', 'clock', 'terminal', 'diagnostics', 'settings', 'scanner'].includes(app.id)
-    ),
-    []
-  )
+  // Desktop apps: show all available apps as desktop icons
+  const desktopApps = useMemo(() => availableApps, [availableApps])
 
   return (
     <div className="absolute inset-0 overflow-hidden">

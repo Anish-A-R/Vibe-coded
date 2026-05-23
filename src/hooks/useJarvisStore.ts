@@ -801,6 +801,13 @@ interface JarvisState {
 
   // ===== NEW: App Definitions =====
   availableApps: AppDefinition[]
+
+  // ===== NEW: App Launcher =====
+  showAppLauncher: boolean
+  setShowAppLauncher: (show: boolean) => void
+
+  // ===== NEW: Window Toggle =====
+  toggleWindowMinimize: (id: string) => void
 }
 
 function generateId(): string {
@@ -1444,6 +1451,28 @@ export const useJarvisStore = create<JarvisState>()(
 
       // ===== NEW: App Definitions =====
       availableApps: defaultApps,
+
+      // ===== NEW: App Launcher =====
+      showAppLauncher: false,
+      setShowAppLauncher: (show) => set({ showAppLauncher: show }),
+
+      // ===== NEW: Window Toggle =====
+      toggleWindowMinimize: (id) => {
+        const state = get()
+        const win = state.openWindows.find((w) => w.id === id)
+        if (!win) return
+
+        if (win.isMinimized) {
+          // If minimized, restore + focus
+          state.focusWindow(id)
+        } else if (state.activeWindowId === id) {
+          // If active, minimize it
+          state.minimizeWindow(id)
+        } else {
+          // If not minimized and not active, focus it
+          state.focusWindow(id)
+        }
+      },
     }),
     {
       name: 'jarvis-store',
@@ -1509,7 +1538,22 @@ export const useJarvisStore = create<JarvisState>()(
 
         // Plugins
         plugins: state.plugins,
+
+        // App Launcher
+        showAppLauncher: state.showAppLauncher,
       }),
     }
   )
 )
+
+// ===== Named Exports =====
+export const APP_REGISTRY = defaultApps
+
+export const APP_CATEGORIES: AppDefinition['category'][] = [
+  'communication',
+  'productivity',
+  'developer',
+  'system',
+  'creative',
+  'data',
+]
