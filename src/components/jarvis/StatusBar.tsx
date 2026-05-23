@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { AIStatus } from '@/hooks/useJarvisStore'
 
@@ -25,27 +24,22 @@ const networkDisplay: Record<string, { label: string; color: string }> = {
   weak: { label: 'NET: WEAK', color: 'text-neon-orange' },
 }
 
-/* Animated signal bars for network status */
-function AnimatedSignalBars({ status }: { status: string }) {
+/* Animated signal bars for network status - pure CSS */
+function SignalBars({ status }: { status: string }) {
   const barHeights = status === 'online' ? [4, 7, 10, 13] : status === 'weak' ? [4, 7, 0, 0] : [0, 0, 0, 0]
   const color = status === 'online' ? '#00ff88' : status === 'weak' ? '#ff6a00' : '#ff3366'
 
   return (
     <div className="flex items-end gap-[2px]">
       {barHeights.map((h, i) => (
-        <motion.div
+        <div
           key={i}
-          className="w-[3px] rounded-sm"
+          className={cn('w-[3px] rounded-sm', h && 'signal-bar-pulse')}
           style={{
             height: h || 3,
             backgroundColor: h ? color : 'rgba(255,255,255,0.1)',
-          }}
-          animate={h ? { scaleY: [1, 0.6, 1] } : {}}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            delay: i * 0.15,
-            ease: 'easeInOut',
+            animationDelay: h ? `${i * 0.15}s` : undefined,
+            animationDuration: '1.5s',
           }}
         />
       ))}
@@ -53,23 +47,16 @@ function AnimatedSignalBars({ status }: { status: string }) {
   )
 }
 
-/* Data flow dots between sections */
+/* Data flow dots between sections - pure CSS */
 function DataFlowDots() {
   return (
     <div className="flex items-center gap-[3px] mx-2">
       {[0, 1, 2].map((i) => (
-        <motion.div
+        <div
           key={i}
-          className="w-[3px] h-[3px] rounded-full bg-neon-cyan/30"
-          animate={{
-            opacity: [0, 1, 0],
-            x: [-2, 2, -2],
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            delay: i * 0.4,
-            ease: 'easeInOut',
+          className="w-[3px] h-[3px] rounded-full bg-neon-cyan/30 data-flow-dot"
+          style={{
+            animationDelay: `${i * 0.4}s`,
           }}
         />
       ))}
@@ -105,6 +92,8 @@ export default function StatusBar({
   const statusInfo = statusDisplay[status]
   const netInfo = networkDisplay[networkStatus]
 
+  const pulseSpeed = status === 'thinking' ? '0.8s' : '1.5s'
+
   return (
     <div
       className={cn(
@@ -133,16 +122,10 @@ export default function StatusBar({
               }}
             />
             {statusInfo.pulse && (
-              <motion.div
-                className={cn('absolute w-2 h-2 rounded-full', statusInfo.color)}
-                animate={{
-                  scale: [1, 2.2, 1],
-                  opacity: [0.6, 0, 0.6],
-                }}
-                transition={{
-                  duration: status === 'thinking' ? 0.8 : 1.5,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
+              <div
+                className={cn('absolute w-2 h-2 rounded-full status-pulse-ring', statusInfo.color)}
+                style={{
+                  animationDuration: pulseSpeed,
                 }}
               />
             )}
@@ -174,7 +157,7 @@ export default function StatusBar({
         {/* Right: Network with signal bars + Commands */}
         <div className="flex items-center gap-3 sm:gap-5">
           <div className="flex items-center gap-1.5">
-            <AnimatedSignalBars status={networkStatus} />
+            <SignalBars status={networkStatus} />
             <span className={cn('hidden sm:inline', netInfo.color)}>{netInfo.label}</span>
             <span className={cn('sm:hidden', netInfo.color)}>
               {networkStatus === 'online' ? '●' : networkStatus === 'offline' ? '○' : '◑'}

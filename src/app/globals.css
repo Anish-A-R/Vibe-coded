@@ -165,8 +165,8 @@
 /* Glassmorphism panel */
 .glass-panel {
   background: rgba(10, 14, 26, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 240, 255, 0.12);
   border-radius: 12px;
   position: relative;
@@ -188,7 +188,7 @@
     rgba(0, 240, 255, 0.03) 55%,
     transparent 100%
   );
-  animation: glass-shimmer 8s ease-in-out infinite;
+  animation: glass-shimmer 15s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -203,8 +203,8 @@
 
 .glass-panel-strong {
   background: rgba(10, 14, 26, 0.85);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(0, 240, 255, 0.2);
   border-radius: 12px;
 }
@@ -1096,6 +1096,65 @@
   animation: data-flow-dot 1.5s ease-in-out infinite;
 }
 
+/* Blinking colon for WorldClockWidget */
+@keyframes blink-colon {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.blink-colon {
+  animation: blink-colon 1s step-end infinite;
+}
+
+/* Status pulse ring for StatusBar */
+@keyframes status-pulse-expand {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.status-pulse-ring {
+  animation: status-pulse-expand 1.5s ease-in-out infinite;
+}
+
+/* Signal bar pulse for StatusBar */
+@keyframes signal-bar-bounce {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.6);
+  }
+}
+
+.signal-bar-pulse {
+  animation: signal-bar-bounce 1.5s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+/* Completion glow ring for FocusTimerWidget */
+@keyframes completion-glow-pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.completion-glow-ring {
+  animation: completion-glow-pulse 1s ease-in-out infinite;
+}
+
 /* Breathing scale effect for gauges */
 @keyframes gauge-breathe {
   0%, 100% {
@@ -1169,9 +1228,9 @@
   background: repeating-linear-gradient(
     0deg,
     transparent 0px,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
+    transparent 3px,
+    rgba(0, 0, 0, 0.03) 3px,
+    rgba(0, 0, 0, 0.03) 6px
   );
   pointer-events: none;
   z-index: 9999;
@@ -2101,6 +2160,85 @@
   );
   width: 40%;
   animation: indicator-sweep 3s ease-in-out infinite;
+}
+
+/* ===== CircularOrb CSS Animations (Performance Optimized) ===== */
+@keyframes orb-fade-in {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes orb-rotate-cw {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orb-rotate-ccw {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes orb-pulse-wave {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(8);
+    opacity: 0;
+  }
+}
+
+@keyframes orb-core-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes orb-hex-fade {
+  0%, 100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.12;
+  }
+}
+
+@keyframes orb-hex-outline {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes orb-core-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
 }
 
 /* ===== Color Theme System ===== */

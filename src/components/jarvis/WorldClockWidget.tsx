@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import React, { useState, useEffect } from 'react'
 import { Globe } from 'lucide-react'
 
 interface CityClock {
@@ -16,8 +15,7 @@ const DEFAULT_CITIES: CityClock[] = [
   { city: 'Sydney', timezone: 'Australia/Sydney' },
 ]
 
-function getTimeInZone(tz: string): { time: string; date: string; seconds: number } {
-  const now = new Date()
+function getTimeInZone(tz: string, now: Date): { time: string; date: string } {
   try {
     const timeStr = now.toLocaleTimeString('en-US', {
       timeZone: tz,
@@ -31,42 +29,25 @@ function getTimeInZone(tz: string): { time: string; date: string; seconds: numbe
       month: 'short',
       day: 'numeric',
     })
-    const seconds = parseInt(
-      now.toLocaleTimeString('en-US', { timeZone: tz, second: '2-digit' }),
-      10
-    )
-    return { time: timeStr, date: dateStr, seconds }
+    return { time: timeStr, date: dateStr }
   } catch {
-    return { time: '--:--:--', date: '---', seconds: 0 }
+    return { time: '--:--:--', date: '---' }
   }
 }
 
-export default function WorldClockWidget() {
-  const [clocks, setClocks] = useState<
-    Array<{ city: string; time: string; date: string; seconds: number }>
-  >([])
+function WorldClockWidgetInner() {
+  // Single counter incremented every second — all display values derived during render
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
-    const updateClocks = () => {
-      setClocks(
-        DEFAULT_CITIES.map((c) => {
-          const { time, date, seconds } = getTimeInZone(c.timezone)
-          return { city: c.city, time, date, seconds }
-        })
-      )
-    }
-    updateClocks()
-    const interval = setInterval(updateClocks, 1000)
-    return () => clearInterval(interval)
+    const id = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(id)
   }, [])
 
+  const now = new Date()
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-black/40 backdrop-blur-xl glass-panel holo-border-cyan inner-glow-cyan"
-    >
+    <div className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-black/40 backdrop-blur-xl glass-panel holo-border-cyan inner-glow-cyan animate-fade-in-up">
       {/* Corner accents */}
       <div className="absolute top-0 left-0 h-4 w-4 border-t border-l border-cyan-500/40 z-[2]" />
       <div className="absolute top-0 right-0 h-4 w-4 border-t border-r border-cyan-500/40 z-[2]" />
@@ -84,51 +65,48 @@ export default function WorldClockWidget() {
 
         {/* Clock entries */}
         <div className="space-y-0">
-          {clocks.map((clock, i) => (
-            <div key={clock.city}>
-              <motion.div
-                className="flex items-center justify-between py-2 group"
-                whileHover={{ x: 2 }}
-                transition={{ duration: 0.15 }}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-mono text-white/40 group-hover:text-cyan-400/60 transition-colors duration-200">
-                    {clock.city}
+          {DEFAULT_CITIES.map((c, i) => {
+            const { time, date } = getTimeInZone(c.timezone, now)
+            return (
+              <div key={c.city}>
+                <div className="flex items-center justify-between py-2 group hover:translate-x-0.5 transition-transform duration-150">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] font-mono text-white/40 group-hover:text-cyan-400/60 transition-colors duration-200">
+                      {c.city}
+                    </div>
+                    <div className="text-xs font-mono text-white/20 mt-0.5">
+                      {date}
+                    </div>
                   </div>
-                  <div className="text-xs font-mono text-white/20 mt-0.5">
-                    {clock.date}
+                  <div className="font-mono text-lg tracking-wider text-cyan-400 neon-text-cyan flex items-center">
+                    {time.split(':').map((segment, idx) => (
+                      <span key={idx} className="flex items-center">
+                        {idx > 0 && (
+                          <span className="blink-colon mx-px text-cyan-400/60">
+                            :
+                          </span>
+                        )}
+                        {idx === 2 ? (
+                          <span className="text-sm text-cyan-500/60">
+                            {segment}
+                          </span>
+                        ) : (
+                          segment
+                        )}
+                      </span>
+                    ))}
                   </div>
                 </div>
-                <div className="font-mono text-lg tracking-wider text-cyan-400 neon-text-cyan flex items-center">
-                  {clock.time.split(':').map((segment, idx) => (
-                    <span key={idx} className="flex items-center">
-                      {idx > 0 && (
-                        <motion.span
-                          animate={{ opacity: [1, 0.2, 1] }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-                          className="mx-px text-cyan-400/60"
-                        >
-                          :
-                        </motion.span>
-                      )}
-                      {idx === 2 ? (
-                        <span className="text-sm text-cyan-500/60">
-                          {segment}
-                        </span>
-                      ) : (
-                        segment
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-              {i < clocks.length - 1 && (
-                <div className="h-px bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
-              )}
-            </div>
-          ))}
+                {i < DEFAULT_CITIES.length - 1 && (
+                  <div className="h-px bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent" />
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
+
+export default React.memo(WorldClockWidgetInner)

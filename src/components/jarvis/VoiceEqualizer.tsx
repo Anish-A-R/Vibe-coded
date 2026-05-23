@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { AIStatus } from '@/hooks/useJarvisStore'
 
@@ -29,46 +28,56 @@ export default function VoiceEqualizer({ status = 'idle', className }: VoiceEqua
         id: i,
         delay: i * 0.08,
         heightFactor,
-        phaseOffset: (i * 0.7 + Math.sin(i) * 1.3),
       }
     })
-  }, [barCount])
+  }, [])
+
+  const maxH = config.maxH
+  const minH = config.minH
+  const speed = config.speed
+  const intensity = config.intensity
 
   return (
     <div className={cn('flex items-end justify-center gap-[2px] h-[50px] sm:h-[60px]', className)}>
       {bars.map((bar) => {
-        const minH = config.minH
-        const maxH = config.maxH * bar.heightFactor
-        const midH = (minH + maxH) / 2
-        const amplitude = (maxH - minH) / 2
+        const barMaxH = maxH * bar.heightFactor
+        const midH = (minH + barMaxH) / 2
+        const amplitude = (barMaxH - minH) / 2
+        // Create CSS keyframe values for this specific bar
+        const keyframes = [
+          minH,
+          midH + amplitude * 0.6,
+          barMaxH * intensity,
+          midH - amplitude * 0.3,
+          minH + (barMaxH - minH) * 0.2,
+          midH + amplitude * 0.8 * intensity,
+          minH,
+        ]
 
         return (
-          <motion.div
+          <div
             key={bar.id}
             className="w-[3px] sm:w-[4px] rounded-full"
             style={{
-              background: `linear-gradient(to top, rgba(0, 240, 255, 0.9), rgba(0, 102, 255, 0.7), rgba(255, 106, 0, ${config.intensity * 0.5}))`,
-              boxShadow: `0 0 4px rgba(0, 240, 255, ${config.intensity * 0.3})`,
+              background: `linear-gradient(to top, rgba(0, 240, 255, 0.9), rgba(0, 102, 255, 0.7), rgba(255, 106, 0, ${intensity * 0.5}))`,
+              boxShadow: `0 0 4px rgba(0, 240, 255, ${intensity * 0.3})`,
               minHeight: minH,
-            }}
-            animate={{
-              height: [
-                minH,
-                midH + amplitude * 0.6,
-                maxH * config.intensity,
-                midH - amplitude * 0.3,
-                minH + (maxH - minH) * 0.2,
-                midH + amplitude * 0.8 * config.intensity,
-                minH,
-              ],
-            }}
-            transition={{
-              duration: config.speed * 2,
-              delay: bar.delay * config.speed * 0.3,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          />
+              height: minH,
+              animation: `eq-bar-${bar.id} ${speed * 2}s ease-in-out ${bar.delay * speed * 0.3}s infinite`,
+            } as React.CSSProperties}
+          >
+            <style>{`
+              @keyframes eq-bar-${bar.id} {
+                0% { height: ${keyframes[0]}px; }
+                14% { height: ${keyframes[1]}px; }
+                28% { height: ${keyframes[2]}px; }
+                42% { height: ${keyframes[3]}px; }
+                57% { height: ${keyframes[4]}px; }
+                71% { height: ${keyframes[5]}px; }
+                100% { height: ${keyframes[6]}px; }
+              }
+            `}</style>
+          </div>
         )
       })}
     </div>

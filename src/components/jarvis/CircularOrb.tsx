@@ -82,388 +82,7 @@ const statusConfig: Record<AIStatus, {
   },
 }
 
-// Hexagonal grid core pattern
-function HexagonalGridCore({ status }: { status: AIStatus }) {
-  const config = statusConfig[status]
-  const hexagons = useMemo(() => {
-    const hexes: { id: number; cx: number; cy: number; size: number; points: string }[] = []
-    const hexSize = 4
-    const hGap = hexSize * 1.75
-    const vGap = hexSize * 1.5
-
-    // Generate a small grid of hexagons centered at 0,0
-    const rows = 3
-    const cols = 3
-    for (let row = -Math.floor(rows / 2); row <= Math.floor(rows / 2); row++) {
-      for (let col = -Math.floor(cols / 2); col <= Math.floor(cols / 2); col++) {
-        const cx = col * hGap + (row % 2 !== 0 ? hGap / 2 : 0)
-        const cy = row * vGap
-        const dist = Math.sqrt(cx * cx + cy * cy)
-        if (dist > 16) continue // Stay within inner area
-
-        const points = Array.from({ length: 6 }, (_, i) => {
-          const angle = (Math.PI / 3) * i - Math.PI / 6
-          return `${cx + hexSize * Math.cos(angle)},${cy + hexSize * Math.sin(angle)}`
-        }).join(' ')
-
-        hexes.push({
-          id: hexes.length,
-          cx,
-          cy,
-          size: hexSize,
-          points,
-        })
-      }
-    }
-    return hexes
-  }, [])
-
-  return (
-    <g>
-      {hexagons.map((hex, i) => (
-        <motion.polygon
-          key={hex.id}
-          points={hex.points}
-          fill="none"
-          stroke={config.colorShift}
-          strokeWidth={0.3}
-          strokeOpacity={0.3}
-          animate={{
-            fillOpacity: [0, 0.12, 0],
-            strokeOpacity: [0.2, 0.5, 0.2],
-          }}
-          transition={{
-            duration: config.pulseDuration * (0.8 + i * 0.15),
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: i * 0.2,
-          }}
-        />
-      ))}
-    </g>
-  )
-}
-
-// Arc reactor core - hexagonal/triangular pattern with inner hex grid
-function ArcReactorCore({ status }: { status: AIStatus }) {
-  const config = statusConfig[status]
-
-  // Generate hexagonal pattern paths
-  const hexPaths = useMemo(() => {
-    const paths: { id: number; d: string }[] = []
-    // Inner hexagon
-    const hr = 8
-    const hexPoints = Array.from({ length: 6 }, (_, i) => {
-      const angle = (i * 60 - 30) * Math.PI / 180
-      return `${Math.cos(angle) * hr},${Math.sin(angle) * hr}`
-    }).join(' ')
-    paths.push({ id: 0, d: `M ${hexPoints.replace(/ /g, ' L ')} Z` })
-
-    // Triangular spokes from center to hex vertices
-    for (let i = 0; i < 6; i++) {
-      const angle = (i * 60 - 30) * Math.PI / 180
-      const ix = Math.cos(angle) * 3
-      const iy = Math.sin(angle) * 3
-      const ox = Math.cos(angle) * hr
-      const oy = Math.sin(angle) * hr
-      paths.push({ id: i + 1, d: `M ${ix} ${iy} L ${ox} ${oy}` })
-    }
-
-    paths.push({ id: 7, d: '' })
-    return paths
-  }, [])
-
-  return (
-    <g>
-      {/* Hexagonal grid core */}
-      <HexagonalGridCore status={status} />
-
-      {/* Hexagonal outline */}
-      <motion.path
-        d={hexPaths[0].d}
-        fill="none"
-        stroke={config.colorShift}
-        strokeWidth={0.6}
-        strokeOpacity={0.5}
-        style={{ filter: 'url(#orbGlow)' }}
-        animate={{
-          opacity: [0.4, 0.8, 0.4],
-          scale: [0.95, 1.05, 0.95],
-        }}
-        transition={{
-          duration: config.pulseDuration,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-      />
-
-      {/* Triangular spokes */}
-      {hexPaths.slice(1, 7).map((spoke) => (
-        <motion.path
-          key={spoke.id}
-          d={spoke.d}
-          fill="none"
-          stroke={config.colorShift}
-          strokeWidth={0.4}
-          strokeOpacity={0.35}
-          animate={{ opacity: [0.2, 0.5, 0.2] }}
-          transition={{
-            duration: config.pulseDuration * 0.7,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: spoke.id * 0.1,
-          }}
-        />
-      ))}
-
-      {/* Inner bright circle of the reactor */}
-      <motion.circle
-        cx={0}
-        cy={0}
-        r={3}
-        fill={config.colorShift}
-        style={{ filter: 'url(#orbGlow)' }}
-        animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.9, 1, 0.9],
-        }}
-        transition={{
-          duration: config.pulseDuration * 0.6,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-      />
-    </g>
-  )
-}
-
-// Data text ring with hex characters that fade in and out
-function DataTextRing({ status }: { status: AIStatus }) {
-  const config = statusConfig[status]
-  const chars = useMemo(() => {
-    const hexChars = '0123456789ABCDEF.:-|<>{}[]'
-    return Array.from({ length: 36 }, (_, i) => ({
-      id: i,
-      angle: (i / 36) * 360,
-      char: hexChars[(i * 7 + 3) % hexChars.length], // Deterministic to avoid hydration mismatch
-      fadeDelay: (i * 0.11) % 4, // Deterministic pseudo-random
-      fadeDuration: 2 + (i * 0.17) % 3,
-    }))
-  }, [])
-
-  return (
-    <motion.g
-      animate={{ rotate: [0, 360] }}
-      transition={{
-        duration: config.dataRingSpeed,
-        repeat: Infinity,
-        ease: 'linear',
-      }}
-    >
-      {chars.map((c) => {
-        const rad = (c.angle * Math.PI) / 180
-        const r = 72
-        const x = Math.cos(rad) * r
-        const y = Math.sin(rad) * r
-        return (
-          <motion.text
-            key={c.id}
-            x={x}
-            y={y}
-            fill={config.colorShift}
-            fontSize="3.5"
-            fontFamily="monospace"
-            textAnchor="middle"
-            dominantBaseline="central"
-            animate={{
-              opacity: [0.05, 0.4, 0.05],
-            }}
-            transition={{
-              duration: c.fadeDuration,
-              delay: c.fadeDelay,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          >
-            {c.char}
-          </motion.text>
-        )
-      })}
-    </motion.g>
-  )
-}
-
-// Energy arcs between rings
-function EnergyArcs({ status }: { status: AIStatus }) {
-  const config = statusConfig[status]
-  const arcs = useMemo(() => {
-    return Array.from({ length: config.arcCount }, (_, i) => {
-      // Deterministic pseudo-random to avoid hydration mismatch
-      const startAngle = (i / config.arcCount) * 360 + ((i * 7 + 3) % 30)
-      const sweep = 15 + ((i * 13 + 7) % 25)
-      const innerR = 30 + ((i * 11 + 5) % 15)
-      const outerR = innerR + 10 + ((i * 17 + 3) % 20)
-      const duration = 0.4 + ((i * 3 + 2) % 6) / 10
-      const delay = ((i * 5 + 1) % 20) / 10
-      return { id: i, startAngle, sweep, innerR, outerR, duration, delay }
-    })
-  }, [config.arcCount])
-
-  return (
-    <g>
-      {arcs.map((arc) => {
-        const startRad = (arc.startAngle * Math.PI) / 180
-        const sweepRad = (arc.sweep * Math.PI) / 180
-        const endRad = startRad + sweepRad
-        const midR = (arc.innerR + arc.outerR) / 2
-        const sx = Math.cos(startRad) * midR
-        const sy = Math.sin(startRad) * midR
-        const ex = Math.cos(endRad) * midR
-        const ey = Math.sin(endRad) * midR
-        const cpx = Math.cos(startRad + sweepRad / 2) * arc.outerR
-        const cpy = Math.sin(startRad + sweepRad / 2) * arc.outerR
-        const pathD = `M ${sx} ${sy} Q ${cpx} ${cpy} ${ex} ${ey}`
-
-        return (
-          <motion.path
-            key={arc.id}
-            d={pathD}
-            fill="none"
-            stroke={config.colorShift}
-            strokeWidth={0.8}
-            strokeLinecap="round"
-            style={{ filter: 'url(#orbGlow)' }}
-            initial={{ opacity: 0, pathLength: 0 }}
-            animate={{
-              opacity: [0, 0.8, 0.8, 0],
-              pathLength: [0, 1, 1, 0],
-            }}
-            transition={{
-              duration: arc.duration * (config.ringSpeed[0] / 20),
-              delay: arc.delay,
-              repeat: Infinity,
-              repeatDelay: 1 + Math.random() * 3,
-              ease: 'easeInOut',
-            }}
-          />
-        )
-      })}
-    </g>
-  )
-}
-
-// Pulse waves expanding from core
-function PulseWaves({ status }: { status: AIStatus }) {
-  const config = statusConfig[status]
-  const waveCount = 3
-
-  return (
-    <g>
-      {Array.from({ length: waveCount }).map((_, i) => (
-        <motion.circle
-          key={i}
-          cx={0}
-          cy={0}
-          r={10}
-          fill="none"
-          stroke={config.colorShift}
-          strokeWidth={0.5}
-          strokeOpacity={0.3}
-          initial={{ scale: 0.3, opacity: 0.5 }}
-          animate={{
-            scale: [0.3, 8],
-            opacity: [0.4 * config.glowIntensity, 0],
-          }}
-          transition={{
-            duration: config.pulseWaveInterval * 2,
-            delay: i * (config.pulseWaveInterval * 2 / waveCount),
-            repeat: Infinity,
-            ease: 'easeOut',
-          }}
-        />
-      ))}
-    </g>
-  )
-}
-
-// Orbital particles with gradient trail lines
-function OrbParticles({ status }: { status: AIStatus }) {
-  const config = statusConfig[status]
-  const particles = useMemo(() => {
-    return Array.from({ length: 8 }, (_, i) => ({
-      id: i,
-      angle: (i / 8) * 360,
-      radius: 58 + ((i * 7 + 3) % 12), // Deterministic to avoid hydration mismatch
-      size: 1.5 + ((i * 3 + 2) % 15) / 10,
-      speed: 6 + ((i * 5 + 1) % 4),
-      opacity: 0.3 + ((i * 11 + 7) % 3) / 10,
-    }))
-  }, [])
-
-  return (
-    <g>
-      {particles.map((p) => {
-        const isOutward = config.particleDirection === 'outward'
-        return (
-          <g key={p.id}>
-            {/* Gradient trail line */}
-            <motion.line
-              x1={0}
-              y1={-p.radius}
-              x2={0}
-              y2={-p.radius + (isOutward ? -8 : 8)}
-              stroke={`url(#trailGradient${p.id})`}
-              strokeWidth={p.size * 0.8}
-              strokeLinecap="round"
-              animate={{
-                rotate: [p.angle - 8, p.angle + 352],
-              }}
-              transition={{
-                duration: p.speed * (config.ringSpeed[0] / 20),
-                repeat: Infinity,
-                ease: 'linear',
-              }}
-            />
-            {/* Particle dot */}
-            <motion.circle
-              cx={0}
-              cy={-p.radius}
-              r={p.size}
-              fill={config.colorShift}
-              style={{
-                filter: `drop-shadow(0 0 ${p.size * 2}px ${config.colorShift})`,
-              }}
-              animate={{
-                rotate: [p.angle, p.angle + 360],
-                ...(isOutward
-                  ? { r: [p.size, p.size * 2.5, p.size] }
-                  : {}),
-              }}
-              transition={{
-                rotate: {
-                  duration: p.speed * (config.ringSpeed[0] / 20),
-                  repeat: Infinity,
-                  ease: 'linear',
-                },
-                ...(isOutward
-                  ? {
-                      r: {
-                        duration: config.pulseDuration,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
-                      },
-                    }
-                  : {}),
-              }}
-            />
-          </g>
-        )
-      })}
-    </g>
-  )
-}
-
-// Tick marks around outermost ring
+// Tick marks around outermost ring (static, no animation)
 function TickMarks() {
   const ticks = useMemo(() => {
     return Array.from({ length: 60 }, (_, i) => ({
@@ -514,16 +133,77 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
     []
   )
 
-  // Generate gradient definitions for particle trails
-  const trailGradients = useMemo(() => {
-    return Array.from({ length: 8 }, (_, i) => ({
-      id: `trailGradient${i}`,
+  // Pre-compute data text ring characters
+  const dataChars = useMemo(() => {
+    const hexChars = '0123456789ABCDEF.:-|<>{}[]'
+    return Array.from({ length: 36 }, (_, i) => ({
+      id: i,
+      angle: (i / 36) * 360,
+      char: hexChars[(i * 7 + 3) % hexChars.length],
     }))
+  }, [])
+
+  // Pre-compute particle positions
+  const particles = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => ({
+      id: i,
+      angle: (i / 6) * 360,
+      radius: 58 + ((i * 7 + 3) % 12),
+      size: 1.5 + ((i * 3 + 2) % 15) / 10,
+      speed: 6 + ((i * 5 + 1) % 4),
+      opacity: 0.3 + ((i * 11 + 7) % 3) / 10,
+    }))
+  }, [])
+
+  // Pre-compute hexagonal grid
+  const hexagons = useMemo(() => {
+    const hexes: { id: number; cx: number; cy: number; points: string }[] = []
+    const hexSize = 4
+    const hGap = hexSize * 1.75
+    const vGap = hexSize * 1.5
+    const rows = 3
+    const cols = 3
+    for (let row = -Math.floor(rows / 2); row <= Math.floor(rows / 2); row++) {
+      for (let col = -Math.floor(cols / 2); col <= Math.floor(cols / 2); col++) {
+        const cx = col * hGap + (row % 2 !== 0 ? hGap / 2 : 0)
+        const cy = row * vGap
+        const dist = Math.sqrt(cx * cx + cy * cy)
+        if (dist > 16) continue
+        const points = Array.from({ length: 6 }, (_, i) => {
+          const angle = (Math.PI / 3) * i - Math.PI / 6
+          return `${cx + hexSize * Math.cos(angle)},${cy + hexSize * Math.sin(angle)}`
+        }).join(' ')
+        hexes.push({ id: hexes.length, cx, cy, points })
+      }
+    }
+    return hexes
+  }, [])
+
+  // Hexagonal core outline path
+  const hexOutlinePath = useMemo(() => {
+    const hr = 8
+    const hexPoints = Array.from({ length: 6 }, (_, i) => {
+      const angle = (i * 60 - 30) * Math.PI / 180
+      return `${Math.cos(angle) * hr},${Math.sin(angle) * hr}`
+    }).join(' ')
+    return `M ${hexPoints.replace(/ /g, ' L ')} Z`
+  }, [])
+
+  // Spoke paths
+  const spokes = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => {
+      const angle = (i * 60 - 30) * Math.PI / 180
+      const ix = Math.cos(angle) * 3
+      const iy = Math.sin(angle) * 3
+      const ox = Math.cos(angle) * 8
+      const oy = Math.sin(angle) * 8
+      return { id: i, d: `M ${ix} ${iy} L ${ox} ${oy}` }
+    })
   }, [])
 
   return (
     <div className={cn('relative flex items-center justify-center', className)}>
-      {/* Outer glow */}
+      {/* Outer glow - single motion.div */}
       <motion.div
         className="absolute rounded-full"
         style={{
@@ -546,6 +226,7 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
         className="w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] md:w-[280px] md:h-[280px]"
         animate={{ scale: config.outerScale }}
         transition={{ duration: 0.5 }}
+        style={{ willChange: 'auto' }}
       >
         <defs>
           <radialGradient id="coreGradient" cx="50%" cy="50%" r="50%">
@@ -553,48 +234,102 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
             <stop offset="60%" stopColor={config.colorShift} stopOpacity="0.15" />
             <stop offset="100%" stopColor={config.colorShift} stopOpacity="0" />
           </radialGradient>
-          <filter id="orbGlow">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+          {/* Single glow filter - lightweight */}
+          <filter id="orbGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          {/* Trail gradients for each particle */}
-          {trailGradients.map((g) => (
-            <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={config.colorHex} stopOpacity="0.4" />
-              <stop offset="100%" stopColor={config.colorHex} stopOpacity="0" />
-            </linearGradient>
-          ))}
         </defs>
 
-        {/* Pulse waves */}
-        <PulseWaves status={status} />
+        {/* Pulse waves - CSS animated via style attribute */}
+        <g>
+          {[0, 1, 2].map((i) => (
+            <circle
+              key={`pulse-${i}`}
+              cx={0}
+              cy={0}
+              r={10}
+              fill="none"
+              stroke={config.colorShift}
+              strokeWidth={0.5}
+              style={{
+                animation: `orb-pulse-wave ${config.pulseWaveInterval * 2}s ease-out ${i * (config.pulseWaveInterval * 2 / 3)}s infinite`,
+                opacity: 0,
+                transformOrigin: 'center',
+              }}
+            />
+          ))}
+        </g>
 
         {/* Core glow */}
-        <motion.circle
+        <circle
           cx={0}
           cy={0}
           r={28}
           fill="url(#coreGradient)"
-          animate={{
-            scale: config.pulseScale.map((s) => s * config.coreScale),
-            opacity: [0.8, 1, 0.8],
-          }}
-          transition={{
-            scale: { duration: config.pulseDuration, repeat: Infinity, ease: 'easeInOut' },
-            opacity: { duration: config.pulseDuration, repeat: Infinity, ease: 'easeInOut' },
+          style={{
+            animation: `orb-core-pulse ${config.pulseDuration}s ease-in-out infinite`,
+            transformOrigin: 'center',
           }}
         />
 
-        {/* Arc reactor core with hexagonal grid */}
-        <ArcReactorCore status={status} />
+        {/* Arc reactor core - hexagonal grid (static SVG, no animation) */}
+        <g opacity={0.5}>
+          {hexagons.map((hex, i) => (
+            <polygon
+              key={hex.id}
+              points={hex.points}
+              fill="none"
+              stroke={config.colorShift}
+              strokeWidth={0.3}
+              strokeOpacity={0.3}
+              style={{
+                animation: `orb-hex-fade ${config.pulseDuration * (0.8 + i * 0.15)}s ease-in-out ${i * 0.2}s infinite`,
+                transformOrigin: `${hex.cx}px ${hex.cy}px`,
+              }}
+            />
+          ))}
+        </g>
 
-        {/* Rotating rings - 6 total */}
+        {/* Hexagonal outline */}
+        <path
+          d={hexOutlinePath}
+          fill="none"
+          stroke={config.colorShift}
+          strokeWidth={0.6}
+          strokeOpacity={0.5}
+          style={{
+            animation: `orb-hex-outline ${config.pulseDuration}s ease-in-out infinite`,
+            transformOrigin: 'center',
+          }}
+        />
+
+        {/* Triangular spokes (static, no individual animation) */}
+        <g stroke={config.colorShift} strokeWidth={0.4} strokeOpacity={0.35} fill="none">
+          {spokes.map((spoke) => (
+            <path key={spoke.id} d={spoke.d} />
+          ))}
+        </g>
+
+        {/* Inner bright circle of the reactor */}
+        <circle
+          cx={0}
+          cy={0}
+          r={3}
+          fill={config.colorShift}
+          style={{
+            animation: `orb-core-breathe ${config.pulseDuration * 0.6}s ease-in-out infinite`,
+            transformOrigin: 'center',
+          }}
+        />
+
+        {/* Rotating rings - CSS animations */}
         {ringDefs.map((ring, idx) => (
-          <motion.circle
-            key={idx}
+          <circle
+            key={`ring-${idx}`}
             cx={0}
             cy={0}
             r={ring.radius}
@@ -604,29 +339,66 @@ export default function CircularOrb({ status = 'idle', className }: CircularOrbP
             strokeDasharray={ring.dashArray}
             strokeOpacity={0.4 + config.glowIntensity * 0.3}
             strokeLinecap="round"
-            style={{ filter: 'url(#orbGlow)' }}
-            animate={{
-              rotate: ring.direction > 0 ? [0, 360] : [360, 0],
-            }}
-            transition={{
-              duration: config.ringSpeed[ring.speedIdx],
-              repeat: Infinity,
-              ease: 'linear',
+            style={{
+              animation: ring.direction > 0
+                ? `orb-rotate-cw ${config.ringSpeed[ring.speedIdx]}s linear infinite`
+                : `orb-rotate-ccw ${config.ringSpeed[ring.speedIdx]}s linear infinite`,
+              transformOrigin: 'center',
             }}
           />
         ))}
 
-        {/* Energy arcs */}
-        <EnergyArcs status={status} />
-
-        {/* Data text ring with animated fading */}
-        <DataTextRing status={status} />
+        {/* Data text ring - rotating with CSS, static characters */}
+        <g style={{
+          animation: `orb-rotate-cw ${config.dataRingSpeed}s linear infinite`,
+          transformOrigin: 'center',
+        }}>
+          {dataChars.map((c) => {
+            const rad = (c.angle * Math.PI) / 180
+            const r = 72
+            const x = Math.cos(rad) * r
+            const y = Math.sin(rad) * r
+            return (
+              <text
+                key={c.id}
+                x={x}
+                y={y}
+                fill={config.colorShift}
+                fontSize="3.5"
+                fontFamily="monospace"
+                textAnchor="middle"
+                dominantBaseline="central"
+                opacity={0.15}
+              >
+                {c.char}
+              </text>
+            )
+          })}
+        </g>
 
         {/* Tick marks around outermost ring */}
         <TickMarks />
 
-        {/* Orbital particles with gradient trails */}
-        <OrbParticles status={status} />
+        {/* Orbital particles - CSS animated */}
+        <g>
+          {particles.map((p) => (
+            <g
+              key={p.id}
+              style={{
+                animation: `orb-rotate-cw ${p.speed * (config.ringSpeed[0] / 20)}s linear infinite`,
+                transformOrigin: 'center',
+              }}
+            >
+              <circle
+                cx={0}
+                cy={-p.radius}
+                r={p.size}
+                fill={config.colorShift}
+                opacity={p.opacity}
+              />
+            </g>
+          ))}
+        </g>
       </motion.svg>
     </div>
   )

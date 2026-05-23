@@ -37,7 +37,7 @@ export function useSystemStats() {
 
   useEffect(() => {
     updateStats()
-    intervalRef.current = setInterval(updateStats, 2000)
+    intervalRef.current = setInterval(updateStats, 5000)
 
     return () => {
       if (intervalRef.current) {

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Cpu, MemoryStick, Thermometer, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useSystemStats } from '@/hooks/useSystemStats'
 
@@ -22,9 +21,9 @@ function CircularGauge({
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference * (1 - value / 100)
 
-  const trendIcon = trend === 'up' 
+  const trendIcon = trend === 'up'
     ? <TrendingUp className="size-2.5 text-red-400/70" />
-    : trend === 'down' 
+    : trend === 'down'
     ? <TrendingDown className="size-2.5 text-green-400/70" />
     : <Minus className="size-2.5 text-white/30" />
 
@@ -41,8 +40,8 @@ function CircularGauge({
             strokeWidth="5"
             fill="none"
           />
-          {/* Progress arc */}
-          <motion.circle
+          {/* Progress arc - plain SVG circle with CSS transition */}
+          <circle
             cx="38"
             cy="38"
             r={radius}
@@ -51,9 +50,8 @@ function CircularGauge({
             fill="none"
             strokeLinecap="round"
             strokeDasharray={circumference}
-            strokeDashoffset={circumference}
-            animate={{ strokeDashoffset }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
+            strokeDashoffset={strokeDashoffset}
+            className="transition-[stroke-dashoffset] duration-700 ease-out"
             style={{ filter: `drop-shadow(0 0 6px ${color}66)` }}
           />
         </svg>
@@ -87,23 +85,32 @@ function formatUptime(seconds: number): string {
 
 export default function SystemStatsWidget() {
   const stats = useSystemStats()
+
+  // Use a ref for cpuHistory to avoid setState on every stats update.
+  // Only flush to state every 5 seconds to reduce re-renders.
   const cpuHistoryRef = useRef<number[]>(Array(10).fill(stats.cpu))
   const [cpuHistory, setCpuHistory] = useState<number[]>(() =>
     Array(10).fill(stats.cpu)
   )
+  const lastFlushRef = useRef(Date.now())
+
+  const updateCpuHistory = useCallback((cpu: number) => {
+    cpuHistoryRef.current = [...cpuHistoryRef.current.slice(1), cpu]
+    const now = Date.now()
+    if (now - lastFlushRef.current >= 5000) {
+      lastFlushRef.current = now
+      setCpuHistory([...cpuHistoryRef.current])
+    }
+  }, [])
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      cpuHistoryRef.current = [...cpuHistoryRef.current.slice(1), stats.cpu]
-      setCpuHistory([...cpuHistoryRef.current])
-    })
-    return () => cancelAnimationFrame(id)
-  }, [stats.cpu])
+    updateCpuHistory(stats.cpu)
+  }, [stats.cpu, updateCpuHistory])
 
   const maxCpu = Math.max(...cpuHistory, 1)
   const barHeight = 32
 
-  // Determine trend from cpuHistory (no refs needed)
+  // Determine trend from cpuHistory
   const cpuTrend: 'up' | 'down' | 'stable' = cpuHistory.length >= 2
     ? cpuHistory[cpuHistory.length - 1] > cpuHistory[cpuHistory.length - 2] + 2
       ? 'up'
@@ -122,12 +129,7 @@ export default function SystemStatsWidget() {
     : '0 0 8px rgba(0, 255, 136, 0.5)'
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.2 }}
-      className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-black/40 backdrop-blur-xl p-4 holo-border-cyan inner-glow-cyan"
-    >
+    <div className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-black/40 backdrop-blur-xl p-4 holo-border-cyan inner-glow-cyan animate-fade-in-up">
       {/* Corner accents */}
       <div className="absolute top-0 left-0 h-4 w-4 border-t border-l border-cyan-500/40 z-[2]" />
       <div className="absolute top-0 right-0 h-4 w-4 border-t border-r border-cyan-500/40 z-[2]" />
@@ -152,19 +154,17 @@ export default function SystemStatsWidget() {
         />
       </div>
 
-      {/* CPU History Bar Chart with gradient fill */}
+      {/* CPU History Bar Chart - simple div + CSS transition for height */}
       <div className="relative z-[2] mb-3">
         <div className="text-[10px] text-cyan-400/40 font-mono mb-1">CPU HISTORY</div>
         <div className="flex items-end gap-1" style={{ height: barHeight }}>
           {cpuHistory.map((val, i) => {
             const height = Math.max(2, (val / maxCpu) * barHeight)
             return (
-              <motion.div
+              <div
                 key={i}
-                className="flex-1 rounded-sm relative overflow-hidden"
+                className="flex-1 rounded-sm relative overflow-hidden transition-[height] duration-500 ease-out"
                 style={{ height }}
-                animate={{ height }}
-                transition={{ duration: 0.3 }}
               >
                 {/* Gradient fill from bottom to top */}
                 <div
@@ -178,7 +178,7 @@ export default function SystemStatsWidget() {
                     opacity: 0.4 + (i / cpuHistory.length) * 0.6,
                   }}
                 />
-              </motion.div>
+              </div>
             )
           })}
         </div>
@@ -200,6 +200,6 @@ export default function SystemStatsWidget() {
           <span>{formatUptime(stats.uptime)}</span>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

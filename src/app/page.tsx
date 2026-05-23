@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageCircle,
@@ -30,25 +30,26 @@ import StatusBar from '@/components/jarvis/StatusBar'
 import { ChatPanel } from '@/components/jarvis/ChatPanel'
 import { VoiceInput } from '@/components/jarvis/VoiceInput'
 import SystemWidgets from '@/components/jarvis/SystemWidgets'
-import SettingsPanel from '@/components/jarvis/SettingsPanel'
-import ConversationHistory from '@/components/jarvis/ConversationHistory'
-import SystemDiagnostics from '@/components/jarvis/SystemDiagnostics'
-import CommandPalette from '@/components/jarvis/CommandPalette'
 import { HUDFrame, DataReadout, CornerBrackets, ScanLine } from '@/components/jarvis/HUDDecorations'
 import { useJarvisToast } from '@/hooks/useJarvisToast'
 import { JarvisToastContainer } from '@/components/jarvis/JarvisToast'
 import type { AIStatus, EventType } from '@/hooks/useJarvisStore'
-import KeyboardShortcutsOverlay from '@/components/jarvis/KeyboardShortcutsOverlay'
-import KonamiEffect from '@/components/jarvis/KonamiEffect'
-import EventLog from '@/components/jarvis/EventLog'
 import NotificationCenter from '@/components/jarvis/NotificationCenter'
-import WorldClockWidget from '@/components/jarvis/WorldClockWidget'
-import FocusTimerWidget from '@/components/jarvis/FocusTimerWidget'
-import QuickNotesWidget from '@/components/jarvis/QuickNotesWidget'
-import AmbientSoundWidget from '@/components/jarvis/AmbientSoundWidget'
-import SystemHealthWidget from '@/components/jarvis/SystemHealthWidget'
 import DataTicker from '@/components/jarvis/DataTicker'
-import { ErrorBoundary } from '@/components/jarvis/ErrorBoundary'
+
+// Lazy load panels that aren't visible by default
+const SettingsPanel = lazy(() => import('@/components/jarvis/SettingsPanel'))
+const ConversationHistory = lazy(() => import('@/components/jarvis/ConversationHistory'))
+const SystemDiagnostics = lazy(() => import('@/components/jarvis/SystemDiagnostics'))
+const CommandPalette = lazy(() => import('@/components/jarvis/CommandPalette'))
+const KeyboardShortcutsOverlay = lazy(() => import('@/components/jarvis/KeyboardShortcutsOverlay'))
+const KonamiEffect = lazy(() => import('@/components/jarvis/KonamiEffect'))
+const EventLog = lazy(() => import('@/components/jarvis/EventLog'))
+const WorldClockWidget = lazy(() => import('@/components/jarvis/WorldClockWidget'))
+const FocusTimerWidget = lazy(() => import('@/components/jarvis/FocusTimerWidget'))
+const QuickNotesWidget = lazy(() => import('@/components/jarvis/QuickNotesWidget'))
+const AmbientSoundWidget = lazy(() => import('@/components/jarvis/AmbientSoundWidget'))
+const SystemHealthWidget = lazy(() => import('@/components/jarvis/SystemHealthWidget'))
 
 export default function Home() {
   const {
@@ -473,12 +474,10 @@ export default function Home() {
         <main className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6">
           <div className="w-full max-w-7xl flex flex-col lg:flex-row items-center lg:items-start gap-6 lg:gap-8">
 
-            {/* ===== LEFT COLUMN: System Widgets (staggered slide-in from left) ===== */}
-            <motion.div
-              initial={{ opacity: 0, x: -40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+            {/* ===== LEFT COLUMN: System Widgets ===== */}
+            <div
               className="hidden lg:block w-72 flex-shrink-0 order-1"
+              style={{ animation: 'slide-in-left 0.6s ease-out 0.2s both' }}
             >
               <HUDFrame
                 title="System Monitor"
@@ -489,7 +488,7 @@ export default function Home() {
               >
                 <SystemWidgets className="space-y-3" staggerDirection="left" />
               </HUDFrame>
-            </motion.div>
+            </div>
 
             {/* ===== CENTER: HUD Orb (power-on sequence) ===== */}
             <div className="flex flex-col items-center gap-4 sm:gap-6 order-1 lg:order-2 flex-1 min-w-0">
@@ -510,31 +509,25 @@ export default function Home() {
 
               {/* Central Orb with HUD frame on desktop */}
               <div className="relative">
-                {/* Decorative ring behind orb - appears first in power-on */}
-                <motion.div
+                {/* Decorative rings - CSS animated for performance */}
+                <div
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
+                  style={{ animation: 'orb-fade-in 0.6s ease-out 0.3s both' }}
                 >
-                  <motion.div
+                  <div
                     className="w-[320px] h-[320px] sm:w-[380px] sm:h-[380px] rounded-full border border-neon-cyan/[0.06]"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
+                    style={{ animation: 'orb-rotate-cw 60s linear infinite' }}
                   />
-                </motion.div>
-                <motion.div
+                </div>
+                <div
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.45 }}
+                  style={{ animation: 'orb-fade-in 0.6s ease-out 0.45s both' }}
                 >
-                  <motion.div
+                  <div
                     className="w-[360px] h-[360px] sm:w-[420px] sm:h-[420px] rounded-full border border-dashed border-neon-cyan/[0.04]"
-                    animate={{ rotate: -360 }}
-                    transition={{ duration: 90, repeat: Infinity, ease: 'linear' }}
+                    style={{ animation: 'orb-rotate-ccw 90s linear infinite' }}
                   />
-                </motion.div>
+                </div>
 
                 {/* Orb scales up with bounce */}
                 <motion.div
@@ -679,31 +672,20 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ===== RIGHT COLUMN: Radar + Mini widgets (staggered from right) ===== */}
-            <motion.div
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+            {/* ===== RIGHT COLUMN: Radar + Mini widgets ===== */}
+            <div
               className="hidden lg:flex flex-col items-center gap-4 w-72 flex-shrink-0 order-3 max-h-[calc(100vh-5rem)] overflow-y-auto jarvis-scrollbar pr-1"
+              style={{ animation: 'orb-fade-in 0.6s ease-out 0.2s both' }}
             >
               {/* Radar Scanner with HUD frame */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.35 }}
-              >
+              <div>
                 <HUDFrame title="Scanner">
                   <RadarScanner />
                 </HUDFrame>
-              </motion.div>
+              </div>
 
               {/* Mini system status panel */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-                className="w-full glass-panel p-3 space-y-2 relative"
-              >
+              <div className="w-full glass-panel p-3 space-y-2 relative">
                 <CornerBrackets size={10} color="cyan" />
                 <div className="flex items-center gap-2">
                   <div
@@ -731,15 +713,10 @@ export default function Home() {
                     TEMP: {stats.temperature}°C | CMD: {commandCount}
                   </span>
                 </div>
-              </motion.div>
+              </div>
 
               {/* AI Intelligence panel */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.65 }}
-                className="w-full glass-panel p-3 relative"
-              >
+              <div className="w-full glass-panel p-3 relative">
                 <CornerBrackets size={10} color="orange" />
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="w-3 h-3 text-neon-orange/60" />
@@ -750,66 +727,28 @@ export default function Home() {
                 <DataReadout label="MODE" value={personalityMode.toUpperCase()} />
                 <DataReadout label="MSGS" value={String(messages.length)} />
                 <DataReadout label="STATUS" value="ONLINE" />
-              </motion.div>
+              </div>
 
-              {/* World Clock Widget */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.75 }}
-                className="w-full"
-              >
+              {/* Lazy-loaded widgets */}
+              <Suspense fallback={<div className="w-full h-24 glass-panel animate-pulse" />}>
                 <WorldClockWidget />
-              </motion.div>
-
-              {/* Focus Timer Widget */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.85 }}
-                className="w-full"
-              >
+              </Suspense>
+              <Suspense fallback={<div className="w-full h-32 glass-panel animate-pulse" />}>
                 <FocusTimerWidget />
-              </motion.div>
-
-              {/* System Health Widget */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.85 }}
-                className="w-full"
-              >
+              </Suspense>
+              <Suspense fallback={<div className="w-full h-24 glass-panel animate-pulse" />}>
                 <SystemHealthWidget />
-              </motion.div>
-
-              {/* Ambient Sound Widget */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.95 }}
-                className="w-full"
-              >
+              </Suspense>
+              <Suspense fallback={<div className="w-full h-24 glass-panel animate-pulse" />}>
                 <AmbientSoundWidget />
-              </motion.div>
-
-              {/* Quick Notes Widget */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 1.05 }}
-                className="w-full"
-              >
+              </Suspense>
+              <Suspense fallback={<div className="w-full h-32 glass-panel animate-pulse" />}>
                 <QuickNotesWidget />
-              </motion.div>
+              </Suspense>
 
               {/* Open Chat prompt */}
               {!showChat && (
-                <motion.div
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 1.05 }}
-                  className="w-full"
-                >
+                <div className="w-full">
                   <button
                     onClick={() => setShowChat(true)}
                     className="w-full glass-panel p-3 flex items-center justify-between group hover:border-neon-cyan/30 transition-colors cursor-pointer relative"
@@ -820,9 +759,9 @@ export default function Home() {
                     </span>
                     <ChevronRight className="w-3 h-3 text-white/20 group-hover:text-neon-cyan/60 transition-colors" />
                   </button>
-                </motion.div>
+                </div>
               )}
-            </motion.div>
+            </div>
           </div>
         </main>
 
@@ -893,38 +832,37 @@ export default function Home() {
         </motion.button>
       )}
 
-      {/* ===== SETTINGS PANEL ===== */}
-      <SettingsPanel open={showSettings} onClose={() => setShowSettings(false)} />
-
-      {/* ===== CONVERSATION HISTORY PANEL ===== */}
-      <ConversationHistory
-        open={showHistory}
-        onClose={() => setShowHistory(false)}
-      />
-
-      {/* ===== SYSTEM DIAGNOSTICS PANEL ===== */}
-      <SystemDiagnostics
-        open={showDiagnostics}
-        onClose={() => setShowDiagnostics(false)}
-      />
-
-      {/* ===== COMMAND PALETTE ===== */}
-      <CommandPalette
-        open={showCommandPalette}
-        onClose={() => setShowCommandPalette(false)}
-      />
-
-      {/* ===== KEYBOARD SHORTCUTS OVERLAY ===== */}
-      <KeyboardShortcutsOverlay
-        open={showShortcuts}
-        onClose={() => setShowShortcuts(false)}
-      />
-
-      {/* ===== KONAMI CODE EFFECT ===== */}
-      <KonamiEffect
-        active={konamiActive}
-        onComplete={handleKonamiComplete}
-      />
+      {/* ===== LAZY-LOADED PANELS ===== */}
+      {showSettings && (
+        <Suspense fallback={null}>
+          <SettingsPanel open={showSettings} onClose={() => setShowSettings(false)} />
+        </Suspense>
+      )}
+      {showHistory && (
+        <Suspense fallback={null}>
+          <ConversationHistory open={showHistory} onClose={() => setShowHistory(false)} />
+        </Suspense>
+      )}
+      {showDiagnostics && (
+        <Suspense fallback={null}>
+          <SystemDiagnostics open={showDiagnostics} onClose={() => setShowDiagnostics(false)} />
+        </Suspense>
+      )}
+      {showCommandPalette && (
+        <Suspense fallback={null}>
+          <CommandPalette open={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+        </Suspense>
+      )}
+      {showShortcuts && (
+        <Suspense fallback={null}>
+          <KeyboardShortcutsOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+        </Suspense>
+      )}
+      {konamiActive && (
+        <Suspense fallback={null}>
+          <KonamiEffect active={konamiActive} onComplete={handleKonamiComplete} />
+        </Suspense>
+      )}
 
       {/* ===== MOBILE BOTTOM NAV ===== */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-neon-cyan/10 bg-black/90 backdrop-blur-xl">
@@ -972,11 +910,12 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ===== EVENT LOG ===== */}
-      <EventLog
-        open={showEventLog}
-        onClose={() => setShowEventLog(false)}
-      />
+      {/* ===== EVENT LOG (lazy) ===== */}
+      {showEventLog && (
+        <Suspense fallback={null}>
+          <EventLog open={showEventLog} onClose={() => setShowEventLog(false)} />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Target, Play, Pause, RotateCcw } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 
@@ -108,12 +107,7 @@ export default function FocusTimerWidget() {
   const currentSession = (focusTimerSessions % 4) + 1
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-black/40 backdrop-blur-xl glass-panel holo-border-cyan inner-glow-cyan"
-    >
+    <div className="relative overflow-hidden rounded-xl border border-cyan-500/20 bg-black/40 backdrop-blur-xl glass-panel holo-border-cyan inner-glow-cyan animate-fade-in-up">
       {/* Corner accents */}
       <div className="absolute top-0 left-0 h-4 w-4 border-t border-l border-cyan-500/40 z-[2]" />
       <div className="absolute top-0 right-0 h-4 w-4 border-t border-r border-cyan-500/40 z-[2]" />
@@ -159,8 +153,8 @@ export default function FocusTimerWidget() {
                 strokeWidth="4"
                 fill="none"
               />
-              {/* Progress ring */}
-              <motion.circle
+              {/* Progress ring - plain SVG circle with CSS transition */}
+              <circle
                 cx="50"
                 cy="50"
                 r={radius}
@@ -169,34 +163,28 @@ export default function FocusTimerWidget() {
                 fill="none"
                 strokeLinecap="round"
                 strokeDasharray={circumference}
-                initial={{ strokeDashoffset: circumference }}
-                animate={{
-                  strokeDashoffset,
+                strokeDashoffset={strokeDashoffset}
+                className="transition-[stroke-dashoffset,stroke,filter] duration-500 ease-linear"
+                style={{
                   filter: isComplete
                     ? 'drop-shadow(0 0 12px rgba(0, 255, 136, 0.8))'
                     : 'drop-shadow(0 0 6px rgba(0, 240, 255, 0.5))',
                 }}
-                transition={{ duration: 0.5, ease: 'linear' }}
               />
-              {/* Completion glow ring */}
-              <AnimatePresence>
-                {isComplete && (
-                  <motion.circle
-                    cx="50"
-                    cy="50"
-                    r={radius}
-                    stroke="#00ff88"
-                    strokeWidth="8"
-                    fill="none"
-                    initial={{ opacity: 0.8 }}
-                    animate={{ opacity: [0.8, 0.2, 0.8] }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                    strokeDasharray={circumference}
-                    strokeDashoffset={0}
-                  />
-                )}
-              </AnimatePresence>
+              {/* Completion glow ring - CSS transition instead of AnimatePresence */}
+              {isComplete && (
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={radius}
+                  stroke="#00ff88"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={0}
+                  className="completion-glow-ring"
+                />
+              )}
             </svg>
             {/* Center time */}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -210,26 +198,22 @@ export default function FocusTimerWidget() {
           </div>
         </div>
 
-        {/* Controls */}
+        {/* Controls - CSS hover/active instead of Framer Motion */}
         <div className="flex items-center justify-center gap-3 mb-3">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={handleToggle}
-            className="size-9 flex items-center justify-center rounded-full border border-cyan-500/30 text-cyan-400/70 hover:bg-cyan-500/10 hover:text-cyan-400 transition-colors"
+            className="size-9 flex items-center justify-center rounded-full border border-cyan-500/30 text-cyan-400/70 hover:bg-cyan-500/10 hover:text-cyan-400 hover:scale-110 active:scale-90 transition-all duration-150"
             aria-label={isRunning ? 'Pause timer' : 'Start timer'}
           >
             {isRunning ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+          </button>
+          <button
             onClick={handleReset}
-            className="size-9 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:bg-white/5 hover:text-white/60 transition-colors"
+            className="size-9 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:bg-white/5 hover:text-white/60 hover:scale-110 active:scale-90 transition-all duration-150"
             aria-label="Reset timer"
           >
             <RotateCcw className="size-4" />
-          </motion.button>
+          </button>
         </div>
 
         {/* Session counter */}
@@ -237,6 +221,6 @@ export default function FocusTimerWidget() {
           Session {currentSession} of 4
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -224,6 +224,23 @@
 - Settings shows CRT toggle, Ambient Sound section, Export as Markdown
 - System Health and Ambient Sound widgets in right column with collapse/expand
 
+### Round 13 Changes - Performance Optimization (Task 2-c)
+
+1. ✅ **useSystemStats Hook** - Changed update interval from 2000ms to 5000ms, reducing store updates that trigger re-renders across many components (CPU, RAM, network, temperature stats).
+2. ✅ **WorldClockWidget** - Replaced `useState + setInterval` pattern (creating 4 new objects every second in setState) with a single `useState` counter incremented every second. All clock values are now derived from `new Date()` during render. Replaced Framer Motion `motion.span` blinking colon with pure CSS `animation: blink-colon 1s step-end infinite`. Removed Framer Motion wrapper (`motion.div` initial/animate) and replaced with `animate-fade-in-up` CSS class. Added `React.memo` wrapper to prevent unnecessary re-renders. Removed `motion.div whileHover` on clock rows, replaced with CSS `hover:translate-x-0.5 transition-transform`.
+3. ✅ **StatusBar** - Removed all Framer Motion dependencies. Replaced `motion.div` pulse indicator with CSS `status-pulse-ring` class using `@keyframes status-pulse-expand`. Replaced `DataFlowDots` component's `motion.div` with CSS `data-flow-dot` class (already existed in globals.css). Replaced `AnimatedSignalBars` component's `motion.div` with CSS `signal-bar-pulse` class using `@keyframes signal-bar-bounce`. Status bar remains fully functional with pure CSS animations.
+4. ✅ **SystemStatsWidget** - Removed `requestAnimationFrame + setState` pattern for cpuHistory. Now uses `useRef` for cpuHistory and only flushes to state every 5 seconds (via `lastFlushRef` timestamp check), dramatically reducing re-renders. Replaced `motion.circle` in CircularGauge with plain SVG `<circle>` using `transition-[stroke-dashoffset] duration-700 ease-out` CSS transition. Replaced `motion.div` bar chart bars with simple `<div>` elements using `transition-[height] duration-500 ease-out`. Removed Framer Motion import entirely. Replaced `motion.div` wrapper with `animate-fade-in-up` CSS class.
+5. ✅ **FocusTimerWidget** - Removed Framer Motion entirely. Replaced `motion.circle` progress ring with plain SVG `<circle>` using `transition-[stroke-dashoffset,stroke,filter] duration-500 ease-linear`. Replaced `AnimatePresence` + `motion.circle` completion glow ring with conditional `<circle>` using CSS `completion-glow-ring` class with `@keyframes completion-glow-pulse`. Replaced `motion.button whileHover/whileTap` with CSS `hover:scale-110 active:scale-90 transition-all duration-150`. Replaced `motion.div` wrapper with `animate-fade-in-up` CSS class.
+6. ✅ **CSS Keyframes Added** - `@keyframes blink-colon` + `.blink-colon`, `@keyframes status-pulse-expand` + `.status-pulse-ring`, `@keyframes signal-bar-bounce` + `.signal-bar-pulse`, `@keyframes completion-glow-pulse` + `.completion-glow-ring` — all added to `globals.css`.
+7. ✅ **Lint** - `bun run lint` clean, no errors.
+
+#### Performance Impact
+- **useSystemStats**: 60% fewer store updates (2s → 5s interval) reduces re-renders in all consuming components
+- **WorldClockWidget**: 1 number increment per second vs 4 object allocations; React.memo prevents parent-driven re-renders
+- **StatusBar**: Zero Framer Motion overhead for 3 animated sub-components (pulse, dots, signal bars)
+- **SystemStatsWidget**: State updates only every 5s instead of every rAF (~60fps); CSS transitions replace Framer Motion for gauge arcs and bar charts
+- **FocusTimerWidget**: Zero Framer Motion overhead; CSS transitions handle all animations
+
 ## Current Project Status (Updated 2026-05-23 Round 12)
 - **Phase**: Feature-rich cinematic AI assistant with streaming chat, multi-conversation, 5 new widgets/features, ambient sound system, and enhanced UI
 - **Health**: All pages load (200), Streaming Chat API works, Weather API works, no lint issues, no runtime errors
@@ -245,3 +262,53 @@
 5. **LOW**: Add Three.js holographic globe or arc reactor visualization
 6. **LOW**: Add multi-language support for voice recognition
 7. **LOW**: Add more easter eggs and JARVIS personality interactions
+
+### Round 13 Changes - CSS Performance Optimization + CircularOrb Keyframes (Task 2-a)
+
+1. ✅ **CircularOrb CSS Keyframes** - Added 7 performance-optimized CSS keyframes for the CircularOrb component in `globals.css` before the `.theme-purple` section:
+   - `orb-rotate-cw` — clockwise rotation (0→360deg)
+   - `orb-rotate-ccw` — counter-clockwise rotation (360→0deg)
+   - `orb-pulse-wave` — expanding sonar pulse (scale 0.3→8, opacity fade)
+   - `orb-core-pulse` — subtle core breathing (scale 1→1.05, opacity 0.8→1)
+   - `orb-hex-fade` — hexagonal grid fade in/out (opacity 0→0.12→0)
+   - `orb-hex-outline` — hex outline scale+opacity (scale 0.95→1.05, opacity 0.4→0.8)
+   - `orb-core-breathe` — dramatic core breathing (scale 1→1.3, opacity 0.9→1)
+
+2. ✅ **Glass Panel Blur Optimization** — Reduced `.glass-panel` backdrop-filter from `blur(20px)` to `blur(12px)` and `.glass-panel-strong` from `blur(30px)` to `blur(16px)` for improved GPU performance with minimal visual difference.
+
+3. ✅ **CRT Overlay Scanline Optimization** — Changed `.crt-overlay::before` scanline pattern from 2px spacing (`transparent 2px / rgba 4px`) to 3px spacing (`transparent 3px / rgba 6px`) for fewer repaint operations and improved readability.
+
+4. ✅ **Glass Shimmer Slowdown** — Changed `.glass-panel::before` animation from `glass-shimmer 8s` to `glass-shimmer 15s` for a more subtle, less distracting shimmer effect.
+
+5. ✅ **Lint** — `bun run lint` clean, no errors
+
+### Round 13 Changes - Performance Optimization (Task 2-b)
+
+#### ParticleField Optimization (`/src/components/jarvis/ParticleField.tsx`)
+1. ✅ **Reduced PARTICLE_COUNT**: 80 → 40 (50% fewer particles to render)
+2. ✅ **Reduced CONNECTION_DISTANCE**: 150 → 100 (fewer connection line calculations)
+3. ✅ **Pre-computed CONNECTION_DISTANCE_SQ**: Avoids repeated multiplication in inner loop
+4. ✅ **30fps frame throttling**: Added `lastRenderRef` + `TARGET_FPS=30` + `FRAME_INTERVAL` check. Frames arriving faster than 33ms are skipped via `requestAnimationFrame` timestamp comparison.
+5. ✅ **Squared distance check first**: Connection lines compare `distSq < CONNECTION_DISTANCE_SQ` before computing `Math.sqrt`, avoiding expensive sqrt for distant particle pairs
+6. ✅ **Removed particle glow draw**: Eliminated the second `ctx.arc` + `ctx.fill` call per particle (was drawing a 2.5x radius semi-transparent glow circle per particle)
+7. ✅ **Batched connection line draws**: Single `ctx.beginPath()` + single `ctx.stroke()` for all connections instead of per-line beginPath/stroke calls
+8. ✅ **Simplified shooting star trail**: Removed per-frame `createLinearGradient` call, replaced with flat color stroke (gradient creation is expensive per frame)
+9. ✅ **Reduced shooting star frequency**: `frameCount % 300` (was % 180), max 2 (was 3)
+10. ✅ **Removed AnimatePresence/motion.div wrapper**: Canvas doesn't benefit from Framer Motion; replaced with simple `<div>`. Removes React reconciliation overhead and Framer Motion dependency.
+11. ✅ **Removed framer-motion import**: No longer needed by this component
+12. ✅ **Capped DPR at 2**: `Math.min(window.devicePixelRatio || 1, 2)` prevents excessive canvas resolution on 3x+ displays
+13. ✅ **Added `{ alpha: true }` to getContext**: Hint to browser for compositing optimization
+
+#### VoiceEqualizer Optimization (`/src/components/jarvis/VoiceEqualizer.tsx`)
+14. ✅ **Replaced Framer Motion with pure CSS animations**: Each bar now uses CSS `@keyframes` with per-bar keyframe definitions instead of 20 `motion.div` instances with individual animation controllers
+15. ✅ **Removed framer-motion import**: No longer needed by this component
+16. ✅ **Per-bar `<style>` injection**: Each bar gets its own `@keyframes` rule with 7 keyframe stops matching the original Framer Motion animation values
+17. ✅ **GPU-accelerated CSS animation**: Uses `animation` property which offloads to compositor thread, freeing main JS thread
+
+#### Performance Impact
+- **ParticleField**: ~50% fewer particles + ~30fps cap + no glow draws + batched lines + no Framer Motion = estimated 60-70% GPU workload reduction
+- **VoiceEqualizer**: Eliminating 20 Framer Motion animators = significant JS thread savings, CSS animations offloaded to compositor thread
+
+#### Verification
+- `bun run lint` ✅ Clean
+- Dev server compiles successfully, page loads with 200 status

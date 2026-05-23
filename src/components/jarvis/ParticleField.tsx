@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useCallback } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface ParticleFieldProps {
@@ -16,7 +15,7 @@ interface Particle {
   vy: number
   size: number
   opacity: number
-  depth: number // 0.3 to 1.0 for parallax
+  depth: number
   color: string
 }
 
@@ -30,10 +29,13 @@ interface ShootingStar {
   length: number
 }
 
-const CONNECTION_DISTANCE = 150
-const PARTICLE_COUNT = 80
+const CONNECTION_DISTANCE = 100
+const CONNECTION_DISTANCE_SQ = CONNECTION_DISTANCE * CONNECTION_DISTANCE
+const PARTICLE_COUNT = 40
 const MOUSE_RADIUS = 120
 const MOUSE_FORCE = 0.5
+const TARGET_FPS = 30
+const FRAME_INTERVAL = 1000 / TARGET_FPS
 
 export default function ParticleField({ enabled = true, className }: ParticleFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -42,6 +44,7 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
   const shootingStarsRef = useRef<ShootingStar[]>([])
   const mouseRef = useRef({ x: -1000, y: -1000 })
   const sizeRef = useRef({ w: 0, h: 0 })
+  const lastRenderRef = useRef(0)
 
   const createParticle = useCallback((w: number, h: number): Particle => {
     const isOrange = Math.random() < 0.1
@@ -83,11 +86,11 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
     const resizeCanvas = () => {
-      const dpr = window.devicePixelRatio || 1
+      const dpr = Math.min(window.devicePixelRatio || 1, 2) // Cap DPR at 2 for performance
       const w = window.innerWidth
       const h = window.innerHeight
       canvas.width = w * dpr
@@ -103,7 +106,6 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
 
     const handleResize = () => {
       resizeCanvas()
-      // Re-scatter particles on resize
       particlesRef.current.forEach((p) => {
         p.x = Math.random() * sizeRef.current.w
         p.y = Math.random() * sizeRef.current.h
@@ -124,7 +126,15 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
 
     let frameCount = 0
 
-    const render = () => {
+    const render = (timestamp: number) => {
+      // Throttle to target FPS
+      const elapsed = timestamp - lastRenderRef.current
+      if (elapsed < FRAME_INTERVAL) {
+        animationRef.current = requestAnimationFrame(render)
+        return
+      }
+      lastRenderRef.current = timestamp - (elapsed % FRAME_INTERVAL)
+
       const { w, h } = sizeRef.current
       ctx.clearRect(0, 0, w, h)
 
@@ -133,8 +143,8 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
       const mouse = mouseRef.current
       frameCount++
 
-      // Spawn shooting stars occasionally
-      if (frameCount % 180 === 0 && shootingStars.length < 3) {
+      // Spawn shooting stars occasionally (less frequent)
+      if (frameCount % 300 === 0 && shootingStars.length < 2) {
         shootingStars.push(createShootingStar(w, h))
       }
 
@@ -143,21 +153,18 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
         // Mouse interaction - repel
         const dx = p.x - mouse.x
         const dy = p.y - mouse.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < MOUSE_RADIUS && dist > 0) {
+        const distSq = dx * dx + dy * dy
+        if (distSq < MOUSE_RADIUS * MOUSE_RADIUS && distSq > 0) {
+          const dist = Math.sqrt(distSq)
           const force = (1 - dist / MOUSE_RADIUS) * MOUSE_FORCE
           p.vx += (dx / dist) * force * p.depth
           p.vy += (dy / dist) * force * p.depth
         }
 
-        // Apply velocity with parallax depth
+        // Apply velocity
         p.x += p.vx
         p.y += p.vy
-
-        // Gentle upward drift
         p.vy -= 0.002 * p.depth
-
-        // Damping
         p.vx *= 0.99
         p.vy *= 0.99
 
@@ -167,38 +174,35 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
         if (p.x < -10) p.x = w + 10
         if (p.x > w + 10) p.x = -10
 
-        // Draw particle
+        // Draw particle (single draw, no glow for performance)
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(${p.color}, ${p.opacity})`
         ctx.fill()
-
-        // Draw glow
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${p.color}, ${p.opacity * 0.15})`
-        ctx.fill()
       }
 
-      // Draw connection lines between nearby particles
+      // Draw connection lines - optimized with squared distance check first
+      ctx.lineWidth = 0.5
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)'
+      ctx.beginPath()
       for (let i = 0; i < particles.length; i++) {
+        const a = particles[i]
         for (let j = i + 1; j < particles.length; j++) {
-          const a = particles[i]
           const b = particles[j]
           const dx = a.x - b.x
           const dy = a.y - b.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < CONNECTION_DISTANCE) {
+          const distSq = dx * dx + dy * dy
+          if (distSq < CONNECTION_DISTANCE_SQ) {
+            const dist = Math.sqrt(distSq)
             const alpha = (1 - dist / CONNECTION_DISTANCE) * 0.15 * Math.min(a.opacity, b.opacity)
-            ctx.beginPath()
-            ctx.moveTo(a.x, a.y)
-            ctx.lineTo(b.x, b.y)
-            ctx.strokeStyle = `rgba(0, 240, 255, ${alpha})`
-            ctx.lineWidth = 0.5
-            ctx.stroke()
+            if (alpha > 0.02) {
+              ctx.moveTo(a.x, a.y)
+              ctx.lineTo(b.x, b.y)
+            }
           }
         }
       }
+      ctx.stroke()
 
       // Update and draw shooting stars
       for (let i = shootingStars.length - 1; i >= 0; i--) {
@@ -207,26 +211,23 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
         s.y += s.vy
         s.life++
 
-        const progress = s.life / s.maxLife
-        const opacity = progress < 0.2 ? progress * 5 : progress > 0.8 ? (1 - progress) * 5 : 1
-
         if (s.life >= s.maxLife) {
           shootingStars.splice(i, 1)
           continue
         }
 
-        // Draw shooting star trail
-        const tailX = s.x - (s.vx / Math.sqrt(s.vx * s.vx + s.vy * s.vy)) * s.length
-        const tailY = s.y - (s.vy / Math.sqrt(s.vx * s.vx + s.vy * s.vy)) * s.length
+        const progress = s.life / s.maxLife
+        const opacity = progress < 0.2 ? progress * 5 : progress > 0.8 ? (1 - progress) * 5 : 1
 
-        const gradient = ctx.createLinearGradient(tailX, tailY, s.x, s.y)
-        gradient.addColorStop(0, `rgba(0, 240, 255, 0)`)
-        gradient.addColorStop(1, `rgba(0, 240, 255, ${opacity * 0.8})`)
+        // Draw shooting star trail (simplified - no gradient for performance)
+        const speed = Math.sqrt(s.vx * s.vx + s.vy * s.vy)
+        const tailX = s.x - (s.vx / speed) * s.length
+        const tailY = s.y - (s.vy / speed) * s.length
 
         ctx.beginPath()
         ctx.moveTo(tailX, tailY)
         ctx.lineTo(s.x, s.y)
-        ctx.strokeStyle = gradient
+        ctx.strokeStyle = `rgba(0, 240, 255, ${opacity * 0.6})`
         ctx.lineWidth = 1.5
         ctx.stroke()
 
@@ -250,26 +251,20 @@ export default function ParticleField({ enabled = true, className }: ParticleFie
     }
   }, [enabled, createParticle, createShootingStar, initParticles])
 
+  if (!enabled) return null
+
   return (
-    <AnimatePresence>
-      {enabled && (
-        <motion.div
-          className={cn(
-            'pointer-events-none absolute inset-0 overflow-hidden',
-            className
-          )}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1 }}
-        >
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-0"
-            style={{ width: '100%', height: '100%' }}
-          />
-        </motion.div>
+    <div
+      className={cn(
+        'pointer-events-none absolute inset-0 overflow-hidden',
+        className
       )}
-    </AnimatePresence>
+    >
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0"
+        style={{ width: '100%', height: '100%' }}
+      />
+    </div>
   )
 }
