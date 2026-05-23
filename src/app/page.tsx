@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageCircle,
@@ -94,6 +94,30 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState('')
   const stats = useSystemStats()
   const { addToast } = useJarvisToast()
+
+  // Memoize personality-based classes and colors
+  const personalityClass = useMemo(() => personalityMode === 'boss' ? 'personality-boss' : personalityMode === 'funny' ? 'personality-funny' : '', [personalityMode])
+  const colorThemeClass = useMemo(() => colorTheme !== 'cyan' ? `theme-${colorTheme}` : '', [colorTheme])
+  const ambientColor = useMemo(() =>
+    personalityMode === 'boss' ? { r: 255, g: 51, b: 102 }
+    : personalityMode === 'funny' ? { r: 255, g: 106, b: 0 }
+    : { r: 0, g: 240, b: 255 },
+    [personalityMode]
+  )
+  const statusLabel = useMemo(() =>
+    aiStatus === 'idle' ? 'Awaiting Command'
+    : aiStatus === 'listening' ? 'Listening'
+    : aiStatus === 'thinking' ? 'Processing'
+    : 'Speaking',
+    [aiStatus]
+  )
+  const statusColor = useMemo(() =>
+    aiStatus === 'idle' ? 'var(--color-neon-cyan)'
+    : aiStatus === 'listening' ? 'var(--color-neon-cyan)'
+    : aiStatus === 'thinking' ? 'var(--color-neon-orange)'
+    : 'var(--color-neon-blue)',
+    [aiStatus]
+  )
 
   // Konami code tracking
   const konamiSequence = useRef<string[]>([])
@@ -277,30 +301,31 @@ export default function Home() {
     }
   }, [stats.cpu, addNotification])
 
-  // Weather alerts for extreme temperatures
+  // Weather alerts for extreme temperatures - use shallow comparison to prevent re-renders
   const lastWeatherAlertRef = useRef(0)
-  const weather = useJarvisStore((s) => s.weather)
+  const weatherTemp = useJarvisStore((s) => s.weather?.temp)
+  const weatherLocation = useJarvisStore((s) => s.weather?.location)
   useEffect(() => {
-    if (weather && Date.now() - lastWeatherAlertRef.current > 300000) {
-      if (weather.temp > 35) {
+    if (weatherTemp !== undefined && weatherLocation && Date.now() - lastWeatherAlertRef.current > 300000) {
+      if (weatherTemp > 35) {
         lastWeatherAlertRef.current = Date.now()
         addNotification({
           type: 'warning',
           title: 'Heat Alert',
-          message: `Temperature in ${weather.location} is ${weather.temp}°C — stay hydrated`,
+          message: `Temperature in ${weatherLocation} is ${weatherTemp}°C — stay hydrated`,
           icon: 'thermometer-sun',
         })
-      } else if (weather.temp < 0) {
+      } else if (weatherTemp < 0) {
         lastWeatherAlertRef.current = Date.now()
         addNotification({
           type: 'warning',
           title: 'Freeze Alert',
-          message: `Temperature in ${weather.location} is ${weather.temp}°C — freezing conditions`,
+          message: `Temperature in ${weatherLocation} is ${weatherTemp}°C — freezing conditions`,
           icon: 'snowflake',
         })
       }
     }
-  }, [weather, addNotification])
+  }, [weatherTemp, weatherLocation, addNotification])
 
   // ===== WAIT FOR CLIENT HYDRATION =====
   // Avoid hydration mismatch by not rendering until client-side
@@ -323,19 +348,12 @@ export default function Home() {
   }
 
   // ===== MAIN DASHBOARD =====
-  // Personality-based theme class + color theme
-  const personalityClass = personalityMode === 'boss' ? 'personality-boss' : personalityMode === 'funny' ? 'personality-funny' : ''
-  const colorThemeClass = colorTheme !== 'cyan' ? `theme-${colorTheme}` : ''
-
-  // Ambient glow color based on personality
-  const ambientColor = personalityMode === 'boss'
-    ? { r: 255, g: 51, b: 102 }
-    : personalityMode === 'funny'
-    ? { r: 255, g: 106, b: 0 }
-    : { r: 0, g: 240, b: 255 }
+  // Personality-based theme class + color theme (memoized above)
+  const finalPersonalityClass = personalityClass
+  const finalColorThemeClass = colorThemeClass
 
   return (
-    <div className={`relative min-h-screen bg-jarvis-darker overflow-hidden hud-grid-bg theme-transition ${personalityClass} ${colorThemeClass}`}>
+    <div className={`relative min-h-screen bg-jarvis-darker overflow-hidden hud-grid-bg theme-transition ${finalPersonalityClass} ${finalColorThemeClass}`}>
       {/* CRT Scanline Overlay */}
       {crtOverlayEnabled && <div className="crt-overlay pointer-events-none" />}
       {/* Toast Notification Container */}
@@ -561,7 +579,7 @@ export default function Home() {
               {/* Voice Equalizer */}
               <VoiceEqualizer status={aiStatus} />
 
-              {/* Status label with animated dots - fades in after orb */}
+              {/* Status label with animated dots - fades in after orb - CSS animations for performance */}
               <motion.div
                 className="flex items-center gap-3"
                 initial={{ opacity: 0, y: 10 }}
@@ -569,64 +587,35 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 1.0 }}
               >
                 {aiStatus !== 'idle' && (
-                  <motion.div
-                    className="flex gap-1"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
+                  <div className="flex gap-1">
                     {[0, 1, 2].map((i) => (
-                      <motion.div
+                      <div
                         key={i}
-                        className="w-1 h-1 rounded-full bg-neon-cyan"
-                        animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                        className="w-1 h-1 rounded-full bg-neon-cyan animate-pulse"
+                        style={{ animationDelay: `${i * 0.2}s` }}
                       />
                     ))}
-                  </motion.div>
+                  </div>
                 )}
-                <motion.div
+                <div
                   className="font-mono text-sm sm:text-base tracking-[0.2em] uppercase"
                   style={{
-                    color: aiStatus === 'idle'
-                      ? 'var(--color-neon-cyan)'
-                      : aiStatus === 'listening'
-                      ? 'var(--color-neon-cyan)'
-                      : aiStatus === 'thinking'
-                      ? 'var(--color-neon-orange)'
-                      : 'var(--color-neon-blue)',
-                  }}
-                  animate={{
-                    opacity: aiStatus === 'idle' ? [0.5, 1, 0.5] : 1,
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: aiStatus === 'idle' ? Infinity : 0,
-                    ease: 'easeInOut',
+                    color: statusColor,
+                    animation: aiStatus === 'idle' ? 'pulse 2s ease-in-out infinite' : 'none',
                   }}
                 >
-                  {aiStatus === 'idle'
-                    ? 'Awaiting Command'
-                    : aiStatus === 'listening'
-                    ? 'Listening'
-                    : aiStatus === 'thinking'
-                    ? 'Processing'
-                    : 'Speaking'}
-                </motion.div>
+                  {statusLabel}
+                </div>
                 {aiStatus !== 'idle' && (
-                  <motion.div
-                    className="flex gap-1"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
+                  <div className="flex gap-1">
                     {[0, 1, 2].map((i) => (
-                      <motion.div
+                      <div
                         key={i}
-                        className="w-1 h-1 rounded-full bg-neon-cyan"
-                        animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 1, repeat: Infinity, delay: (2 - i) * 0.2 }}
+                        className="w-1 h-1 rounded-full bg-neon-cyan animate-pulse"
+                        style={{ animationDelay: `${(2 - i) * 0.2}s` }}
                       />
                     ))}
-                  </motion.div>
+                  </div>
                 )}
               </motion.div>
 

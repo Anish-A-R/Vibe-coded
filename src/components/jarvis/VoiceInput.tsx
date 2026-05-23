@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, MicOff, Radio } from 'lucide-react'
+import { Mic, MicOff, Radio, Languages, Loader2 } from 'lucide-react'
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { playActivationSound, playDeactivationSound } from '@/lib/sounds'
@@ -14,10 +14,15 @@ interface VoiceInputProps {
 }
 
 export function VoiceInput({ className = '', onFinalTranscript, onWakeWord }: VoiceInputProps) {
-  const { soundEnabled } = useJarvisStore()
+  const { soundEnabled, voiceLanguage } = useJarvisStore()
   const { isSupported, isListening, transcript, toggleListening, wakeWordDetected, onFinalTranscript: registerOnFinalTranscript } = useVoiceRecognition()
   const [lastSentText, setLastSentText] = useState('')
+  const [isTranslating, setIsTranslating] = useState(false)
+  const [translatedText, setTranslatedText] = useState<string | null>(null)
   const prevWakeWordRef = useRef(false)
+
+  // Determine if we're in multilingual mode
+  const isMultilingual = voiceLanguage.split('-')[0] !== 'en'
 
   // Trigger onWakeWord callback when wake word is detected
   useEffect(() => {
@@ -27,14 +32,18 @@ export function VoiceInput({ className = '', onFinalTranscript, onWakeWord }: Vo
     prevWakeWordRef.current = wakeWordDetected
   }, [wakeWordDetected, onWakeWord])
 
-  // Register the final transcript callback
+  // Register the final transcript callback - this sends the voice text to ChatPanel
   useEffect(() => {
     if (onFinalTranscript) {
       registerOnFinalTranscript((text) => {
         setLastSentText(text)
+        setTranslatedText(null)
         onFinalTranscript(text)
         // Clear after 3 seconds
-        setTimeout(() => setLastSentText(''), 3000)
+        setTimeout(() => {
+          setLastSentText('')
+          setTranslatedText(null)
+        }, 3000)
       })
     }
   }, [onFinalTranscript, registerOnFinalTranscript])
@@ -100,6 +109,17 @@ export function VoiceInput({ className = '', onFinalTranscript, onWakeWord }: Vo
             className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-neon-cyan flex items-center justify-center z-10"
           >
             <Radio className="w-2.5 h-2.5 text-black" />
+          </motion.div>
+        )}
+
+        {/* Multilingual indicator */}
+        {isMultilingual && isListening && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-purple-500/80 flex items-center justify-center z-10"
+          >
+            <Languages className="w-2.5 h-2.5 text-white" />
           </motion.div>
         )}
 
@@ -173,6 +193,18 @@ export function VoiceInput({ className = '', onFinalTranscript, onWakeWord }: Vo
                 <p className="text-sm text-neon-cyan/80 font-mono max-w-[240px] truncate">
                   &ldquo;{lastSentText}&rdquo;
                 </p>
+                {translatedText && translatedText !== lastSentText && (
+                  <p className="text-[10px] text-purple-400/60 font-mono">
+                    → &ldquo;{translatedText}&rdquo;
+                  </p>
+                )}
+              </div>
+            ) : isTranslating ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-center gap-1.5">
+                  <Loader2 className="w-3 h-3 text-purple-400/60 animate-spin" />
+                  <p className="text-xs text-purple-400/60 font-mono uppercase">Translating</p>
+                </div>
               </div>
             ) : transcript ? (
               <div className="space-y-1">
@@ -199,9 +231,19 @@ export function VoiceInput({ className = '', onFinalTranscript, onWakeWord }: Vo
 
       {/* Wake word hint */}
       {isSupported && !isListening && (
-        <p className="text-[9px] text-white/15 font-mono text-center">
-          Say &ldquo;Hey Jarvis&rdquo; to activate
-        </p>
+        <div className="flex flex-col items-center gap-1">
+          <p className="text-[9px] text-white/15 font-mono text-center">
+            Say &ldquo;Hey Jarvis&rdquo; to activate
+          </p>
+          {isMultilingual && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/5 border border-purple-500/10">
+              <Languages className="w-2 h-2 text-purple-400/40" />
+              <span className="text-[8px] font-mono text-purple-400/40">
+                Multilingual mode
+              </span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

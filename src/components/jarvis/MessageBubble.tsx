@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import { Bot, User, Copy, Volume2, Trash2, Check, ThumbsUp, ThumbsDown, Clipboard } from 'lucide-react'
@@ -289,6 +290,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           ) : (
             <div className="markdown-content prose prose-invert prose-sm max-w-none" onError={() => setRenderError(true)}>
               <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 components={{
                   // Headings with neon glow
                   h1: ({ children }) => (

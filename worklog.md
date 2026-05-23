@@ -386,3 +386,71 @@
 - Language indicator showing "EN" in chat panel header
 - No console errors (only suppressed speech recognition warnings in headless context)
 - Voice language selector in settings with 13 language options
+
+### Round 14 Changes - Translation + Execute + Voice Fix + Performance (2026-05-24)
+
+#### Translation & Execute Feature
+1. ✅ **New `/api/translate` endpoint** - Uses LLM to translate non-English text to English. Supports auto-detection and explicit source language. Rules: output only translated text, preserve meaning, handle commands properly.
+2. ✅ **Chat API Translation Integration** - Modified `/api/chat/route.ts` to:
+   - Detect non-English language from `voiceLanguage` setting
+   - Automatically translate non-English input to English before command parsing
+   - Pass `translatedMessage` field so the backend knows the English translation
+   - Include multilingual context in system prompt so LLM understands both original and translated text
+   - Stream `translatedInput` and `originalInput` info in SSE for display
+   - Non-streaming response includes `translatedInput` when translation occurred
+3. ✅ **ChatPanel Translation Support** - `ChatPanel.tsx` now:
+   - Detects non-English input using `isLikelyNonEnglish()` helper
+   - Shows "Translating..." indicator with purple spinner while translating
+   - Translates voice input before sending to command parser
+   - Shows translation indicator: `Translated: "original" → "English"` in chat
+   - Displays translation status in AI status area (purple pulse dot)
+   - Multilingual mode badge shown when non-English language selected
+   - Placeholder text changes: "Ask JARVIS in any language..."
+   - Auto-translate indicator in keyboard hints when non-English
+4. ✅ **VoiceInput Multilingual Updates** - `VoiceInput.tsx` now:
+   - Shows purple "Multilingual mode" badge when non-English language selected
+   - Displays `Languages` icon badge on mic button when in multilingual mode
+   - Shows translated text preview: `→ "English translation"` below sent text
+   - Cleaner wake word hint area with multilingual indicator
+
+#### Written View Fix
+5. ✅ **Markdown Table Rendering** - Added `remark-gfm` plugin to `ReactMarkdown` in `MessageBubble.tsx`. Tables were rendering as raw pipe-delimited text because `react-markdown` doesn't support GFM tables by default. Now tables render as proper HTML `<table>` elements with styled headers, hover effects, and bordered rows.
+
+#### UI Performance Optimization
+6. ✅ **Page.tsx Performance** - Key optimizations:
+   - `useMemo` for `personalityClass`, `colorThemeClass`, `ambientColor`, `statusLabel`, `statusColor` - prevents recalculation every render
+   - Replaced Framer Motion `motion.div` status dots (6 instances with `animate` + `transition`) with plain CSS `animate-pulse` with `animationDelay` - reduces Framer Motion overhead
+   - Replaced `motion.div` status text with CSS `animation: pulse` - eliminates per-frame animation loop
+   - Weather alert effect now uses `weather?.temp` and `weather?.location` selectors instead of full `weather` object - prevents unnecessary re-renders
+   - Added `memo` import for future use
+
+#### Component Count
+- **34 custom JARVIS components** + 6 custom hooks + 5 API routes + 2800+ lines of CSS
+
+#### Verification
+- `bun run lint` ✅ Clean
+- `GET /` → 200 ✅
+- `POST /api/chat` → 200 ✅ (with translation support)
+- `POST /api/translate` → 200 ✅
+- Browser QA: Boot sequence, dashboard, chat panel, multilingual indicators all working
+- No console errors
+
+## Current Project Status (Updated 2026-05-24)
+- **Phase**: Feature-rich cinematic AI assistant with streaming chat, multi-conversation, multilingual translation+execute, wake word detection, and optimized performance
+- **Health**: All pages load (200), Streaming Chat API works, Translation API works, no lint issues, no runtime errors
+- **Last QA**: 2026-05-24 - Full browser QA passed, translation+execute verified, written view tables now rendering
+
+## Unresolved Issues / Risks
+- Translation adds ~1-2s latency for non-English input before command execution
+- Voice recognition still limited by browser Web Speech API availability
+- CRT overlay scanline effect may slightly reduce readability on low-contrast displays
+- No real database conversations yet (only localStorage via Zustand persist)
+- Right column has many widgets (6+) — collapse/expand helps but scroll could be improved
+
+## Priority Recommendations for Next Phase
+1. **HIGH**: Add real-time voice activity detection (VAD) for better wake word handling
+2. **MEDIUM**: Add Prisma-based conversation persistence
+3. **MEDIUM**: Add conversation search/filter in ChatPanel
+4. **MEDIUM**: Improve right column layout with better scroll/categorization
+5. **LOW**: Add Three.js holographic globe or arc reactor visualization
+6. **LOW**: Add more easter eggs and JARVIS personality interactions

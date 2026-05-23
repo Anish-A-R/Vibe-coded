@@ -30,18 +30,72 @@ const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
   'ru-RU': 'Отвечайте на русском языке. Всегда используйте русский для всех ответов.',
 }
 
+// Languages that are NOT English - need translation
+const NON_ENGLISH_LANGUAGES = new Set([
+  'es-ES', 'fr-FR', 'de-DE', 'hi-IN', 'ja-JP', 'zh-CN',
+  'pt-BR', 'ko-KR', 'ar-SA', 'it-IT', 'ru-RU',
+])
+
 interface ChatRequest {
   message: string
   personality: PersonalityMode
   history: { role: string; content: string }[]
   stream?: boolean
   language?: string
+  translatedMessage?: string // Pre-translated message from client
+}
+
+/**
+ * Translate non-English text to English for command processing
+ */
+async function translateToEnglish(text: string, sourceLanguage: string): Promise<string> {
+  // If the language is English, no translation needed
+  const langPrefix = sourceLanguage.split('-')[0]
+  if (langPrefix === 'en') return text
+
+  try {
+    const zai = await getZAI()
+
+    const translationPrompt = `You are a precise translator. Translate the following text from ${sourceLanguage} to English.
+
+Rules:
+1. Only output the translated text, nothing else.
+2. Preserve the meaning and intent exactly.
+3. For commands (like "यूटूब खोलो" → "open YouTube", "बताओ समय" → "what time is it"), translate them to natural English commands.
+4. Do not add explanations, prefixes, quotes, or backticks.
+5. If the text is already in English, output it unchanged.
+
+Text to translate:
+${text}`
+
+    const completion = await zai.chat.completions.create({
+      messages: [
+        { role: 'assistant', content: translationPrompt },
+        { role: 'user', content: text },
+      ],
+      thinking: { type: 'disabled' },
+    })
+
+    const translated = completion.choices[0]?.message?.content?.trim() || text
+    return translated
+  } catch (error) {
+    console.error('Translation error:', error)
+    // Return original text if translation fails - the LLM can still handle it
+    return text
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json()
-    const { message, personality = 'professional', history = [], stream = true, language = 'en-US' } = body
+    const {
+      message,
+      personality = 'professional',
+      history = [],
+      stream = true,
+      language = 'en-US',
+      translatedMessage,
+    } = body
 
     if (!message || message.trim().length === 0) {
       return NextResponse.json(
@@ -53,9 +107,25 @@ export async function POST(request: NextRequest) {
     const zai = await getZAI()
     const systemPrompt = getSystemPrompt(personality)
 
+    // Determine the English message for processing
+    // If the client already translated it, use the translation
+    // Otherwise, translate non-English messages for better command understanding
+    let englishMessage = message
+    if (translatedMessage) {
+      englishMessage = translatedMessage
+    } else if (NON_ENGLISH_LANGUAGES.has(language)) {
+      englishMessage = await translateToEnglish(message, language)
+    }
+
     // Add language instruction to system prompt
     const langInstruction = LANGUAGE_INSTRUCTIONS[language] || LANGUAGE_INSTRUCTIONS['en-US']
-    const fullSystemPrompt = `${systemPrompt}\n\n${langInstruction}`
+
+    // Add multilingual context to system prompt
+    const multilingualContext = language.split('-')[0] !== 'en'
+      ? `\n\nIMPORTANT: The user may speak in ${language}. They said: "${message}". The English translation is: "${englishMessage}". Process the English translation for understanding commands, but always respond in the user's language (${langInstruction}). If the user gave a command (like open website, search, etc.), execute it and respond in their language.`
+      : ''
+
+    const fullSystemPrompt = `${systemPrompt}\n\n${langInstruction}${multilingualContext}`
 
     // Build messages array with history
     const messages: { role: string; content: string }[] = [
@@ -71,7 +141,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Add current message
+    // Add current message - use the original message for display but the system
+    // prompt includes the English translation for command understanding
     messages.push({ role: 'user', content: message })
 
     // Non-streaming fallback
@@ -94,6 +165,7 @@ export async function POST(request: NextRequest) {
         success: true,
         response,
         personality,
+        translatedInput: englishMessage !== message ? englishMessage : undefined,
       })
     }
 
@@ -118,6 +190,13 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
             controller.close()
             return
+          }
+
+          // If input was translated, send the translation info first
+          if (englishMessage !== message) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ translatedInput: englishMessage, originalInput: message })}\n\n`)
+            )
           }
 
           // Simulate streaming by sending the response in word chunks

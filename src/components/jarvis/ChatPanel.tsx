@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare, Bot, Globe } from 'lucide-react'
+import { Send, Mic, Trash2, VolumeX, Plus, ChevronDown, MessageSquare, Bot, Globe, Languages, Loader2 } from 'lucide-react'
 import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
 import { useTTS } from '@/hooks/useTTS'
@@ -12,6 +12,35 @@ import { useJarvisToast } from '@/hooks/useJarvisToast'
 import { MessageBubble } from './MessageBubble'
 import { QuickCommands } from './QuickCommands'
 import { ErrorBoundary } from './ErrorBoundary'
+
+// Helper: detect if text likely contains non-English characters
+function isLikelyNonEnglish(text: string): boolean {
+  // Check for non-ASCII characters that are common in non-English languages
+  const nonAscii = text.match(/[^\x00-\x7F]/g)
+  if (nonAscii && nonAscii.length > text.length * 0.2) return true
+  return false
+}
+
+// Helper: translate text using the API
+async function translateText(text: string, sourceLang: string): Promise<string> {
+  const langPrefix = sourceLang.split('-')[0]
+  if (langPrefix === 'en') return text // No translation needed for English
+
+  try {
+    const response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, sourceLanguage: sourceLang, targetLanguage: 'en' }),
+    })
+
+    if (!response.ok) return text // Return original on failure
+
+    const data = await response.json()
+    return data.translated || text
+  } catch {
+    return text // Return original on failure
+  }
+}
 
 export function ChatPanel() {
   const {
@@ -43,6 +72,9 @@ export function ChatPanel() {
   const [showConvDropdown, setShowConvDropdown] = useState(false)
   const [isSpeakingNow, setIsSpeakingNow] = useState(false)
   const [completedStreamMsg, setCompletedStreamMsg] = useState<string | null>(null)
+  const [isTranslating, setIsTranslating] = useState(false)
+  const [translatedInput, setTranslatedInput] = useState<string | null>(null)
+  const [showOriginalText, setShowOriginalText] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -54,7 +86,7 @@ export function ChatPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingText])
 
-  // Track speaking state with interval (avoid calling browser API during render)
+  // Track speaking state with interval
   useEffect(() => {
     const check = setInterval(() => {
       setIsSpeakingNow(isSpeaking())
@@ -89,8 +121,8 @@ export function ChatPanel() {
     }
   }, [])
 
-  // Handle sending a message
-  const handleSend = useCallback(async (text?: string) => {
+  // Handle sending a message with translation support
+  const handleSend = useCallback(async (text?: string, preTranslated?: string) => {
     const messageText = (text || input).trim()
     if (!messageText || isLoading) return
 
@@ -101,12 +133,35 @@ export function ChatPanel() {
 
     setInput('')
     setCompletedStreamMsg(null)
+    setTranslatedInput(null)
+    setShowOriginalText(null)
     incrementCommandCount()
 
-    // Parse command
-    const commandResult = parseCommand(messageText)
+    // Determine if translation is needed
+    let englishMessage = preTranslated || messageText
+    const langPrefix = voiceLanguage.split('-')[0]
 
-    // Add user message
+    if (!preTranslated && langPrefix !== 'en' && isLikelyNonEnglish(messageText)) {
+      // Translate non-English input before processing
+      setIsTranslating(true)
+      setAIStatus('thinking')
+
+      try {
+        englishMessage = await translateText(messageText, voiceLanguage)
+        setTranslatedInput(englishMessage)
+        setShowOriginalText(messageText)
+      } catch {
+        // Translation failed, use original
+        englishMessage = messageText
+      } finally {
+        setIsTranslating(false)
+      }
+    }
+
+    // Parse command using the English translation
+    const commandResult = parseCommand(englishMessage)
+
+    // Add user message (show original text in the user's language)
     addMessage({ role: 'user', content: messageText })
 
     // Handle non-chat commands locally
@@ -202,7 +257,8 @@ export function ChatPanel() {
           personality: personalityMode,
           history,
           stream: true,
-          language: voiceLanguage, // Pass language for multilingual responses
+          language: voiceLanguage,
+          translatedMessage: englishMessage !== messageText ? englishMessage : undefined,
         }),
         signal: abortController.signal,
       })
@@ -260,6 +316,11 @@ export function ChatPanel() {
                 if (soundEnabled) playMessageSound()
                 return
               }
+              // Handle translation info from server
+              if (parsed.translatedInput && !translatedInput) {
+                setTranslatedInput(parsed.translatedInput)
+                setShowOriginalText(parsed.originalInput)
+              }
               if (parsed.content) {
                 fullText += parsed.content
                 setStreamingText(fullText)
@@ -291,8 +352,7 @@ export function ChatPanel() {
           }
         }
 
-        // Streaming complete - store the completed text to prevent flash
-        // The message will be added to store, and we keep showing it until store updates
+        // Streaming complete
         if (fullText) {
           setCompletedStreamMsg(fullText)
           addMessage({ role: 'assistant', content: fullText })
@@ -331,6 +391,11 @@ export function ChatPanel() {
           addMessage({ role: 'assistant', content: data.response })
           if (soundEnabled) playMessageSound()
 
+          if (data.translatedInput) {
+            setTranslatedInput(data.translatedInput)
+            setShowOriginalText(data.originalInput || messageText)
+          }
+
           if (soundEnabled) {
             const speakText = data.response.length > 500 ? data.response.slice(0, 500) + '...' : data.response
             setTimeout(() => speak(speakText), 100)
@@ -360,7 +425,6 @@ export function ChatPanel() {
       setIsLoading(false)
       setAIStatus('idle')
       // Clear streaming state after a small delay to prevent flash
-      // The completedStreamMsg ensures the message stays visible during transition
       setTimeout(() => {
         setStreamingText('')
         setIsStreaming(false)
@@ -368,7 +432,7 @@ export function ChatPanel() {
       }, 100)
       abortControllerRef.current = null
     }
-  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, stop, addToast, speak, addNotification, voiceLanguage])
+  }, [input, isLoading, messages, personalityMode, soundEnabled, addMessage, clearMessages, incrementCommandCount, setAIStatus, stop, addToast, speak, addNotification, voiceLanguage, translatedInput])
 
   // Handle image generation
   const handleImageGeneration = useCallback(async (prompt: string) => {
@@ -458,10 +522,11 @@ export function ChatPanel() {
     }
   }, [handleSend])
 
-  // Register callback for when final voice transcript is ready (auto-send)
+  // Register callback for when final voice transcript is ready (auto-send with translation)
   useEffect(() => {
-    onFinalTranscript((text) => {
-      // Auto-send the voice message
+    onFinalTranscript(async (text) => {
+      // Auto-send the voice message with translation support
+      // The handleSend function will handle translation internally
       handleSend(text)
     })
   }, [onFinalTranscript, handleSend])
@@ -536,7 +601,7 @@ export function ChatPanel() {
               animate={{ opacity: 1, x: 0 }}
               className="text-[10px] font-mono text-neon-cyan/50 uppercase"
             >
-              {aiStatus}
+              {isTranslating ? 'translating' : aiStatus}
             </motion.span>
           )}
           {isSpeakingNow && (
@@ -678,8 +743,34 @@ export function ChatPanel() {
             <p className="text-xs text-white/15 font-mono text-center max-w-[250px]">
               Say &ldquo;Hey Jarvis&rdquo; or type a message to start
             </p>
+            {/* Multilingual hint */}
+            {voiceLanguage.split('-')[0] !== 'en' && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neon-cyan/5 border border-neon-cyan/10 mt-1">
+                <Languages className="w-3 h-3 text-neon-cyan/40" />
+                <span className="text-[10px] font-mono text-neon-cyan/40">
+                  Multilingual mode active — speak in any language
+                </span>
+              </div>
+            )}
           </div>
         )}
+
+        {/* Translation indicator - show when a translation happened */}
+        <AnimatePresence>
+          {translatedInput && showOriginalText && (
+            <motion.div
+              initial={{ opacity: 0, y: -5, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -5, height: 0 }}
+              className="mx-4 mb-2 px-3 py-2 rounded-lg bg-neon-cyan/5 border border-neon-cyan/10 flex items-center gap-2"
+            >
+              <Languages className="w-3 h-3 text-neon-cyan/40 flex-shrink-0" />
+              <span className="text-[10px] font-mono text-neon-cyan/40">
+                Translated: &ldquo;{showOriginalText}&rdquo; → &ldquo;{translatedInput}&rdquo;
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Message list */}
         <ErrorBoundary>
@@ -688,8 +779,26 @@ export function ChatPanel() {
           ))}
         </ErrorBoundary>
 
+        {/* Translating indicator */}
+        {isTranslating && (
+          <div className="px-4 py-2">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neon-cyan/5 border border-neon-cyan/10">
+              <div className="relative w-5 h-5 flex-shrink-0">
+                <Languages className="w-4 h-4 text-neon-cyan/60" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-mono text-neon-cyan/50 uppercase tracking-wider">
+                  Translating
+                </span>
+                <span className="text-xs font-mono text-white/30">
+                  Converting to English for processing...
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Streaming text with dramatic cursor */}
-        {/* Show streaming text only if it hasn't been added to messages yet */}
         {isStreaming && streamingText && !completedStreamMsg && (
           <div className="px-4 py-2">
             <div className="flex gap-3">
@@ -755,7 +864,7 @@ export function ChatPanel() {
         )}
 
         {/* Thinking indicator with spinning orb */}
-        {aiStatus === 'thinking' && !isStreaming && (
+        {aiStatus === 'thinking' && !isStreaming && !isTranslating && (
           <div className="px-2 py-2">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neon-cyan/5 border border-neon-cyan/10">
               <div className="relative w-5 h-5 flex-shrink-0">
@@ -814,7 +923,9 @@ export function ChatPanel() {
           <div className="flex items-center gap-1.5">
             <motion.div
               className={`w-1.5 h-1.5 rounded-full ${
-                aiStatus === 'idle'
+                isTranslating
+                  ? 'bg-purple-400'
+                  : aiStatus === 'idle'
                   ? 'bg-neon-cyan/40'
                   : aiStatus === 'thinking'
                   ? 'bg-neon-cyan'
@@ -823,17 +934,17 @@ export function ChatPanel() {
                   : 'bg-neon-orange/60'
               }`}
               animate={{
-                scale: aiStatus === 'idle' ? [1, 1, 1] : [1, 1.5, 1],
-                opacity: aiStatus === 'idle' ? [0.4, 0.4, 0.4] : [0.5, 1, 0.5],
+                scale: isTranslating || aiStatus === 'idle' ? [1, 1, 1] : [1, 1.5, 1],
+                opacity: isTranslating ? [0.5, 1, 0.5] : aiStatus === 'idle' ? [0.4, 0.4, 0.4] : [0.5, 1, 0.5],
               }}
               transition={{
-                duration: aiStatus === 'idle' ? 2 : 1,
+                duration: isTranslating ? 0.8 : aiStatus === 'idle' ? 2 : 1,
                 repeat: Infinity,
                 ease: 'easeInOut',
               }}
             />
             <span className="text-[9px] font-mono text-white/15 uppercase">
-              {aiStatus}
+              {isTranslating ? 'translating' : aiStatus}
             </span>
           </div>
         </div>
@@ -847,8 +958,8 @@ export function ChatPanel() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask JARVIS anything..."
-              disabled={isLoading}
+              placeholder={voiceLanguage.split('-')[0] !== 'en' ? "Ask JARVIS in any language..." : "Ask JARVIS anything..."}
+              disabled={isLoading || isTranslating}
               className="
                 w-full px-4 py-3 rounded-lg text-sm font-mono
                 bg-white/5 border border-neon-cyan/20
@@ -859,6 +970,12 @@ export function ChatPanel() {
                 transition-all duration-200
               "
             />
+            {/* Translation spinner */}
+            {isTranslating && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 className="w-4 h-4 text-neon-cyan/40 animate-spin" />
+              </div>
+            )}
           </div>
 
           {/* Send button */}
@@ -866,7 +983,7 @@ export function ChatPanel() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || isTranslating}
             className="
               p-3 rounded-lg
               bg-neon-cyan/20 border border-neon-cyan/30
@@ -902,7 +1019,7 @@ export function ChatPanel() {
         </div>
 
         {/* Keyboard hint */}
-        <div className="flex items-center justify-center gap-3 mt-2">
+        <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
           <span className="text-[10px] font-mono text-white/20">
             Enter to send
           </span>
@@ -914,6 +1031,15 @@ export function ChatPanel() {
           <span className="text-[10px] font-mono text-white/20">
             Say &ldquo;Hey Jarvis&rdquo;
           </span>
+          {voiceLanguage.split('-')[0] !== 'en' && (
+            <>
+              <span className="text-[10px] font-mono text-white/10">|</span>
+              <span className="text-[10px] font-mono text-neon-cyan/30 flex items-center gap-1">
+                <Languages className="w-2.5 h-2.5" />
+                Auto-translate on
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>
