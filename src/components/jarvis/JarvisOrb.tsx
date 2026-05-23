@@ -14,6 +14,11 @@ const themeColors: Record<string, { primary: string; hex: string; secondary: str
   purple: { primary: 'rgba(139, 92, 246, 1)', hex: '#8b5cf6', secondary: 'rgba(192, 38, 211, 0.6)' },
   orange: { primary: 'rgba(255, 106, 0, 1)', hex: '#ff6a00', secondary: 'rgba(255, 149, 0, 0.6)' },
   arctic: { primary: 'rgba(96, 165, 250, 1)', hex: '#60a5fa', secondary: 'rgba(56, 189, 248, 0.6)' },
+  gold: { primary: 'rgba(255, 215, 0, 1)', hex: '#ffd700', secondary: 'rgba(245, 158, 11, 0.6)' },
+  pink: { primary: 'rgba(244, 114, 182, 1)', hex: '#f472b6', secondary: 'rgba(232, 121, 249, 0.6)' },
+  teal: { primary: 'rgba(45, 212, 191, 1)', hex: '#2dd4bf', secondary: 'rgba(20, 184, 166, 0.6)' },
+  crimson: { primary: 'rgba(220, 38, 38, 1)', hex: '#dc2626', secondary: 'rgba(239, 68, 68, 0.6)' },
+  lime: { primary: 'rgba(132, 204, 22, 1)', hex: '#84cc16', secondary: 'rgba(163, 230, 53, 0.6)' },
 }
 
 // ===== Status Configuration =====

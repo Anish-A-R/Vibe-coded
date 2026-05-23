@@ -2,7 +2,7 @@
 
 import { useJarvisStore } from './useJarvisStore'
 
-// ===== Theme Color Map =====
+// ===== Theme Color Maps =====
 const themeRGBMap: Record<string, string> = {
   cyan: '0, 240, 255',
   red: '255, 51, 102',
@@ -31,14 +31,44 @@ const themeHexMap: Record<string, string> = {
   lime: '#84cc16',
 }
 
+const themeSecondaryRGBMap: Record<string, string> = {
+  cyan: '0, 102, 255',
+  red: '255, 128, 64',
+  green: '64, 255, 128',
+  purple: '192, 38, 211',
+  orange: '255, 149, 0',
+  arctic: '56, 189, 248',
+  gold: '245, 158, 11',
+  pink: '232, 121, 249',
+  teal: '20, 184, 166',
+  crimson: '239, 68, 68',
+  lime: '163, 230, 53',
+}
+
+const themeSecondaryHexMap: Record<string, string> = {
+  cyan: '#0066ff',
+  red: '#ff8040',
+  green: '#40ff80',
+  purple: '#c026d3',
+  orange: '#ff9500',
+  arctic: '#38bdf8',
+  gold: '#f59e0b',
+  pink: '#e879f9',
+  teal: '#14b8a6',
+  crimson: '#ef4444',
+  lime: '#a3e635',
+}
+
 /**
  * Hook that provides theme-aware color values for inline styles.
- * Returns the current theme's RGB components and hex color.
+ * Returns the current theme's RGB components, hex color, and secondary colors.
  */
 export function useThemeColors() {
   const colorTheme = useJarvisStore((s) => s.colorTheme)
   const rgb = themeRGBMap[colorTheme] || themeRGBMap.cyan
   const hex = themeHexMap[colorTheme] || themeHexMap.cyan
+  const secondaryRgb = themeSecondaryRGBMap[colorTheme] || themeSecondaryRGBMap.cyan
+  const secondaryHex = themeSecondaryHexMap[colorTheme] || themeSecondaryHexMap.cyan
 
   return {
     /** RGB components string, e.g., "0, 240, 255" for use in rgba() */
@@ -49,5 +79,13 @@ export function useThemeColors() {
     rgba: (alpha: number) => `rgba(${rgb}, ${alpha})`,
     /** Primary color with full opacity */
     primary: `rgba(${rgb}, 1)`,
+    /** Secondary RGB components string */
+    secondaryRgb,
+    /** Secondary hex color */
+    secondaryHex,
+    /** Create an rgba color with the theme secondary */
+    secondaryRgba: (alpha: number) => `rgba(${secondaryRgb}, ${alpha})`,
+    /** Secondary color with full opacity */
+    secondary: `rgba(${secondaryRgb}, 1)`,
   }
 }

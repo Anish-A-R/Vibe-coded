@@ -6,6 +6,7 @@ import { useJarvisStore } from '@/hooks/useJarvisStore'
 import { useHydrated } from '@/hooks/useHydrated'
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition'
 import { useTTS } from '@/hooks/useTTS'
+import { useThemeColors } from '@/hooks/useThemeColors'
 import { playBootSound, playStartupCompleteSound, playActivationSound, playDeactivationSound } from '@/lib/sounds'
 import { getGreeting } from '@/lib/personalities'
 import BootSequence from '@/components/jarvis/BootSequence'
@@ -41,6 +42,15 @@ export default function Home() {
 
   const hydrated = useHydrated()
   const showBoot = hydrated && !booted
+  const colorTheme = useJarvisStore((s) => s.colorTheme)
+  const tc = useThemeColors()
+
+  // Global data-theme sync — ensures CSS variables update on every theme change
+  useEffect(() => {
+    if (hydrated) {
+      document.documentElement.setAttribute('data-theme', colorTheme)
+    }
+  }, [colorTheme, hydrated])
 
   const [greetingShown, setGreetingShown] = useState(false)
   const [greetingText, setGreetingText] = useState('')
@@ -285,8 +295,8 @@ export default function Home() {
 
       {/* Ambient background particles (subtle) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-neon-cyan/[0.02] blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-neon-blue/[0.02] blur-[100px]" />
+        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px]" style={{ background: tc.rgba(0.02) }} />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[100px]" style={{ background: tc.secondaryRgba(0.02) }} />
       </div>
 
       {/* ===== TOP AMBIENT INFO BAR ===== */}
@@ -348,6 +358,7 @@ export default function Home() {
 function AmbientBar({ greetingText, greetingShown }: { greetingText: string; greetingShown: boolean }) {
   const [time, setTime] = useState('')
   const [date, setDate] = useState('')
+  const tc = useThemeColors()
 
   useEffect(() => {
     const update = () => {
@@ -370,8 +381,8 @@ function AmbientBar({ greetingText, greetingShown }: { greetingText: string; gre
         className="flex items-center gap-4"
       >
         <div className="text-right">
-          <p className="font-mono text-2xl text-neon-cyan/60 neon-text-cyan tracking-wider">{time}</p>
-          <p className="font-mono text-[10px] text-neon-cyan/25 tracking-wider uppercase">{date}</p>
+          <p className="font-mono text-2xl tracking-wider" style={{ color: tc.rgba(0.6), textShadow: `0 0 7px ${tc.rgba(0.6)}, 0 0 20px ${tc.rgba(0.3)}` }}>{time}</p>
+          <p className="font-mono text-[10px] tracking-wider uppercase" style={{ color: tc.rgba(0.25) }}>{date}</p>
         </div>
       </motion.div>
 
@@ -383,7 +394,8 @@ function AmbientBar({ greetingText, greetingShown }: { greetingText: string; gre
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
             transition={{ duration: 0.5 }}
-            className="hidden md:block font-mono text-xs text-neon-cyan/40 text-center max-w-md"
+            className="hidden md:block font-mono text-xs text-center max-w-md"
+            style={{ color: tc.rgba(0.4) }}
           >
             {greetingText}
           </motion.div>
@@ -397,10 +409,10 @@ function AmbientBar({ greetingText, greetingShown }: { greetingText: string; gre
         transition={{ duration: 0.8, delay: 0.5 }}
         className="flex items-center gap-2"
       >
-        <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan/60 animate-pulse" />
+        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: tc.rgba(0.6) }} />
         <div>
-          <p className="font-mono text-[10px] tracking-[0.3em] text-neon-cyan/50 uppercase">J.A.R.V.I.S.</p>
-          <p className="font-mono text-[8px] tracking-[0.15em] text-neon-cyan/20 uppercase">Voice Agent</p>
+          <p className="font-mono text-[10px] tracking-[0.3em] uppercase" style={{ color: tc.rgba(0.5) }}>J.A.R.V.I.S.</p>
+          <p className="font-mono text-[8px] tracking-[0.15em] uppercase" style={{ color: tc.rgba(0.2) }}>Voice Agent</p>
         </div>
       </motion.div>
     </header>
@@ -434,6 +446,7 @@ function VoiceStatusBar({
   onToggleMic: () => void
   onRequestMic: () => void
 }) {
+  const tc = useThemeColors()
   // Show voice error if present
   const showError = voiceError !== null
 
@@ -455,9 +468,11 @@ function VoiceStatusBar({
     if (aiStatus === 'thinking') return 'text-neon-orange/70'
     if (aiStatus === 'speaking') return 'text-neon-blue/70'
     if (isRecordingBuffer) return 'text-neon-green/80'
-    if (isListening) return 'text-neon-cyan/80'
+    if (isListening) return '' // will use inline style
     return 'text-white/30'
   })()
+
+  const statusStyle = isListening ? { color: tc.rgba(0.8) } : {}
 
   // Circular progress for recording countdown
   const countdownProgress = recordingCountdown > 0 ? ((5 - recordingCountdown) / 5) * 100 : 0
@@ -477,6 +492,7 @@ function VoiceStatusBar({
               exit={{ opacity: 0, y: -5 }}
               transition={{ duration: 0.2 }}
               className={`font-mono text-[11px] tracking-[0.25em] uppercase ${statusColor}`}
+              style={statusStyle}
             >
               {statusLabel}
             </motion.p>
@@ -488,7 +504,8 @@ function VoiceStatusBar({
               initial={{ opacity: 0 }}
               animate={{ opacity: [0.2, 0.5, 0.2] }}
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="font-mono text-[9px] text-neon-cyan/30 tracking-wider"
+              className="font-mono text-[9px] tracking-wider"
+              style={{ color: tc.rgba(0.3) }}
             >
               Say &ldquo;Jarvis&rdquo; or click the mic
             </motion.p>
@@ -505,21 +522,24 @@ function VoiceStatusBar({
                   animate={{ scale: 2.5, opacity: 0 }}
                   exit={{ scale: 0.8, opacity: 0 }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
-                  className="absolute inset-0 rounded-full border border-neon-cyan/30"
+                  className="absolute inset-0 rounded-full"
+                  style={{ border: `1px solid ${tc.rgba(0.3)}` }}
                 />
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0.4 }}
                   animate={{ scale: 1.8, opacity: 0 }}
                   exit={{ scale: 0.9, opacity: 0 }}
                   transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut', delay: 0.3 }}
-                  className="absolute inset-0 rounded-full border border-neon-cyan/20"
+                  className="absolute inset-0 rounded-full"
+                  style={{ border: `1px solid ${tc.rgba(0.2)}` }}
                 />
                 <motion.div
                   initial={{ scale: 0.95, opacity: 0.3 }}
                   animate={{ scale: 1.4, opacity: 0 }}
                   exit={{ scale: 0.95, opacity: 0 }}
                   transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut', delay: 0.5 }}
-                  className="absolute inset-0 rounded-full border border-neon-cyan/15"
+                  className="absolute inset-0 rounded-full"
+                  style={{ border: `1px solid ${tc.rgba(0.15)}` }}
                 />
               </>
             )}
@@ -542,7 +562,7 @@ function VoiceStatusBar({
                   cy="32"
                   r="28"
                   fill="none"
-                  stroke="rgba(0, 240, 255, 0.1)"
+                  stroke={tc.rgba(0.1)}
                   strokeWidth="2"
                 />
                 {/* Progress arc */}
@@ -551,7 +571,7 @@ function VoiceStatusBar({
                   cy="32"
                   r="28"
                   fill="none"
-                  stroke="rgba(0, 255, 136, 0.6)"
+                  stroke={tc.rgba(0.6)}
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeDasharray={2 * Math.PI * 28}
@@ -586,13 +606,19 @@ function VoiceStatusBar({
               ${micPermission === 'denied'
                 ? 'bg-neon-red/10 border-2 border-neon-red/30'
                 : isRecordingBuffer
-                ? 'bg-neon-green/15 border-2 border-neon-green/60 shadow-[0_0_30px_rgba(0,255,136,0.25)]'
+                ? ''
                 : isListening
-                ? 'bg-neon-cyan/15 border-2 border-neon-cyan/60 shadow-[0_0_30px_rgba(0,240,255,0.25)]'
-                : 'bg-white/5 border-2 border-white/15 hover:border-neon-cyan/30 hover:bg-neon-cyan/5'
+                ? ''
+                : 'bg-white/5 border-2 border-white/15'
               }
               ${!isSupported ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
             `}
+            style={micPermission !== 'denied' ? {
+              background: isRecordingBuffer ? tc.rgba(0.15) : isListening ? tc.rgba(0.15) : undefined,
+              borderColor: isRecordingBuffer ? tc.rgba(0.6) : isListening ? tc.rgba(0.6) : undefined,
+              boxShadow: (isRecordingBuffer || isListening) ? `0 0 30px ${tc.rgba(0.25)}` : undefined,
+              borderWidth: (isRecordingBuffer || isListening) ? '2px' : undefined,
+            } : undefined}
             aria-label={isListening ? 'Stop listening' : 'Start listening'}
           >
             {isRecordingBuffer ? (
@@ -606,7 +632,8 @@ function VoiceStatusBar({
                 {[0, 1, 2, 3, 4].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-[3px] rounded-full bg-neon-cyan"
+                    className="w-[3px] rounded-full"
+                    style={{ background: tc.hex }}
                     animate={{
                       height: [6, 18, 10, 20, 8, 15, 6],
                     }}
