@@ -25,6 +25,7 @@ import {
   Rocket,
   Waves,
   Flame,
+  Globe,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -131,6 +132,8 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setAmbientSound,
     ambientVolume,
     setAmbientVolume,
+    voiceLanguage,
+    setVoiceLanguage,
   } = useJarvisStore()
 
   const [locationInput, setLocationInput] = useState(weatherLocation)
@@ -188,6 +191,22 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  const LANGUAGES = [
+    { code: 'en-US', label: 'English (US)' },
+    { code: 'en-GB', label: 'English (UK)' },
+    { code: 'es-ES', label: 'Español' },
+    { code: 'fr-FR', label: 'Français' },
+    { code: 'de-DE', label: 'Deutsch' },
+    { code: 'hi-IN', label: 'हिन्दी (Hindi)' },
+    { code: 'ja-JP', label: '日本語 (Japanese)' },
+    { code: 'zh-CN', label: '中文 (Chinese)' },
+    { code: 'pt-BR', label: 'Português (BR)' },
+    { code: 'ko-KR', label: '한국어 (Korean)' },
+    { code: 'ar-SA', label: 'العربية (Arabic)' },
+    { code: 'it-IT', label: 'Italiano' },
+    { code: 'ru-RU', label: 'Русский (Russian)' },
+  ]
 
   const AMBIENT_SOUNDS: { key: AmbientSound; label: string; icon: React.ReactNode }[] = [
     { key: 'none', label: 'Off', icon: <VolumeX className="size-3" /> },
@@ -285,6 +304,30 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                         onCheckedChange={setSoundEnabled}
                         className="data-[state=checked]:bg-cyan-500"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Globe className="size-4 text-cyan-400/60" />
+                        <span className="text-sm font-mono text-white/70">Voice Language</span>
+                      </div>
+                      <select
+                        value={voiceLanguage}
+                        onChange={(e) => setVoiceLanguage(e.target.value)}
+                        className="
+                          w-full h-8 px-3 rounded-md text-sm font-mono
+                          bg-white/5 border border-cyan-500/20
+                          text-white/80
+                          focus:border-cyan-500/50 focus:outline-none
+                          transition-colors duration-200
+                          [&>option]:bg-black [&>option]:text-white/80
+                        "
+                      >
+                        {LANGUAGES.map((lang) => (
+                          <option key={lang.code} value={lang.code}>
+                            {lang.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">

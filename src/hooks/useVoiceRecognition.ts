@@ -13,7 +13,6 @@ interface SpeechRecognitionErrorEvent {
   message: string
 }
 
-// Extend window for SpeechRecognition API
 interface SpeechRecognitionInstance extends EventTarget {
   continuous: boolean
   interimResults: boolean
@@ -34,81 +33,96 @@ declare global {
   }
 }
 
-/**
- * Hook for Web Speech API voice recognition
- * Supports wake word detection and command input
- */
+// Type for the onFinalTranscript callback
+type OnFinalTranscript = (text: string) => void
+
 export function useVoiceRecognition() {
-  const { isListening, setIsListening, aiStatus, setAIStatus, addMessage, wakeWordEnabled } = useJarvisStore()
+  const { isListening, setIsListening, aiStatus, setAIStatus, wakeWordEnabled, voiceLanguage } = useJarvisStore()
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
+  const isListeningRef = useRef(isListening)
+  const onFinalTranscriptRef = useRef<OnFinalTranscript | null>(null)
   const [transcript, setTranscript] = useState('')
-  const [isSupported, setIsSupported] = useState(() => {
+  const [isSupported] = useState(() => {
     if (typeof window === 'undefined') return false
     return !!(window.SpeechRecognition || window.webkitSpeechRecognition)
   })
   const [wakeWordDetected, setWakeWordDetected] = useState(false)
 
-  // Initialize speech recognition
+  // Keep ref in sync (must be in effect to avoid render-time ref access)
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    isListeningRef.current = isListening
+  }, [isListening])
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      return
+  // Create/update recognition instance
+  useEffect(() => {
+    if (!isSupported || typeof window === 'undefined') return
+
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognitionAPI) return
+
+    // Stop existing
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort() } catch { /* ignore */ }
     }
-    const recognition = new SpeechRecognition()
+
+    const recognition = new SpeechRecognitionAPI()
     recognition.continuous = true
     recognition.interimResults = true
-    recognition.lang = 'en-US'
+    recognition.lang = voiceLanguage || 'en-US'
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const results = event.results
       const lastResult = results[results.length - 1]
-      const text = lastResult[0].transcript.toLowerCase().trim()
+      const text = lastResult[0].transcript.trim()
 
       setTranscript(text)
 
-      // Check for wake word
-      if (wakeWordEnabled && !wakeWordDetected) {
-        if (text.includes('hey jarvis') || text.includes('ok jarvis') || text.includes('jarvis')) {
-          setWakeWordDetected(true)
+      // Check for wake word "Jarvis" (case insensitive, multiple languages)
+      const lowerText = text.toLowerCase()
+      const wakeWords = ['jarvis', 'hey jarvis', 'ok jarvis', 'jarvas', 'jarves']
+      const hasWakeWord = wakeWords.some(w => lowerText.includes(w))
+
+      if (hasWakeWord) {
+        setWakeWordDetected(true)
+        if (aiStatus === 'idle') {
           setAIStatus('listening')
-          // Play activation sound handled by component
         }
       }
 
-      // If wake word was detected or listening mode, process final result
-      if (wakeWordDetected && lastResult.isFinal) {
-        const cleanText = text
-          .replace(/hey jarvis/gi, '')
-          .replace(/ok jarvis/gi, '')
-          .replace(/jarvis/gi, '')
-          .trim()
+      // When we get a final result, process it
+      if (lastResult.isFinal && text) {
+        // Remove wake word from the text
+        let cleanText = text
+        for (const w of wakeWords) {
+          cleanText = cleanText.replace(new RegExp(w, 'gi'), '')
+        }
+        cleanText = cleanText.trim()
 
-        if (cleanText) {
-          addMessage({ role: 'user', content: cleanText, isVoice: true })
+        // If wake word was detected or we're in listening mode, send the message
+        if (cleanText && (wakeWordDetected || hasWakeWord || isListeningRef.current)) {
+          // Call the final transcript callback if set
+          if (onFinalTranscriptRef.current) {
+            onFinalTranscriptRef.current(cleanText)
+          }
           setWakeWordDetected(false)
-          setAIStatus('thinking')
         }
-      }
-
-      // Direct listening mode (no wake word required)
-      if (!wakeWordEnabled && lastResult.isFinal && text) {
-        addMessage({ role: 'user', content: text, isVoice: true })
-        setAIStatus('thinking')
       }
     }
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error)
-      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      console.warn('Speech recognition error:', event.error)
+      if (event.error === 'not-allowed') {
+        setIsListening(false)
+      }
+      // Don't stop listening for transient errors
+      if (event.error !== 'no-speech' && event.error !== 'aborted' && event.error !== 'network') {
         setIsListening(false)
       }
     }
 
     recognition.onend = () => {
-      // Auto-restart if still supposed to be listening
-      if (isListening && recognitionRef.current) {
+      // Auto-restart if still supposed to be listening (use ref for current value)
+      if (isListeningRef.current && recognitionRef.current) {
         try {
           recognitionRef.current.start()
         } catch {
@@ -119,32 +133,65 @@ export function useVoiceRecognition() {
 
     recognitionRef.current = recognition
 
-    return () => {
-      recognition.abort()
-    }
-  }, [wakeWordEnabled, wakeWordDetected, isListening, addMessage, setAIStatus, setIsListening])
-
-  const startListening = useCallback(() => {
-    if (recognitionRef.current && isSupported) {
+    // If wake word is enabled, start listening in background
+    if (wakeWordEnabled && !isListeningRef.current) {
       try {
-        recognitionRef.current.start()
-        setIsListening(true)
-        setAIStatus('listening')
+        recognition.start()
+        // Don't set isListening to true for background wake word detection
+        // The user doesn't need to see "listening" state for wake word
       } catch {
         // Already started
       }
     }
-  }, [isSupported, setIsListening, setAIStatus])
 
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-      setIsListening(false)
-      if (aiStatus === 'listening') {
-        setAIStatus('idle')
+    // If currently listening, start
+    if (isListeningRef.current) {
+      try {
+        recognition.start()
+      } catch {
+        // Already started
       }
     }
-  }, [setIsListening, aiStatus, setAIStatus])
+
+    return () => {
+      try { recognition.abort() } catch { /* ignore */ }
+    }
+  }, [isSupported, voiceLanguage, wakeWordEnabled, aiStatus, setAIStatus, setIsListening])
+
+  // Start/stop listening when isListening changes
+  useEffect(() => {
+    const recognition = recognitionRef.current
+    if (!recognition) return
+
+    if (isListening) {
+      try {
+        recognition.start()
+        setAIStatus('listening')
+      } catch {
+        // Already started
+      }
+    } else {
+      try {
+        recognition.stop()
+        if (aiStatus === 'listening') {
+          setAIStatus('idle')
+        }
+      } catch {
+        // Not started
+      }
+    }
+  }, [isListening, aiStatus, setAIStatus])
+
+  const startListening = useCallback(() => {
+    if (isSupported) {
+      setIsListening(true)
+    }
+  }, [isSupported, setIsListening])
+
+  const stopListening = useCallback(() => {
+    setIsListening(false)
+    setTranscript('')
+  }, [setIsListening])
 
   const toggleListening = useCallback(() => {
     if (isListening) {
@@ -154,6 +201,11 @@ export function useVoiceRecognition() {
     }
   }, [isListening, startListening, stopListening])
 
+  // Register callback for when final transcript is ready
+  const onFinalTranscript = useCallback((callback: OnFinalTranscript) => {
+    onFinalTranscriptRef.current = callback
+  }, [])
+
   return {
     isSupported,
     isListening,
@@ -162,5 +214,6 @@ export function useVoiceRecognition() {
     startListening,
     stopListening,
     toggleListening,
+    onFinalTranscript,
   }
 }

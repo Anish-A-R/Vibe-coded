@@ -31,7 +31,7 @@ export function ChatPanel() {
     addNotification,
   } = useJarvisStore()
 
-  const { transcript, isListening: voiceIsListening } = useVoiceRecognition()
+  const { transcript, isListening: voiceIsListening, onFinalTranscript, toggleListening: toggleVoiceListening } = useVoiceRecognition()
   const { addToast } = useJarvisToast()
   const { speak, stop, isSpeaking } = useTTS()
 
@@ -367,7 +367,15 @@ export function ChatPanel() {
     }
   }, [handleSend])
 
-  // Handle voice transcript
+  // Register callback for when final voice transcript is ready (auto-send)
+  useEffect(() => {
+    onFinalTranscript((text) => {
+      // Auto-send the voice message
+      handleSend(text)
+    })
+  }, [onFinalTranscript, handleSend])
+
+  // Show interim transcript in input while speaking
   useEffect(() => {
     if (voiceIsListening && transcript) {
       setInput(transcript)
@@ -771,12 +779,7 @@ export function ChatPanel() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
-              const event = new KeyboardEvent('keydown', {
-                ctrlKey: true,
-                code: 'Space',
-                bubbles: true,
-              })
-              window.dispatchEvent(event)
+              toggleVoiceListening()
             }}
             className={`
               p-3 rounded-lg

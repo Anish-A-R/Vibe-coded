@@ -5,10 +5,10 @@ import { useJarvisStore } from './useJarvisStore'
 
 /**
  * Text-to-Speech hook using Web Speech Synthesis API
- * Allows JARVIS to speak responses aloud
+ * Allows JARVIS to speak responses aloud with multilingual support
  */
 export function useTTS() {
-  const { soundEnabled, volume, setAIStatus } = useJarvisStore()
+  const { soundEnabled, volume, setAIStatus, voiceLanguage } = useJarvisStore()
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
   const speak = useCallback((text: string) => {
@@ -31,12 +31,19 @@ export function useTTS() {
     utterance.rate = 1.0
     utterance.pitch = 0.9  // Slightly deeper for JARVIS feel
     utterance.volume = volume
+    utterance.lang = voiceLanguage || 'en-US'
 
-    // Try to find a good English voice
+    // Try to find a voice matching the selected language
     const voices = window.speechSynthesis.getVoices()
+
+    // Priority: language-specific male voice > any voice in that language > default
+    const langPrefix = (voiceLanguage || 'en-US').split('-')[0]
+
     const preferred = voices.find(v =>
-      v.lang.startsWith('en') && (v.name.includes('Daniel') || v.name.includes('Google UK English Male') || v.name.includes('Male'))
-    ) || voices.find(v => v.lang.startsWith('en-GB')) || voices.find(v => v.lang.startsWith('en'))
+      v.lang === (voiceLanguage || 'en-US') && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel') || v.name.includes('Google UK English Male'))
+    ) || voices.find(v => v.lang === (voiceLanguage || 'en-US'))
+      || voices.find(v => v.lang.startsWith(langPrefix) && (v.name.toLowerCase().includes('male') || v.name.includes('Daniel')))
+      || voices.find(v => v.lang.startsWith(langPrefix))
 
     if (preferred) utterance.voice = preferred
 
@@ -46,7 +53,7 @@ export function useTTS() {
 
     utteranceRef.current = utterance
     window.speechSynthesis.speak(utterance)
-  }, [soundEnabled, volume, setAIStatus])
+  }, [soundEnabled, volume, setAIStatus, voiceLanguage])
 
   const stop = useCallback(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {

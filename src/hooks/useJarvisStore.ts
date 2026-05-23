@@ -183,6 +183,10 @@ interface JarvisState {
   // Widget Collapse State
   collapsedWidgets: string[]
   toggleWidgetCollapse: (widgetId: string) => void
+
+  // Voice Language
+  voiceLanguage: string
+  setVoiceLanguage: (lang: string) => void
 }
 
 function generateId(): string {
@@ -529,6 +533,10 @@ export const useJarvisStore = create<JarvisState>()(
             ? state.collapsedWidgets.filter((id) => id !== widgetId)
             : [...state.collapsedWidgets, widgetId],
         })),
+
+      // Voice Language
+      voiceLanguage: 'en-US',
+      setVoiceLanguage: (lang) => set({ voiceLanguage: lang }),
     }),
     {
       name: 'jarvis-store',
@@ -556,6 +564,8 @@ export const useJarvisStore = create<JarvisState>()(
         ambientVolume: state.ambientVolume,
         // Widget Collapse
         collapsedWidgets: state.collapsedWidgets,
+        // Voice Language
+        voiceLanguage: state.voiceLanguage,
         // events are NOT persisted (session-only)
         // notifications are NOT persisted (session-only)
         // Persist conversations (keep last 10, last 50 messages each)
