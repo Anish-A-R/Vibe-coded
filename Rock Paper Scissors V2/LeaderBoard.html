@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPS // LEADERBOARD DIAGNOSTIC SUITE</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   DIAGNOSTIC VIEW STYLING
+═══════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020408; --bg2:#060d16; --bg3:#0a1525; --bg4:#0f1e33;
+  --cyan:#00f5ff; --cyan-dim:rgba(0,245,255,0.08); --cyan-glow:rgba(0,245,255,0.25);
+  --magenta:#ff00aa; --gold:#ffd600; --green:#00ff88; --red:#ff2255;
+  --text:#e8f4ff; --text2:#7a9cbd; --text3:#3a5570;
+  --border:rgba(0,245,255,0.12);
+  --font-head:'Orbitron',monospace; --font-mono:'Share Tech Mono',monospace; --font-body:'Rajdhani',sans-serif;
+}
+body{
+  font-family:var(--font-body);background:var(--bg);color:var(--text);
+  min-height:100vh;padding:2rem 1rem;position:relative;
+}
+#grid-bg{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+#app{position:relative;z-index:2;max-width:500px;margin:0 auto}
+
+.suite-title{
+  font-family:var(--font-head);font-size:18px;font-weight:900;letter-spacing:.1em;
+  background:linear-gradient(90deg,var(--gold),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;
+}
+.suite-sub{
+  font-family:var(--font-mono);font-size:10px;color:var(--text3);
+  text-align:center;text-transform:uppercase;letter-spacing:.15em;margin:4px 0 2rem;
+}
+
+/* ═══════ LEADERBOARD RENDERER COMPONENT ═══════ */
+.lb-table {
+  border: 1px solid var(--border);border-radius:16px;
+  overflow:hidden;background:var(--bg2);display:flex;flex-direction:column;width:100%;
+  box-shadow:0 12px 40px rgba(0,0,0,0.5);
+}
+.lb-row {
+  display:grid;grid-template-columns:40px 1fr 44px 44px 44px 56px;
+  padding:14px 16px;border-bottom:1px solid var(--border);font-size:14px;align-items:center;
+}
+.lb-row:last-child{border-bottom:none}
+.lb-row.header {
+  background:var(--bg3);font-size:9px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-mono);
+}
+.lb-rank { font-family:var(--font-head);font-size:13px;font-weight:900;color:var(--text3) }
+.lb-name { font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+.lb-num { text-align:center;font-family:var(--font-mono);font-size:12px; }
+.lb-wins { color:var(--green);font-weight:700 }
+.lb-draws { color:var(--text2) }
+.lb-losses { color:var(--red) }
+.lb-score { color:var(--gold);font-weight:900;font-family:var(--font-head);font-size:12px;text-align:right }
+.lb-loading { text-align:center;padding:3rem;color:var(--text3);font-family:var(--font-mono);font-size:11px }
+
+/* Rank Glow Medals */
+.rank-gold{color:var(--gold);text-shadow:0 0 10px rgba(255,214,0,.5)}
+.rank-silver{color:#c0c0c0;text-shadow:0 0 8px rgba(192,192,192,.4)}
+.rank-bronze{color:#cd7f32;text-shadow:0 0 8px rgba(205,127,50,.4)}
+
+/* Diagnostic Control Logs Wrapper */
+.panel {
+  background:var(--bg3);border:1px solid var(--border);border-radius:14px;
+  padding:14px;margin-top:1.5rem;font-family:var(--font-mono);font-size:11px;
+}
+.panel-title { color:var(--cyan);font-weight:700;margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em }
+#log-output { max-height:150px;overflow-y:auto;color:var(--text2);line-height:1.5; }
+.log-entry { margin-bottom:4px;border-bottom:1px dashed rgba(255,255,255,0.03);padding-bottom:2px }
+.log-ts { color:var(--text3);margin-right:6px }
+</style>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getDatabase, ref, onValue, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+  const FB = {
+    apiKey: "AIzaSyAz8paKe1-gI0MyUIzQvvPXDDkJELnZs0o",
+    authDomain: "rock-paper-and-scissors-5e77c.firebaseapp.com",
+    databaseURL: "https://rock-paper-and-scissors-5e77c-default-rtdb.firebaseio.com",
+    projectId: "rock-paper-and-scissors-5e77c",
+    storageBucket: "rock-paper-and-scissors-5e77c.firebasestorage.app",
+    messagingSenderId: "718358909641",
+    appId: "1:718358909641:web:a156878cf321e21adf7318",
+    measurementId: "G-XJQQ5CGESD"
+  };
+
+  function appendSuiteLog(msg) {
+    const out = document.getElementById('log-output');
+    if (!out) return;
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-ts">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+    out.appendChild(entry);
+    out.scrollTop = out.scrollHeight;
+  }
+
+  try {
+    appendSuiteLog("⚙️ Initializing isolated test application frame...");
+    const app = initializeApp(FB);
+    const db = getDatabase(app);
+    const leaderboardRef = ref(db, 'leaderboard');
+
+    // TEST TARGET: Querying strictly the top 1 maximum score node on the server
+    const diagnosticQuery = query(leaderboardRef, orderByChild('score'));
+    appendSuiteLog("📡 Server Filter Hooked: ORDER_BY('score') -> LIMIT_TO_LAST(1)");
+
+    appendSuiteLog("⚡ Opening sync link socket pipe...");
+    onValue(diagnosticQuery, (snap) => {
+      
+      // CRITICAL TYPO RESCUE: Safeguarded evaluation handles functions and properties seamlessly
+      let childCount = 0;
+      if (snap && typeof snap.numChildren === 'function') {
+        childCount = snap.numChildren();
+      } else if (snap && typeof snap.numChildren === 'number') {
+        childCount = snap.numChildren;
+      }
+      
+      appendSuiteLog(`📥 Network update captured! Record count returned: ${childCount}`);
+      
+      const rows = [];
+      snap.forEach(child => {
+        rows.push({ id: child.key, ...child.val() });
+      });
+
+      // Explicitly clean client arrays back down into precise descending ranks
+      rows.sort((a, b) => b.score - a.score);
+      
+      if(rows.length > 0) {
+        appendSuiteLog(`👑 Current isolated leader: Name="${rows[0].name}" Score=${rows[0].score}`);
+      } else {
+        appendSuiteLog("⚠️ Sync notice: Path targets an empty tree instance.");
+      }
+
+      // Route the clean output data object directly back up to our layout rendering wrapper
+      if (typeof window.renderLeaderboard === 'function') {
+        window.renderLeaderboard(rows);
+      }
+    }, (error) => {
+      appendSuiteLog(`❌ Firebase Security Rule Fault: ${error.message}`);
+    });
+
+  } catch (e) {
+    console.error(e);
+    appendSuiteLog(`💥 Framework compilation error: ${e.message}`);
+  }
+</script>
+</head>
+<body>
+<div id="grid-bg"></div>
+
+<div id="app">
+  <div class="suite-title">DIAGNOSTIC SUITE</div>
+  <div class="suite-sub">Isolated Leaderboard Pipeline Tester</div>
+
+  <div class="lb-table" id="lb-table">
+    <div class="lb-loading">Syncing metrics from isolated query pipe…</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Diagnostic Monitor Stream</div>
+    <div id="log-output"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   NATIVE DOM ROW GENERATION ENGINE
+═══════════════════════════════════════════ */
+function renderLeaderboard(rows) {
+  const tableEl = document.getElementById('lb-table');
+  if (!tableEl) return;
+
+  tableEl.innerHTML = '';
+
+  // 1. Programmatically structure grid headers
+  const headerRow = document.createElement('div');
+  headerRow.className = 'lb-row header';
+  headerRow.innerHTML = `
+    <div>#</div>
+    <div style="padding-left: 8px;">Name</div>
+    <div style="text-align: center;">W</div>
+    <div style="text-align: center;">D</div>
+    <div style="text-align: center;">L</div>
+    <div style="text-align: right;">Pts</div>
+  `;
+  tableEl.appendChild(headerRow);
+
+  if (!rows || !rows.length) {
+    const emptyNotice = document.createElement('div');
+    emptyNotice.className = 'lb-loading';
+    emptyNotice.textContent = 'No database entries matching query parameter scope. 🏆';
+    tableEl.appendChild(emptyNotice);
+    return;
+  }
+
+  // 2. Loop and programmatically insert nodes safely
+  rows.forEach((r, i) => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'lb-row';
+
+    // Separate logic to display medals up to position 3, raw numbers below that
+    let rankDisplay = i + 1;
+    let rankClass = '';
+
+    if (i === 0) {
+      rankDisplay = '🥇';
+      rankClass = 'rank-gold';
+    } else if (i === 1) {
+      rankDisplay = '🥈';
+      rankClass = 'rank-silver';
+    } else if (i === 2) {
+      rankDisplay = '🥉';
+      rankClass = 'rank-bronze';
+    }
+
+    rowEl.innerHTML = `
+      <div class="lb-rank ${rankClass}">${rankDisplay}</div>
+      <div class="lb-name" style="padding-left: 8px;">${r.name || 'Anonymous'}</div>
+      <div class="lb-num lb-wins">${r.wins || 0}</div>
+      <div class="lb-num lb-draws">${r.draws || 0}</div>
+      <div class="lb-num lb-losses">${r.losses || 0}</div>
+      <div class="lb-score" style="text-align: right; padding-right: 4px;">${r.score || 0}</div>
+    `;
+    tableEl.appendChild(rowEl);
+  });
+}
+
+// Bind cleanly to window scope to allow integration across module domains
+window.renderLeaderboard = renderLeaderboard;
+</script>
+</body>
+</html>

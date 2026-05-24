@@ -1,0 +1,548 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+/* TABS */
+.tabs{display:flex;gap:8px;margin-bottom:1.25rem;padding-top:1rem}
+.tab{flex:1;padding:9px 4px;border-radius:10px;text-align:center;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);cursor:pointer;font-size:13px;color:var(--color-text-secondary);transition:background .15s,color .15s}
+.tab:hover{background:var(--color-background-secondary)}
+.tab.on{background:var(--color-background-secondary);border-color:var(--color-border-primary);color:var(--color-text-primary);font-weight:500}
+.screen{display:none}.screen.on{display:block}
+
+/* SCORES */
+.scoreboard{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:1rem 0}
+.sc{background:var(--color-background-secondary);border-radius:10px;padding:10px;text-align:center}
+.sc .n{font-size:26px;font-weight:500;color:var(--color-text-primary)}
+.sc .l{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.sc.w .n{color:#1D9E75}.sc.lo .n{color:#D85A30}
+
+/* ARENA */
+.arena{display:flex;justify-content:center;align-items:center;gap:24px;margin:1.25rem 0;perspective:800px}
+.hand-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.hand-lbl{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.06em;text-transform:uppercase}
+
+/* SMOOTH CARD FLIP — key improvement */
+.card-scene{width:110px;height:110px;perspective:600px}
+.card{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.45,.05,.55,.95)}
+.card.flipped{transform:rotateY(180deg)}
+.card-face{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:54px;border-radius:18px;
+  border:0.5px solid var(--color-border-secondary);
+  background:var(--color-background-primary);
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+.card-back{
+  transform:rotateY(180deg);
+  background:var(--color-background-secondary);
+  font-size:28px;
+}
+/* question mark pattern on back */
+.card-back::before{
+  content:'?';
+  font-size:42px;
+  color:var(--color-text-tertiary);
+}
+
+/* pulse on reveal */
+@keyframes pulse-card{0%{transform:rotateY(180deg) scale(1)}40%{transform:rotateY(180deg) scale(1.12)}100%{transform:rotateY(180deg) scale(1)}}
+.card.flipped.pulse{animation:pulse-card .35s ease-out .5s both}
+
+.vs{font-size:22px;font-weight:500;color:var(--color-text-tertiary)}
+
+/* RESULT */
+.result{text-align:center;padding:13px 16px;border-radius:12px;font-size:17px;font-weight:500;margin:1rem 0;min-height:54px;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .3s,color .3s}
+.result.idle{background:var(--color-background-secondary);color:var(--color-text-tertiary);font-size:13px;font-weight:400}
+.result.win{background:var(--color-background-success);color:var(--color-text-success)}
+.result.lose{background:var(--color-background-danger);color:var(--color-text-danger)}
+.result.draw{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+
+/* CHOICES */
+.choices{display:flex;justify-content:center;gap:12px;margin:1.25rem 0}
+.cbtn{width:86px;height:86px;border-radius:16px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);font-size:40px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:transform .15s,border-color .15s,background .15s;-webkit-tap-highlight-color:transparent}
+.cbtn .cl{font-size:10px;color:var(--color-text-secondary);font-weight:500}
+.cbtn:hover{transform:scale(1.08);border-color:var(--color-border-primary);background:var(--color-background-secondary)}
+.cbtn:active{transform:scale(.95)}
+.cbtn.picked{border-color:var(--color-border-primary);background:var(--color-background-secondary)}
+.cbtn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+/* COUNTDOWN */
+.cdown{text-align:center;font-size:40px;font-weight:500;min-height:58px;display:flex;align-items:center;justify-content:center}
+@keyframes pop{from{transform:scale(1.6);opacity:.3}to{transform:scale(1);opacity:1}}
+.cdown span{display:inline-block;animation:pop .28s ease-out forwards}
+
+/* HINT */
+.hint{text-align:center;font-size:12px;color:var(--color-text-tertiary);min-height:18px;margin:.3rem 0}
+
+/* MATH PANEL */
+.mp{border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:12px 14px;margin:1rem 0;background:var(--color-background-secondary)}
+.mp-title{font-size:11px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.bar-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.bar-lbl{min-width:56px;font-size:11px;color:var(--color-text-secondary)}
+.bar-track{height:10px;border-radius:5px;background:var(--color-border-tertiary);flex:1;overflow:hidden}
+.bar-fill{height:100%;border-radius:5px;background:#378ADD;transition:width .6s ease}
+.bar-pct{font-size:11px;min-width:34px;text-align:right;color:var(--color-text-secondary)}
+
+/* FRIENDS GRID */
+.friends-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:1rem 0}
+.friend-card{border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;background:var(--color-background-primary);transition:all .15s}
+.friend-card:hover{border-color:var(--color-border-primary);background:var(--color-background-secondary)}
+.friend-card.on{border-color:var(--color-border-primary);background:var(--color-background-secondary)}
+.fa{font-size:30px;margin-bottom:5px}
+.fn{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.ft{font-size:10px;color:var(--color-text-secondary);margin-top:2px}
+
+/* 2-PLAYER */
+.p2-setup{border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px;margin:1rem 0;background:var(--color-background-secondary)}
+.p2-row{display:flex;gap:10px;margin-bottom:10px}
+.p2-row input{flex:1;border-radius:8px}
+.p2-section{margin:1rem 0;padding:14px;border:0.5px solid var(--color-border-tertiary);border-radius:12px;background:var(--color-background-primary)}
+.p2-title{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:10px;text-align:center}
+.p2-choices{display:flex;justify-content:center;gap:10px}
+.p2-cbtn{width:76px;height:76px;border-radius:14px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);font-size:36px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:transform .15s,background .15s;-webkit-tap-highlight-color:transparent}
+.p2-cbtn .cl{font-size:9px;color:var(--color-text-secondary);font-weight:500}
+.p2-cbtn:hover{transform:scale(1.07);background:var(--color-background-secondary)}
+.p2-cbtn.locked{opacity:.35;cursor:not-allowed;transform:none}
+.p2-cbtn.picked{background:var(--color-background-secondary);border-color:var(--color-border-primary)}
+.p2-status{font-size:12px;color:var(--color-text-tertiary);text-align:center;min-height:18px;margin-top:6px}
+.locked-msg{font-size:13px;text-align:center;color:var(--color-text-tertiary);padding:8px 0;font-style:italic}
+
+/* HISTORY */
+.history-list{margin:1rem 0}
+.h-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;font-size:12px;margin-bottom:4px;background:var(--color-background-secondary)}
+.h-rnd{min-width:36px;font-size:11px;color:var(--color-text-tertiary)}
+.h-res{min-width:46px;font-weight:500}
+.h-row.hw .h-res{color:#1D9E75}.h-row.hl .h-res{color:#D85A30}.h-row.hd .h-res{color:var(--color-text-secondary)}
+.h-detail{font-size:11px;color:var(--color-text-secondary);flex:1}
+
+/* BUTTONS */
+.btns{display:flex;gap:8px;justify-content:center;margin:.75rem 0;flex-wrap:wrap}
+button.sec{padding:8px 18px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary);cursor:pointer;font-size:13px;transition:background .15s}
+button.sec:hover{background:var(--color-background-secondary)}
+button.pri{padding:8px 20px;border-radius:8px;border:0.5px solid var(--color-border-primary);background:var(--color-background-secondary);color:var(--color-text-primary);cursor:pointer;font-size:13px;font-weight:500;transition:background .15s}
+button.pri:hover{background:var(--color-background-tertiary)}
+
+.divider{height:0.5px;background:var(--color-border-tertiary);margin:1rem 0}
+</style>
+
+<h2 class="sr-only">Rock paper scissors — vs AI, friend mode, and 2-player pass-and-play</h2>
+
+<div class="tabs">
+  <div class="tab on" onclick="gotoTab('ai')" id="tab-ai">🤖 VS AI</div>
+  <div class="tab" onclick="gotoTab('friend')" id="tab-friend">👥 Friends</div>
+  <div class="tab" onclick="gotoTab('p2')" id="tab-p2">🎮 2 players</div>
+  <div class="tab" onclick="gotoTab('stats')" id="tab-stats">📊 Stats</div>
+</div>
+
+<!-- ══════════════ AI SCREEN ══════════════ -->
+<div class="screen on" id="screen-ai">
+  <div class="scoreboard">
+    <div class="sc w"><div class="n" id="sw">0</div><div class="l">You win</div></div>
+    <div class="sc"><div class="n" id="sd">0</div><div class="l">Draws</div></div>
+    <div class="sc lo"><div class="n" id="sl">0</div><div class="l">AI wins</div></div>
+  </div>
+  <div class="arena">
+    <div class="hand-wrap">
+      <div class="hand-lbl">You</div>
+      <div class="card-scene"><div class="card" id="cp"><div class="card-face">🤜</div><div class="card-face card-back" id="cpb"></div></div></div>
+    </div>
+    <div class="vs">VS</div>
+    <div class="hand-wrap">
+      <div class="hand-lbl" id="opp-lbl">AI</div>
+      <div class="card-scene"><div class="card" id="ca"><div class="card-face">🤛</div><div class="card-face card-back" id="cab"></div></div></div>
+    </div>
+  </div>
+  <div class="cdown" id="cdown"></div>
+  <div class="hint" id="hint"></div>
+  <div class="result idle" id="result">Pick your move below 👇</div>
+  <div class="choices">
+    <button class="cbtn" onclick="play('rock')" id="br"><span>✊</span><span class="cl">Rock</span></button>
+    <button class="cbtn" onclick="play('paper')" id="bp"><span>✋</span><span class="cl">Paper</span></button>
+    <button class="cbtn" onclick="play('scissors')" id="bs"><span>✌️</span><span class="cl">Scissors</span></button>
+  </div>
+  <div class="mp" id="mp">
+    <div class="mp-title">🧠 AI — Markov chain strategy</div>
+    <div id="mbars"></div>
+    <div id="mdetail" style="margin-top:7px;font-size:11px;color:var(--color-text-tertiary)">Play a round to see predictions…</div>
+  </div>
+  <div class="btns"><button class="sec" onclick="resetAI()">Reset score</button></div>
+</div>
+
+<!-- ══════════════ FRIEND SCREEN ══════════════ -->
+<div class="screen" id="screen-friend">
+  <div class="friends-grid" id="fg"></div>
+  <div id="friend-game" style="display:none">
+    <div class="scoreboard">
+      <div class="sc w"><div class="n" id="fsw">0</div><div class="l">You win</div></div>
+      <div class="sc"><div class="n" id="fsd">0</div><div class="l">Draws</div></div>
+      <div class="sc lo"><div class="n" id="fsl">0</div><div class="l" id="fn-score">Friend wins</div></div>
+    </div>
+    <div class="arena">
+      <div class="hand-wrap">
+        <div class="hand-lbl">You</div>
+        <div class="card-scene"><div class="card" id="fcp"><div class="card-face">🤜</div><div class="card-face card-back"></div></div></div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="hand-wrap">
+        <div class="hand-lbl" id="fn-lbl">Friend</div>
+        <div class="card-scene"><div class="card" id="fca"><div class="card-face">🤛</div><div class="card-face card-back"></div></div></div>
+      </div>
+    </div>
+    <div class="cdown" id="fcdown"></div>
+    <div class="result idle" id="fresult">Pick your move 👇</div>
+    <div class="choices">
+      <button class="cbtn" onclick="fplay('rock')"><span>✊</span><span class="cl">Rock</span></button>
+      <button class="cbtn" onclick="fplay('paper')"><span>✋</span><span class="cl">Paper</span></button>
+      <button class="cbtn" onclick="fplay('scissors')"><span>✌️</span><span class="cl">Scissors</span></button>
+    </div>
+    <div class="btns"><button class="sec" onclick="backFriends()">← Change friend</button></div>
+  </div>
+</div>
+
+<!-- ══════════════ 2-PLAYER SCREEN ══════════════ -->
+<div class="screen" id="screen-p2">
+  <div class="p2-setup" id="p2-setup">
+    <div style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:10px">Player names</div>
+    <div class="p2-row">
+      <input type="text" id="p1name" placeholder="Player 1 name" maxlength="14" value="Player 1">
+      <input type="text" id="p2name" placeholder="Player 2 name" maxlength="14" value="Player 2">
+    </div>
+    <div class="btns" style="margin-top:4px"><button class="pri" onclick="startP2()">Start game →</button></div>
+  </div>
+
+  <div id="p2-game" style="display:none">
+    <div class="scoreboard">
+      <div class="sc w"><div class="n" id="p2sw">0</div><div class="l" id="p2-wlbl">P1 wins</div></div>
+      <div class="sc"><div class="n" id="p2sd">0</div><div class="l">Draws</div></div>
+      <div class="sc lo"><div class="n" id="p2sl">0</div><div class="l" id="p2-llbl">P2 wins</div></div>
+    </div>
+
+    <div class="arena">
+      <div class="hand-wrap">
+        <div class="hand-lbl" id="p2-lbl1">P1</div>
+        <div class="card-scene"><div class="card" id="p2cp1"><div class="card-face">🤜</div><div class="card-face card-back"></div></div></div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="hand-wrap">
+        <div class="hand-lbl" id="p2-lbl2">P2</div>
+        <div class="card-scene"><div class="card" id="p2cp2"><div class="card-face">🤛</div><div class="card-face card-back"></div></div></div>
+      </div>
+    </div>
+
+    <div class="cdown" id="p2cdown"></div>
+    <div class="result idle" id="p2result">Both players, pick your moves secretly</div>
+
+    <div class="p2-section" id="p2-s1">
+      <div class="p2-title" id="p2t1">Player 1 — pick secretly 🙈</div>
+      <div class="p2-choices">
+        <button class="p2-cbtn" onclick="p2pick(1,'rock')"><span>✊</span><span class="cl">Rock</span></button>
+        <button class="p2-cbtn" onclick="p2pick(1,'paper')"><span>✋</span><span class="cl">Paper</span></button>
+        <button class="p2-cbtn" onclick="p2pick(1,'scissors')"><span>✌️</span><span class="cl">Scissors</span></button>
+      </div>
+      <div class="p2-status" id="p2st1">Waiting…</div>
+    </div>
+
+    <div class="p2-section" id="p2-s2">
+      <div class="p2-title" id="p2t2">Player 2 — pick secretly 🙈</div>
+      <div class="p2-choices">
+        <button class="p2-cbtn" onclick="p2pick(2,'rock')"><span>✊</span><span class="cl">Rock</span></button>
+        <button class="p2-cbtn" onclick="p2pick(2,'paper')"><span>✋</span><span class="cl">Paper</span></button>
+        <button class="p2-cbtn" onclick="p2pick(2,'scissors')"><span>✌️</span><span class="cl">Scissors</span></button>
+      </div>
+      <div class="p2-status" id="p2st2">Waiting…</div>
+    </div>
+
+    <div id="p2-reveal-btn" style="display:none" class="btns">
+      <button class="pri" onclick="p2reveal()">Reveal both hands 🎉</button>
+    </div>
+
+    <div class="btns">
+      <button class="sec" onclick="resetP2()">Reset score</button>
+      <button class="sec" onclick="setupP2()">Change names</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ STATS SCREEN ══════════════ -->
+<div class="screen" id="screen-stats">
+  <div class="mp" style="margin-top:1rem">
+    <div class="mp-title">Your move frequency (vs AI)</div>
+    <div id="stat-bars"></div>
+  </div>
+  <div style="font-size:13px;font-weight:500;margin:.75rem 0 .4rem;color:var(--color-text-secondary)">Match history (last 15)</div>
+  <div class="history-list" id="hist"></div>
+  <div class="btns"><button class="sec" onclick="clearAll()">Clear all data</button></div>
+</div>
+
+<script>
+const EM={rock:'✊',paper:'✋',scissors:'✌️'};
+const BEATS={rock:'scissors',paper:'rock',scissors:'paper'};
+const CHOICES=['rock','paper','scissors'];
+
+const FRIENDS=[
+  {name:'Alex',av:'😎',trait:'Loves rock',bias:{rock:.55,paper:.25,scissors:.2},taunts:['Rock on!','Easy win.','Call that a throw?']},
+  {name:'Mia',av:'🦋',trait:'Unpredictable',bias:{rock:.33,paper:.34,scissors:.33},taunts:['You\'ll never guess me!','Chaotic!','Surprise!']},
+  {name:'Dan',av:'🧠',trait:'Avoids scissors',bias:{rock:.3,paper:.5,scissors:.2},taunts:['Calculated.','Logic wins.','You walked into that.']},
+  {name:'Zara',av:'🌸',trait:'Loves paper',bias:{rock:.2,paper:.55,scissors:.25},taunts:['Paper covers all!','Smooth.','Nothing wrong with paper.']},
+  {name:'Leo',av:'🦁',trait:'Rock spammer',bias:{rock:.65,paper:.2,scissors:.15},taunts:['Rock forever!','Why change?','Stone cold.']},
+  {name:'Nyx',av:'🌙',trait:'Scissors fanatic',bias:{rock:.2,paper:.2,scissors:.6},taunts:['Cut through the noise.','Sharp!','Snip snip!']},
+];
+
+let scores={w:0,d:0,l:0};
+let fscores={w:0,d:0,l:0};
+let p2scores={w:0,d:0,l:0};
+let freq={rock:0,paper:0,scissors:0};
+let markov={};
+let lastPick=null;
+let history=[];
+let roundN=0;
+let busy=false;
+let fbusy=false;
+let selFriend=null;
+let p2state={p1:null,p2:null};
+let p2names=['Player 1','Player 2'];
+
+function judge(p,a){return p===a?'draw':BEATS[p]===a?'win':'lose';}
+
+/* ── SMOOTH FLIP ── */
+function flipCard(cardId, emoji){
+  return new Promise(res=>{
+    const card=document.getElementById(cardId);
+    const back=card.querySelector('.card-back');
+    back.textContent='';
+    back.style.fontSize='54px';
+    back.appendChild(document.createTextNode(emoji));
+    card.classList.remove('flipped','pulse');
+    void card.offsetWidth;
+    card.classList.add('flipped');
+    card.addEventListener('transitionend',function handler(){
+      card.removeEventListener('transitionend',handler);
+      card.classList.add('pulse');
+      res();
+    },{once:true});
+  });
+}
+function resetCard(cardId){
+  const card=document.getElementById(cardId);
+  card.classList.remove('flipped','pulse');
+}
+
+/* ── COUNTDOWN ── */
+function runCountdown(elId,from){
+  return new Promise(res=>{
+    const el=document.getElementById(elId);
+    let n=from;
+    el.innerHTML=`<span>${n}</span>`;
+    const iv=setInterval(()=>{
+      n--;
+      if(n<=0){clearInterval(iv);el.innerHTML='';res();return;}
+      el.innerHTML=`<span>${n}</span>`;
+    },700);
+  });
+}
+
+/* ── AI BRAIN ── */
+function aiDecide(){
+  let pR=1/3,pP=1/3,pS=1/3;
+  const tot=freq.rock+freq.paper+freq.scissors;
+  if(tot>0){pR=freq.rock/tot;pP=freq.paper/tot;pS=freq.scissors/tot;}
+  if(lastPick&&markov[lastPick]){
+    const mc=markov[lastPick],mt=mc.rock+mc.paper+mc.scissors;
+    if(mt>=2){const w=Math.min(.7,mt*.05);pR=pR*(1-w)+(mc.rock/mt)*w;pP=pP*(1-w)+(mc.paper/mt)*w;pS=pS*(1-w)+(mc.scissors/mt)*w;}
+  }
+  const sum=pR+pP+pS||1;pR/=sum;pP/=sum;pS/=sum;
+  const maxP=Math.max(pR,pP,pS);
+  const pred=maxP===pR?'rock':maxP===pP?'paper':'scissors';
+  const counter={rock:'paper',paper:'scissors',scissors:'rock'}[pred];
+  const noise=.12;
+  const fr=pR*(1-noise)+noise/3,fp=pP*(1-noise)+noise/3,fs=pS*(1-noise)+noise/3;
+  const choice=Math.random()<.62?counter:(Math.random()<fr/(fr+fp+fs)?'rock':Math.random()<(fr+fp)/(fr+fp+fs)?'paper':'scissors');
+  return{choice,probs:{rock:Math.round(pR*100),paper:Math.round(pP*100),scissors:Math.round(pS*100)},pred};
+}
+
+function updMarkov(prev,curr){
+  if(!prev)return;
+  if(!markov[prev])markov[prev]={rock:0,paper:0,scissors:0};
+  markov[prev][curr]++;
+}
+
+/* ── PLAY VS AI ── */
+async function play(pick){
+  if(busy)return;
+  busy=true;roundN++;
+  setDisabled('screen-ai',true);
+  freq[pick]++;
+  const ai=aiDecide();
+  updMarkov(lastPick,pick);lastPick=pick;
+
+  document.getElementById('result').className='result idle';
+  document.getElementById('result').textContent='Reveal incoming…';
+  document.getElementById('hint').textContent='🤔 AI is reading your pattern…';
+  resetCard('cp');resetCard('ca');
+
+  await runCountdown('cdown',3);
+  document.getElementById('hint').textContent='';
+
+  await Promise.all([
+    flipCard('cp',EM[pick]),
+    flipCard('ca',EM[ai.choice])
+  ]);
+
+  const res=judge(pick,ai.choice);
+  if(res==='win')scores.w++;else if(res==='lose')scores.l++;else scores.d++;
+  document.getElementById('sw').textContent=scores.w;
+  document.getElementById('sd').textContent=scores.d;
+  document.getElementById('sl').textContent=scores.l;
+
+  const rb=document.getElementById('result');
+  rb.className='result '+res;
+  rb.textContent=res==='win'?`🎉 You win! ${EM[pick]} beats ${EM[ai.choice]}`:res==='lose'?`😅 AI wins! ${EM[ai.choice]} beats ${EM[pick]}`:`🤝 Draw! Both picked ${EM[pick]}`;
+
+  history.unshift({round:roundN,res,p:pick,a:ai.choice,probs:ai.probs,pred:ai.pred});
+  if(history.length>50)history.pop();
+  updMath(ai.probs,ai.pred);
+  setDisabled('screen-ai',false);
+  busy=false;
+}
+
+function updMath(probs,pred){
+  const mb=document.getElementById('mbars');
+  mb.innerHTML=CHOICES.map(c=>`<div class="bar-row"><span class="bar-lbl">${EM[c]} ${c}</span><div class="bar-track"><div class="bar-fill" style="width:${probs[c]}%"></div></div><span class="bar-pct">${probs[c]}%</span></div>`).join('');
+  document.getElementById('mdetail').textContent=`Predicted your move: ${EM[pred]} ${pred} → countered with ${EM[{rock:'paper',paper:'scissors',scissors:'rock'}[pred]]}.`;
+}
+
+function setDisabled(screenId,v){
+  document.querySelectorAll(`#${screenId} .cbtn`).forEach(b=>{b.disabled=v;});
+}
+function resetAI(){scores={w:0,d:0,l:0};document.getElementById('sw').textContent=0;document.getElementById('sd').textContent=0;document.getElementById('sl').textContent=0;}
+
+/* ── FRIEND MODE ── */
+function buildFriends(){
+  document.getElementById('fg').innerHTML=FRIENDS.map((f,i)=>`<div class="friend-card" onclick="pickFriend(${i})" id="fc${i}"><div class="fa">${f.av}</div><div class="fn">${f.name}</div><div class="ft">${f.trait}</div></div>`).join('');
+}
+
+function pickFriend(i){
+  selFriend=FRIENDS[i];fscores={w:0,d:0,l:0};
+  document.getElementById('fn-lbl').textContent=selFriend.name;
+  document.getElementById('fn-score').textContent=selFriend.name+' wins';
+  document.getElementById('fsw').textContent=0;document.getElementById('fsd').textContent=0;document.getElementById('fsl').textContent=0;
+  document.getElementById('fresult').className='result idle';
+  document.getElementById('fresult').textContent=`Playing vs ${selFriend.name}! Pick your move 👇`;
+  document.querySelectorAll('.friend-card').forEach((c,j)=>c.classList.toggle('on',j===i));
+  document.getElementById('friend-game').style.display='block';
+}
+
+async function fplay(pick){
+  if(fbusy||!selFriend)return;fbusy=true;
+  document.querySelectorAll('#screen-friend .cbtn').forEach(b=>b.disabled=true);
+  const b=selFriend.bias,r=Math.random();
+  const aiC=r<b.rock?'rock':r<b.rock+b.paper?'paper':'scissors';
+  document.getElementById('fresult').className='result idle';
+  document.getElementById('fresult').textContent='Reveal incoming…';
+  resetCard('fcp');resetCard('fca');
+  await runCountdown('fcdown',3);
+  await Promise.all([flipCard('fcp',EM[pick]),flipCard('fca',EM[aiC])]);
+  const res=judge(pick,aiC);
+  if(res==='win')fscores.w++;else if(res==='lose')fscores.l++;else fscores.d++;
+  document.getElementById('fsw').textContent=fscores.w;document.getElementById('fsd').textContent=fscores.d;document.getElementById('fsl').textContent=fscores.l;
+  const rb=document.getElementById('fresult');rb.className='result '+res;
+  const taunt=selFriend.taunts[Math.floor(Math.random()*selFriend.taunts.length)];
+  rb.textContent=res==='win'?`🎉 You win! ${EM[pick]} beats ${EM[aiC]}`:res==='lose'?`😅 ${selFriend.name}: "${taunt}"`:(`🤝 Draw! ${EM[pick]} vs ${EM[aiC]}`);
+  document.querySelectorAll('#screen-friend .cbtn').forEach(b=>b.disabled=false);fbusy=false;
+}
+
+function backFriends(){document.getElementById('friend-game').style.display='none';selFriend=null;document.querySelectorAll('.friend-card').forEach(c=>c.classList.remove('on'));}
+
+/* ── 2-PLAYER PASS AND PLAY ── */
+function startP2(){
+  p2names[0]=document.getElementById('p1name').value.trim()||'Player 1';
+  p2names[1]=document.getElementById('p2name').value.trim()||'Player 2';
+  document.getElementById('p2-setup').style.display='none';
+  document.getElementById('p2-game').style.display='block';
+  document.getElementById('p2-lbl1').textContent=p2names[0];
+  document.getElementById('p2-lbl2').textContent=p2names[1];
+  document.getElementById('p2t1').textContent=p2names[0]+' — pick secretly 🙈';
+  document.getElementById('p2t2').textContent=p2names[1]+' — pick secretly 🙈';
+  document.getElementById('p2-wlbl').textContent=p2names[0]+' wins';
+  document.getElementById('p2-llbl').textContent=p2names[1]+' wins';
+  p2scores={w:0,d:0,l:0};p2state={p1:null,p2:null};
+  refreshP2UI();
+}
+
+function setupP2(){document.getElementById('p2-setup').style.display='block';document.getElementById('p2-game').style.display='none';}
+function resetP2(){p2scores={w:0,d:0,l:0};document.getElementById('p2sw').textContent=0;document.getElementById('p2sd').textContent=0;document.getElementById('p2sl').textContent=0;p2state={p1:null,p2:null};refreshP2UI();}
+
+function p2pick(player,choice){
+  if(player===1&&p2state.p1)return;
+  if(player===2&&p2state.p2)return;
+  if(player===1){
+    p2state.p1=choice;
+    document.getElementById('p2st1').textContent='✅ '+p2names[0]+' is locked in!';
+    document.querySelectorAll('#p2-s1 .p2-cbtn').forEach(b=>{b.classList.add('locked');b.disabled=true;});
+  } else {
+    p2state.p2=choice;
+    document.getElementById('p2st2').textContent='✅ '+p2names[1]+' is locked in!';
+    document.querySelectorAll('#p2-s2 .p2-cbtn').forEach(b=>{b.classList.add('locked');b.disabled=true;});
+  }
+  refreshP2UI();
+}
+
+function refreshP2UI(){
+  const both=p2state.p1&&p2state.p2;
+  document.getElementById('p2-reveal-btn').style.display=both?'flex':'none';
+  document.getElementById('p2result').textContent=
+    p2state.p1&&p2state.p2?'Both locked in — hit Reveal! 🎉':
+    p2state.p1?`Waiting for ${p2names[1]}…`:
+    p2state.p2?`Waiting for ${p2names[0]}…`:
+    'Both players pick secretly then reveal together';
+  document.getElementById('p2result').className='result idle';
+}
+
+async function p2reveal(){
+  const r=judge(p2state.p1,p2state.p2);
+  document.getElementById('p2-reveal-btn').style.display='none';
+  resetCard('p2cp1');resetCard('p2cp2');
+  await runCountdown('p2cdown',3);
+  await Promise.all([flipCard('p2cp1',EM[p2state.p1]),flipCard('p2cp2',EM[p2state.p2])]);
+  if(r==='win')p2scores.w++;else if(r==='lose')p2scores.l++;else p2scores.d++;
+  document.getElementById('p2sw').textContent=p2scores.w;
+  document.getElementById('p2sd').textContent=p2scores.d;
+  document.getElementById('p2sl').textContent=p2scores.l;
+  const rb=document.getElementById('p2result');rb.className='result '+r;
+  rb.textContent=r==='win'?`🎉 ${p2names[0]} wins! ${EM[p2state.p1]} beats ${EM[p2state.p2]}`:r==='lose'?`🎉 ${p2names[1]} wins! ${EM[p2state.p2]} beats ${EM[p2state.p1]}`:`🤝 Draw! Both picked ${EM[p2state.p1]}`;
+  setTimeout(()=>{
+    p2state={p1:null,p2:null};
+    document.querySelectorAll('#p2-s1 .p2-cbtn,#p2-s2 .p2-cbtn').forEach(b=>{b.classList.remove('locked','picked');b.disabled=false;});
+    document.getElementById('p2st1').textContent='Waiting…';
+    document.getElementById('p2st2').textContent='Waiting…';
+    refreshP2UI();
+  },2500);
+}
+
+/* ── STATS ── */
+function buildStats(){
+  const tot=freq.rock+freq.paper+freq.scissors;
+  const sb=document.getElementById('stat-bars');
+  sb.innerHTML=tot===0?'<div style="font-size:12px;color:var(--color-text-tertiary)">No games vs AI yet.</div>':
+    CHOICES.map(c=>`<div class="bar-row"><span class="bar-lbl">${EM[c]} ${c}</span><div class="bar-track"><div class="bar-fill" style="width:${tot?Math.round(freq[c]/tot*100):0}%"></div></div><span class="bar-pct">${freq[c]}×</span></div>`).join('');
+  const hl=document.getElementById('hist');
+  hl.innerHTML=history.length===0?'<div style="font-size:12px;color:var(--color-text-tertiary)">No games yet.</div>':
+    history.slice(0,15).map(h=>`<div class="h-row h${h.res[0]}"><span class="h-rnd">R${h.round}</span><span class="h-res">${h.res.toUpperCase()}</span><span class="h-detail">${EM[h.p]} vs ${EM[h.a]} · AI read ${h.probs.rock}/${h.probs.paper}/${h.probs.scissors}</span></div>`).join('');
+}
+
+function clearAll(){history=[];markov={};freq={rock:0,paper:0,scissors:0};lastPick=null;roundN=0;scores={w:0,d:0,l:0};resetAI();buildStats();}
+
+/* ── TABS ── */
+function gotoTab(t){
+  ['ai','friend','p2','stats'].forEach(s=>{
+    document.getElementById('screen-'+s).classList.toggle('on',s===t);
+    document.getElementById('tab-'+s).classList.toggle('on',s===t);
+  });
+  if(t==='stats')buildStats();
+}
+
+buildFriends();
+</script>
